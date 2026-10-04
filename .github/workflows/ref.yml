@@ -320,7 +320,7 @@ jobs:
           xcrun simctl install "$udid" "$app"
           xcrun simctl status_bar "$udid" override --time "9:41" || true
           mkdir -p renders
-          for page in matches setup report stats; do
+          for page in matches setup teams detail stats settings; do
             xcrun simctl terminate "$udid" com.brisaloca.ref || true
             xcrun simctl launch "$udid" com.brisaloca.ref -renderDemo "$page"
             sleep 6
@@ -334,7 +334,7 @@ jobs:
           app=$(find Apps/Ref/dd-watch/Build/Products -name 'Ref Watch App.app' -type d | head -1)
           xcrun simctl install "$udid" "$app"
           xcrun simctl status_bar "$udid" override --time "9:41" || true
-          for page in start live; do
+          for page in start live record halftime summary; do
             xcrun simctl terminate "$udid" com.brisaloca.ref.watchkitapp || true
             xcrun simctl launch "$udid" com.brisaloca.ref.watchkitapp -renderDemo "$page"
             sleep 8
