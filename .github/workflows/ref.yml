@@ -1,0 +1,331 @@
+# Build Ref — an iPhone referee app with a companion Apple Watch app — and, on
+# request, sign it and upload it to TestFlight.
+#
+# ⚠️ WHY THIS RUNS ON A MAC. watchOS has no Linux path: xtool builds iOS only.
+# So the two apps here, like Rowing and Swim, are built by Xcode on a macOS
+# runner from Apps/Ref/project.yml — but RefKit's tests do NOT need the Mac;
+# the `kit` job runs them on a Linux runner on every push.
+#
+# Jobs, deliberately separate:
+#
+#   kit     every push: `swift test` on RefKit, on a cheap Linux runner.
+#   due     weekly, Linux: asks App Store Connect how long the live TestFlight
+#           build has left (tools/ci/due.mjs, 30-day rule). Only `due=true`
+#           starts the Mac.
+#   build   every push that touches the apps or RefKit, and a due week.
+#           Unsigned, so it needs no secrets — and it *asserts the shape*,
+#           which for a companion watch app is its own kind of proof: the
+#           watch app at Ref.app/Watch/, the pairing bundle id, no
+#           WKWatchOnly, and equal CFBundleVersions.
+#   ship    a due week, or by hand (Actions → ref → Run workflow → upload).
+#           Signs with an App Store Connect API key, archives the iOS app
+#           (the watch app rides inside it) and uploads to TestFlight.
+#   render  by hand: screenshots the real SwiftUI in iPhone and watch
+#           simulators — so the screens can be reviewed on a phone.
+#
+# ! WITHOUT `due` THE APP LAPSES. TestFlight builds live 90 days and nothing
+# else rebuilds this one (the Rowing lesson, 2026-09-29).
+#
+# `due` and `ship` need three repository secrets — ASC_KEY_ID, ASC_ISSUER_ID
+# and ASC_KEY_P8 (the .p8's contents). See SCOPE.md, "Kevin's errands".
+name: ref
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Sign and upload to TestFlight
+        type: boolean
+        default: false
+      expiry_check:
+        description: Behave exactly like the weekly run (upload only if due)
+        type: boolean
+        default: false
+      render:
+        description: Screenshot the live pages in simulators
+        type: boolean
+        default: false
+  schedule:
+    # Wednesdays 16:23 UTC. Weekly is plenty against a 30-day threshold.
+    - cron: '23 16 * * 3'
+  push:
+    paths:
+      - 'Apps/Ref/**'
+      - 'RefKit/**'
+      - 'tools/ci/**'
+      - '.github/workflows/ref.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  kit:
+    # The engine — clock, events, score, sin bins, report — tested without a
+    # Mac, on every push. The cheapest job, and the one most likely to catch a
+    # real mistake.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+      - name: Test RefKit
+        run: swift test --package-path RefKit
+
+  due:
+    if: github.event_name == 'schedule' || inputs.expiry_check
+    runs-on: ubuntu-latest
+    outputs:
+      due: ${{ steps.ask.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask App Store Connect whether the live build is near expiry
+        id: ask
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          # Where asc.mjs looks, and mode 600 because it refuses anything looser.
+          dir="$HOME/.config/appstoreconnect/private_keys"
+          mkdir -p "$dir"
+          printf '%s\n' "$ASC_KEY_P8" > "$dir/AuthKey_$ASC_KEY_ID.p8"
+          chmod 600 "$dir/AuthKey_$ASC_KEY_ID.p8"
+          node tools/ci/due.mjs com.brisaloca.ref
+          rm -f "$dir/AuthKey_$ASC_KEY_ID.p8"
+
+  build:
+    needs: [kit, due]
+    # Runs whenever `due` was skipped (a push or a hand run), and on a
+    # scheduled run only when a build is due. `!cancelled()` because a job
+    # whose dependency was skipped is otherwise skipped too.
+    if: ${{ !cancelled() && needs.kit.result == 'success' && ((github.event_name != 'schedule' && !inputs.expiry_check) || needs.due.outputs.due == 'true') }}
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Newest Xcode on the runner
+        run: |
+          xc=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xc"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i -E 'watch|ios'
+
+      - name: Generate the project
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          cd Apps/Ref && xcodegen generate
+          xcodebuild -list -project Ref.xcodeproj
+
+      - name: Build the iOS scheme, unsigned
+        # ! pipefail, or `tail` would report success for a failed build.
+        run: |
+          set -euo pipefail
+          cd Apps/Ref
+          xcodebuild build -project Ref.xcodeproj -scheme Ref \
+            -destination 'generic/platform=iOS' -derivedDataPath dd \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+
+      - name: Build the watch scheme, unsigned
+        run: |
+          set -euo pipefail
+          cd Apps/Ref
+          xcodebuild build -project Ref.xcodeproj -scheme RefWatch \
+            -destination 'generic/platform=watchOS' -derivedDataPath dd-watch \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+
+      - name: Assert the companion shape
+        # Everything about this app that is new for the estate and would
+        # otherwise fail only at Apple's door: the watch app inside the iPhone
+        # app, the pairing bundle id on the watch side, no WKWatchOnly, and
+        # CFBundleVersions that match (ITMS refuses a mismatch).
+        run: |
+          set -euo pipefail
+          app=$(find Apps/Ref/dd/Build/Products -name Ref.app -maxdepth 2 -type d | head -1)
+          watch="$app/Watch/Ref Watch App.app"
+          test -d "$watch" || { echo "no watch app inside the iPhone app:"; find "$app" -maxdepth 3; exit 1; }
+          v_ios=$(plutil -extract CFBundleVersion raw "$app/Info.plist")
+          v_watch=$(plutil -extract CFBundleVersion raw "$watch/Info.plist")
+          [ "$v_ios" = "$v_watch" ] || { echo "CFBundleVersion differ: $v_ios vs $v_watch"; exit 1; }
+          companion=$(plutil -extract WKCompanionAppBundleIdentifier raw "$watch/Info.plist")
+          [ "$companion" = "com.brisaloca.ref" ] || { echo "companion bundle id is '$companion'"; exit 1; }
+          for p in "$app/Info.plist" "$watch/Info.plist"; do
+            if plutil -extract WKWatchOnly raw "$p" >/dev/null 2>&1; then
+              echo "WKWatchOnly is set in $p — this app is a companion, not watch-only"; exit 1
+            fi
+          done
+          echo "watch background modes: $(plutil -extract WKBackgroundModes json "$watch/Info.plist")"
+          echo "companion shape ok"
+
+  ship:
+    needs: [due, build]
+    if: >-
+      ${{ !cancelled() && needs.build.result == 'success' && (
+          (github.event_name == 'workflow_dispatch' && inputs.upload) ||
+          needs.due.outputs.due == 'true') }}
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Newest Xcode on the runner
+        run: |
+          xc=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xc"
+          xcodebuild -version
+
+      - name: Generate the project
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          cd Apps/Ref && xcodegen generate
+
+      - name: Archive, sign and upload
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            [ -n "${!v}" ] || { echo "missing repository secret $v"; exit 1; }
+          done
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$key"
+          auth=(-allowProvisioningUpdates
+                -authenticationKeyPath "$key"
+                -authenticationKeyID "$ASC_KEY_ID"
+                -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+
+          cd Apps/Ref
+          xcodebuild archive -project Ref.xcodeproj -scheme Ref \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Ref.xcarchive" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            "${auth[@]}" 2>&1 | tail -40
+
+          # ! The one failure that would otherwise ship silently: an archive
+          # with no watch app in it is a plain iOS upload, and Apple would take
+          # it without complaint.
+          test -d "$RUNNER_TEMP/Ref.xcarchive/Products/Applications/Ref.app/Watch/Ref Watch App.app" \
+            || { echo "the archive carries no watch app — refusing to upload"; exit 1; }
+
+          cat > "$RUNNER_TEMP/export.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>6DNDT6WKF8</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Ref.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            "${auth[@]}" 2>&1 | tail -40
+          rm -f "$key"
+
+  render:
+    # Screenshots of the real SwiftUI, in simulators, for review on a phone.
+    # Both apps have a Debug `-renderDemo <page>` mode with fixed data, because
+    # a simulator has no match, no Health and no GPS. Nothing is signed or sent
+    # anywhere but this run's artifacts.
+    #
+    # ! If installing the watch app standalone ever fails, the fallback is the
+    # embedded copy: install the iPhone build's Ref.app on the phone simulator
+    # and take the watch app from inside it at Ref.app/Watch/.
+    if: github.event_name == 'workflow_dispatch' && inputs.render
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Newest Xcode on the runner
+        run: |
+          xc=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xc"
+          xcodebuild -version
+
+      - name: Generate the project
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          cd Apps/Ref && xcodegen generate
+
+      - name: Pick and boot an iPhone and a watch simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          iphone=$(xcrun simctl list devices available --json | python3 -c '
+          import json,sys
+          devs=[d for rt,ds in json.load(sys.stdin)["devices"].items() if "iOS" in rt for d in ds]
+          devs.sort(key=lambda d: ("iPhone" not in d["name"], "Pro" not in d["name"], d["name"]))
+          print(devs[0]["udid"]); print(devs[0]["name"], file=sys.stderr)')
+          watch=$(xcrun simctl list devices available --json | python3 -c '
+          import json,sys
+          devs=[d for rt,ds in json.load(sys.stdin)["devices"].items() if "watchOS" in rt for d in ds]
+          devs.sort(key=lambda d: ("Ultra" not in d["name"], d["name"]))
+          print(devs[0]["udid"]); print(devs[0]["name"], file=sys.stderr)')
+          echo "iphone=$iphone" >> "$GITHUB_OUTPUT"
+          echo "watch=$watch" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$iphone"
+          xcrun simctl boot "$watch"
+          xcrun simctl bootstatus "$iphone" -b
+          xcrun simctl bootstatus "$watch" -b
+
+      - name: Build the phone app for the iPhone simulator
+        run: |
+          set -euo pipefail
+          cd Apps/Ref
+          xcodebuild build -project Ref.xcodeproj -scheme Ref -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.iphone }}" -derivedDataPath dd \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
+
+      - name: Build the watch app for the watch simulator
+        run: |
+          set -euo pipefail
+          cd Apps/Ref
+          xcodebuild build -project Ref.xcodeproj -scheme RefWatch -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.watch }}" -derivedDataPath dd-watch \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
+
+      - name: Launch each phone page and screenshot it
+        run: |
+          set -euo pipefail
+          udid=${{ steps.sim.outputs.iphone }}
+          app=$(find Apps/Ref/dd/Build/Products -name Ref.app -type d | head -1)
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl status_bar "$udid" override --time "9:41" || true
+          mkdir -p renders
+          for page in matches setup report stats; do
+            xcrun simctl terminate "$udid" com.brisaloca.ref || true
+            xcrun simctl launch "$udid" com.brisaloca.ref -renderDemo "$page"
+            sleep 6
+            xcrun simctl io "$udid" screenshot "renders/phone-$page.png"
+          done
+
+      - name: Launch each watch page and screenshot it
+        run: |
+          set -euo pipefail
+          udid=${{ steps.sim.outputs.watch }}
+          app=$(find Apps/Ref/dd-watch/Build/Products -name 'Ref Watch App.app' -type d | head -1)
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl status_bar "$udid" override --time "9:41" || true
+          for page in start live; do
+            xcrun simctl terminate "$udid" com.brisaloca.ref.watchkitapp || true
+            xcrun simctl launch "$udid" com.brisaloca.ref.watchkitapp -renderDemo "$page"
+            sleep 8
+            xcrun simctl io "$udid" screenshot "renders/watch-$page.png"
+          done
+          ls -la renders
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ref-renders
+          path: renders/

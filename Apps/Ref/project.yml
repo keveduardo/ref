@@ -1,0 +1,109 @@
+# Ref — an iPhone referee tool with a companion Apple Watch app. See SCOPE.md.
+#
+# Built like Swim and Rowing (brisaloca-ios WORKOUTS.md §4, "The build"):
+# XcodeGen on a GitHub macOS runner (.github/workflows/ref.yml), the
+# .xcodeproj never committed, the unsigned build proven on every push.
+#
+# The *shape* is new for this repo — the iOS target is a real app with real
+# sources, and the watch app is a COMPANION: no WKWatchOnly, a
+# WKCompanionAppBundleIdentifier pointing home, both bundles in one archive
+# under one App Store record (com.brisaloca.ref). The build job asserts all of
+# that, because it is exactly the kind of thing that otherwise fails only at
+# Apple's door.
+name: Ref
+options:
+  deploymentTarget:
+    watchOS: "11.0"
+    iOS: "17.0"
+packages:
+  RefKit: { path: ../../RefKit }
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: 6DNDT6WKF8
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    # The workflow passes the run number, so every upload is a new build — and
+    # both bundles inherit it from here, which is what keeps their
+    # CFBundleVersions identical (ITMS refuses an upload where a watch app and
+    # its host differ).
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Ref:
+    type: application
+    platform: iOS
+    # XcodeGen makes a scheme only for a target that asks for one. This one is
+    # archived and shipped; RefWatch's is what the render job builds.
+    scheme: {}
+    sources:
+      - Sources/Ref
+      - Resources/iOS
+    dependencies:
+      - package: RefKit
+      # XcodeGen recognises a watchOS app dependency and emits Xcode's own
+      # "Embed Watch Content" phase at $(CONTENTS_FOLDER_PATH)/Watch. No
+      # `copy:` block — that spells a custom phase; this is the default one,
+      # and the build job asserts the result.
+      - target: RefWatch
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_NAME: Ref
+        PRODUCT_MODULE_NAME: Ref
+        PRODUCT_BUNDLE_IDENTIFIER: com.brisaloca.ref
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Ref
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # Crypto-free, so every upload never arrives as "Missing Compliance".
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        # ! No WKAppBundleIdentifier on this side: that key belongs to the
+        # legacy WatchKit *extension* pair, and a wrong value there is itself a
+        # validation failure. The pairing lives on the watch side only.
+
+  RefWatch:
+    type: application
+    platform: watchOS
+    scheme: {}
+    sources:
+      - Sources/RefWatch
+      - Resources/Watch
+    dependencies:
+      - package: RefKit
+    settings:
+      base:
+        PRODUCT_NAME: Ref Watch App
+        PRODUCT_MODULE_NAME: RefWatch
+        PRODUCT_BUNDLE_IDENTIFIER: com.brisaloca.ref.watchkitapp
+        CODE_SIGN_ENTITLEMENTS: Entitlements/RefWatch.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Installed inside the iPhone app's bundle, never on its own.
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Ref
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: >-
+          Ref saves the match as a soccer workout so it counts toward your
+          Activity rings.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: >-
+          Ref reads your heart rate and active energy during a match so the
+          report can show what the match cost you.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: >-
+          Ref records where you moved during a match so the report can show the
+          distance you covered.
+    info:
+      # Only for keys with no INFOPLIST_KEY_ build setting, as in Swim: the
+      # companion pairing and the mode that survives the wrist going down.
+      path: Generated/RefWatch-Info.plist
+      properties:
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.brisaloca.ref
+        # A referee's watch must run a match with the phone in a bag — and this
+        # is also what lets `simctl install` launch the app on a standalone
+        # watch simulator in the render job.
+        WKRunsIndependentlyOfCompanionApp: true
+        WKBackgroundModes: [workout-processing]

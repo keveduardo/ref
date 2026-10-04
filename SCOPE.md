@@ -1,0 +1,139 @@
+# Ref — scope, decisions, and the way there
+
+Written 2026-10-04, from the session that created the repo. `README.md` is the
+layout and current state; this file is the plan.
+
+## What this is
+
+The RefSix experience — the App Store's leading soccer-referee app — built for
+Kevin himself: the **watch runs the match** (clock, score, cards, subs, sin
+bins) and the **phone sets up before and reports after**. RefSix's own
+description matches this split: pick the match, add team sheets, send them to
+the watch; incidents are recorded on the watch with no phone and no internet on
+match day; the phone then shows the report and the season record
+([App Store](https://apps.apple.com/us/app/refsix-soccer-referee-app/id1235649461),
+[refsix.com](https://refsix.com/)).
+
+**Our own app with the same feature set — own name, icon, code and copy.**
+Nothing from RefSix is copied.
+
+The estate has already solved the hard part: **Apple Watch apps ship from this
+box with no Mac**. Rowing and Swim are built by XcodeGen on a GitHub macOS
+runner, signed through an App Store Connect API key and uploaded to TestFlight;
+a `render` job screenshots the real SwiftUI in a simulator. Ref is the same
+shape, plus a real iPhone app instead of a stub container.
+
+## Decisions (Kevin, 2026-10-04)
+
+| Decision | Answer |
+|---|---|
+| Repo home | **Standalone `~/dev/ref`** — its own private GitHub repo, its own CI |
+| Phone app | **Full companion** — teams/squads, match setup, history, report, share |
+| Distribution | **TestFlight, unlisted** — like Swim/Soccer/Glosa |
+| Fitness data | **In v1** — HealthKit workout: heart rate, energy, GPS distance |
+| Sport | Soccer only; the engine stays period-shaped for later sports |
+
+Identifiers (renameable until registered): bundle ids `com.brisaloca.ref` and
+`com.brisaloca.ref.watchkitapp`, App Store name "Brisaloca Ref", device name
+"Ref".
+
+## What v1 is
+
+**Watch app (standalone on the pitch — the phone stays in the bag):**
+
+- **Start**: today's match sent from the phone, or Quick Start (Home vs Away)
+- **Live**: big wall-clock-anchored timer, score, period, added time as
+  `45:00 +2:10`; readable in always-on/dim mode; every incident in ≤3 taps
+  with a haptic
+- **Record**: Goal (scorer number), Yellow, Red, Substitution, Sin bin
+  (countdown + notification when the player may return), added time (+1' per
+  tap), note
+- Half-time timer, End match, summary. No phone, no network needed; a
+  mid-match crash or reboot resumes (state is flushed on every event)
+
+**iPhone app:** teams & squads; create a match (teams, competition, half
+length, count-up/countdown, sin bin) → **Send to watch**; matches history with
+the report (timeline by minute, HR avg/max, distance) and share-as-text;
+season stats; settings.
+
+**v1 non-goals**: multi-sport, live phone mirroring during a match, heatmaps,
+PDF export, cloud sync, card reason codes, GotSport import.
+
+## Architecture
+
+```
+RefKit/            pure Swift package (Foundation only) — the whole engine,
+                   tested by `swift test` on Linux
+Apps/Ref/          one XcodeGen project: Ref (iOS, real UI) + Ref Watch App
+                   (watchOS 11, companion, HealthKit), embedded at
+                   Ref.app/Watch/; one archive, one App Store record
+tools/ci/          due.mjs (weekly TestFlight expiry) + the ASC helpers
+.github/workflows/ref.yml   kit / due / build / ship / render
+```
+
+**The model never advances.** The match is a list of events with wall-clock
+dates; the clock, score, report and stats are folded from it at ask time. So a
+relaunch, a sync merge or a view that slept can never disagree with itself. The
+clock face is `text(at: now)` — main field capped at the half length, the
+overrun in the `+M:SS` field.
+
+**Sync** is WatchConnectivity only: `updateApplicationContext` for the match
+assignment (phone → watch), `transferUserInfo` for finished matches
+(watch → phone). **Health**: the watch runs an `HKWorkoutSession` (`.soccer`,
+outdoor) for heart rate and energy, plus `CLLocationManager` +
+`HKWorkoutRouteBuilder` for distance; the metrics are frozen into the match
+record, so the phone needs no Health permission. The running session is also
+what keeps the app alive with the wrist down.
+
+**The concurrency pattern is Swim's** (`Apps/Swim/Sources/SwimSession.swift` in
+brisaloca-ios): `@MainActor @Observable` classes, `nonisolated` delegate
+methods, only Sendable values crossing the hop.
+
+## Phases
+
+| # | What | Verified by |
+|---|---|---|
+| **P0** ✅ | Repo + CI; RefKit clock with tests; hello screens both apps; delegate skeletons for WCSession/HealthKit/CLLocation (Swift 6 strict concurrency proven early) | kit/build/render jobs green — the build job asserts the companion shape |
+| **P0.5** | Bundle ids registered (ASC API); Kevin's errands; the first signed upload of the hello build | Apple accepts the pairing — the one thing no local build can prove |
+| **P1** | The full engine: events, score derivation, sin-bin expiry, report, JSON store, stats, resume | `swift test` on Linux |
+| **P2** | Watch UI: Start → Live → record flows → HalfTime → Summary; haptics; dim mode | renders, reviewed on the phone |
+| **P3** | Phone UI: Matches, MatchSetup, Teams, MatchDetail + share, Stats, Settings | renders + install |
+| **P4** | Sync + HealthKit: WCSession both ways, workout session, GPS | first on-wrist test |
+| **P5** | Ship v1: icon, listing notes, `ship` → TestFlight | a real match refereed with it |
+| **P6** | Whatever that match teaches | his feedback |
+
+## Kevin's errands (any time after P0 — all website, one morning)
+
+1. **Mint an App Store Connect API key** — developer.apple.com → Users and
+   Access → Integrations → Team Keys → **+**, role **App Manager**, download
+   the `.p8` **once**. ⚠️ Mobile Safari's download does not work — a desktop
+   browser does (the lesson already in brisaloca-ios `APPLE-ACCOUNT.md`). Then
+   hand over Key ID + Issuer ID; the three repo secrets follow
+   (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`).
+2. **Create the app record** — App Store Connect → Apps → **+** → iOS → bundle
+   `com.brisaloca.ref`, name "Brisaloca Ref", SKU `REF-1`, English (U.S.).
+   The API cannot create records; this one is always the website.
+3. **HealthKit capability** on the watch bundle id is switched on by automatic
+   signing at the first signed build (how Swim's Shallow Depth was). If it
+   isn't, from here:
+   `node tools/ci/enable-capability.mjs healthkit com.brisaloca.ref.watchkitapp`
+   — then archive again.
+
+## Risks / unknowns
+
+1. **Swift 6 concurrency across four NSObject delegates** — the pattern is
+   Swim's, and P0 compiles real skeletons so it is settled before any UI.
+2. **Always-on display** — every clock face is driven from
+   `TimelineView(.periodic)` + `now`; sin-bin haptics compare `now`, never a
+   `Timer` (timers coalesce while dimmed).
+3. **GPS distance** is the least-proven piece; it degrades to "—" and never
+   blocks the match. No `allowsBackgroundLocationUpdates` (it terminates an app
+   without the `location` background mode; the workout keeps us alive).
+4. **A match is the only copy of a match** — the in-progress match is rewritten
+   on every event and the clock rebuilt from the log at launch.
+5. **XcodeGen details** (the WK `INFOPLIST_KEY`s, a companion app on a
+   standalone watch simulator) are source-verified but only CI can prove them —
+   P0's assertions and render job do exactly that.
+6. TestFlight builds live 90 days; the weekly `due` job rebuilds before they
+   lapse. GitHub macOS minutes bill 10× on private repos — the loop is
+   "push → CI renders", never a local build.

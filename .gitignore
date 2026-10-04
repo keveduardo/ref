@@ -1,0 +1,8 @@
+# Swift / Xcode — generated, not authored.
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.ipa
+*.dSYM.zip
