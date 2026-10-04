@@ -63,7 +63,9 @@ jobs:
     # The engine — clock, events, score, sin bins, report — tested without a
     # Mac, on every push. The cheapest job, and the one most likely to catch a
     # real mistake.
-    runs-on: ubuntu-latest
+    # ! Pinned, not ubuntu-latest: that label moves to Ubuntu 26 on
+    # 2026-10-19, and setup-swift has no 6.0 toolchain for it.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: swift-actions/setup-swift@v2
@@ -74,7 +76,7 @@ jobs:
 
   due:
     if: github.event_name == 'schedule' || inputs.expiry_check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       due: ${{ steps.ask.outputs.due }}
     steps:
