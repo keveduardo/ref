@@ -10,6 +10,8 @@ struct RefScreen: View {
     @AppStorage("ref.halfMinutes") private var halfMinutes = MatchDefaults.standard.halfMinutes
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
     @AppStorage("ref.addedTimeButton") private var addedTimeButton = false
+    @AppStorage("ref.quarterBreak") private var quarterBreak = false
+    @AppStorage("ref.quarterBreakMinutes") private var quarterBreakMinutes = 2
 
     var body: some View {
         TabView {
@@ -29,6 +31,8 @@ struct RefScreen: View {
         .onChange(of: halfMinutes) { _, _ in pushAssignment() }
         .onChange(of: halfTimeMinutes) { _, _ in pushAssignment() }
         .onChange(of: addedTimeButton) { _, _ in pushAssignment() }
+        .onChange(of: quarterBreak) { _, _ in pushAssignment() }
+        .onChange(of: quarterBreakMinutes) { _, _ in pushAssignment() }
     }
 
     /// The watch always has the newest set of matches to offer.
@@ -36,7 +40,9 @@ struct RefScreen: View {
         link.sendAssignment(store.upcoming.map(\.setup),
                             defaults: MatchDefaults(halfMinutes: halfMinutes,
                                                     halfTimeMinutes: halfTimeMinutes,
-                                                    addedTimeButton: addedTimeButton))
+                                                    addedTimeButton: addedTimeButton,
+                                                    quarterBreak: quarterBreak
+                                                        ? QuarterBreak(breakMinutes: quarterBreakMinutes) : nil))
     }
 }
 

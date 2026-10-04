@@ -103,7 +103,8 @@ import RefKit
             clock: ClockConfig(halfMinutes: format?.halfMinutes ?? defaults.halfMinutes, countsDown: true),
             formatID: format?.id,
             halfTimeMinutes: format?.halfTimeMinutes.lowerBound ?? defaults.halfTimeMinutes,
-            addedTimeButton: defaults.addedTimeButton)))
+            addedTimeButton: defaults.addedTimeButton,
+            quarterBreak: defaults.quarterBreak)))
     }
 
     /// Take on a match — the phone's assignment, or quick start.
@@ -138,6 +139,12 @@ import RefKit
     func endHalf() { append(.halfEnd(half: halfAtNow)) }
 
     func startNextHalf() { append(.kickOff(half: halfAtNow + 1)) }
+
+    /// The quarter break: the clock stops until `resumePlay()`. The workout
+    /// keeps running — the referee is still on the pitch.
+    func startQuarterBreak() { append(.clockPaused) }
+
+    func resumePlay() { append(.clockResumed) }
 
     func fullTime() {
         append(.fullTime)

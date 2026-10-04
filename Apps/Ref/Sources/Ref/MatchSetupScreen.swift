@@ -26,6 +26,7 @@ struct MatchSetupScreen: View {
     @State private var halfMinutes: Int
     @State private var halfTimeMinutes: Int
     @State private var addedTimeButton: Bool
+    @State private var quarterBreak: QuarterBreak? = QuarterBreakDefaults.value
 
     init(store: PhoneStore) {
         self.store = store
@@ -83,6 +84,7 @@ struct MatchSetupScreen: View {
                 } footer: {
                     Text("The watch buzzes when half-time is up. The added time button puts \u{201C}+1 min\u{201D} on the watch for announcing stoppage time.")
                 }
+                QuarterBreakSection(quarterBreak: $quarterBreak, halfMinutes: halfMinutes)
                 Section {
                     Button("Save match") { save() }
                         .disabled(homeTeam.id == awayTeam.id)
@@ -137,7 +139,8 @@ struct MatchSetupScreen: View {
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
             halfTimeMinutes: halfTimeMinutes,
             addedTimeButton: addedTimeButton,
-            formatID: formatID)
+            formatID: formatID,
+            quarterBreak: quarterBreak)
         dismiss()
     }
 

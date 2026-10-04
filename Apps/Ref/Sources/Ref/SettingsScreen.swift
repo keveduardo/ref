@@ -10,6 +10,8 @@ struct SettingsScreen: View {
     @AppStorage("ref.halfMinutes") private var halfMinutes = 45
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
     @AppStorage("ref.addedTimeButton") private var addedTimeButton = false
+    @AppStorage("ref.quarterBreak") private var quarterBreak = false
+    @AppStorage("ref.quarterBreakMinutes") private var quarterBreakMinutes = 2
 
     var body: some View {
         NavigationStack {
@@ -22,6 +24,12 @@ struct SettingsScreen: View {
                         ForEach(1...15, id: \.self) { Text("\($0) minutes") }
                     }
                     Toggle("Added time button", isOn: $addedTimeButton)
+                    Toggle("Quarter breaks", isOn: $quarterBreak)
+                    if quarterBreak {
+                        Picker("Break length", selection: $quarterBreakMinutes) {
+                            ForEach(1...10, id: \.self) { Text("\($0) min").tag($0) }
+                        }
+                    }
                 }
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)

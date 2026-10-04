@@ -231,3 +231,56 @@ struct AddedTimeButtonTests {
         #expect(back.setups.first?.addedTimeButton == true)
     }
 }
+
+@Suite("quarter breaks")
+struct QuarterBreakTests {
+    static var setup: MatchSetup {
+        var s = Fixture.setup
+        s.clock = ClockConfig(halfMinutes: 25)
+        s.quarterBreak = QuarterBreak(breakMinutes: 2)
+        return s
+    }
+
+    @Test func theMarkIsMidwayUnlessAMinuteIsChosen() {
+        #expect(QuarterBreak().mark(halfLength: TimeInterval(25 * 60)) == TimeInterval(12 * 60))
+        #expect(QuarterBreak().mark(halfLength: TimeInterval(30 * 60)) == TimeInterval(15 * 60))
+        #expect(QuarterBreak(atMinute: 10).mark(halfLength: TimeInterval(25 * 60)) == TimeInterval(10 * 60))
+    }
+
+    @Test func theWatchBuzzesAtTheQuarterMarkThenAtTheEndOfTheBreak() {
+        var m = Match(setup: Self.setup, events: EventLog(events: [Fixture.event(0, .kickOff(half: 1))]))
+        let first = m.upcomingAlerts(after: Fixture.at(60))
+        #expect(first.first?.kind == .quarterMark(half: 1))
+        #expect(first.first?.at == Fixture.at(12 * 60))
+
+        // The break: the clock stops at 12:10, and two minutes later it buzzes.
+        m.events.append(Fixture.event(12 * 60 + 10, .clockPaused))
+        let during = m.upcomingAlerts(after: Fixture.at(12 * 60 + 30))
+        #expect(during.map(\.kind) == [.quarterBreakOver(half: 1)])
+        #expect(during.first?.at == Fixture.at(14 * 60 + 10))
+        #expect(m.clock.pauseElapsed(at: Fixture.at(13 * 60 + 10)) == 60)
+
+        // Resumed: no second quarter alert in this half, the half length next.
+        m.events.append(Fixture.event(14 * 60 + 30, .clockResumed))
+        let after = m.upcomingAlerts(after: Fixture.at(15 * 60))
+        #expect(!after.contains { $0.kind == .quarterMark(half: 1) })
+        #expect(after.first?.kind == .halfLength(half: 1))
+        // The stopped time does not count: 12:10 played before, 30 s since.
+        #expect(m.clock.text(at: Fixture.at(15 * 60)) == "12:40")
+    }
+
+    @Test func theSecondHalfHasItsOwnQuarter() {
+        let m = Match(setup: Self.setup, events: EventLog(events: [
+            Fixture.event(0, .kickOff(half: 1)),
+            Fixture.event(12 * 60, .clockPaused),
+            Fixture.event(14 * 60, .clockResumed),
+            Fixture.event(27 * 60, .halfEnd(half: 1)),
+            Fixture.event(32 * 60, .kickOff(half: 2))]))
+        #expect(m.upcomingAlerts(after: Fixture.at(33 * 60)).first?.kind == .quarterMark(half: 2))
+    }
+
+    @Test func noQuarterBreakNoQuarterAlerts() {
+        let m = Match(setup: Fixture.setup, events: EventLog(events: [Fixture.event(0, .kickOff(half: 1))]))
+        #expect(!m.upcomingAlerts(after: Fixture.at(60)).contains { $0.kind == .quarterMark(half: 1) })
+    }
+}

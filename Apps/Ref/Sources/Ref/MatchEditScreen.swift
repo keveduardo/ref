@@ -60,6 +60,8 @@ struct MatchEditScreen: View {
                 } footer: {
                     Text("Changes reach the watch until the match is started there.")
                 }
+                QuarterBreakSection(quarterBreak: $setup.quarterBreak,
+                                    halfMinutes: Int(setup.clock.halfLength / 60))
             }
             .navigationTitle("Edit match")
             .toolbar {

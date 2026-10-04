@@ -9,6 +9,10 @@ public struct MatchAlert: Sendable, Equatable {
         case addedTimeUp(half: Int)
         /// The break has run its `MatchSetup.halfTimeMinutes`.
         case halfTimeOver(next: Int)
+        /// The quarter mark of a half — time for the quarter break.
+        case quarterMark(half: Int)
+        /// The quarter break has run its minutes.
+        case quarterBreakOver(half: Int)
         case binOver(binID: UUID, side: TeamSide, player: PlayerRef)
     }
 
@@ -45,6 +49,28 @@ extension Match {
             if added > 0, elapsed < length + added {
                 alerts.append(MatchAlert(at: now.addingTimeInterval(length + added - elapsed),
                                          kind: .addedTimeUp(half: half)))
+            }
+        }
+
+        if let quarter = setup.quarterBreak {
+            switch clock.phase(at: now) {
+            case .running(let half) where !clock.pausedInHalf(half, at: now):
+                let mark = quarter.mark(halfLength: clock.config.halfLength)
+                let elapsed = clock.elapsed(inHalf: half, at: now)
+                if elapsed < mark {
+                    alerts.append(MatchAlert(at: now.addingTimeInterval(mark - elapsed),
+                                             kind: .quarterMark(half: half)))
+                }
+            case .paused(let half):
+                if let stopped = clock.pauseElapsed(at: now) {
+                    let length = TimeInterval(quarter.breakMinutes * 60)
+                    if stopped < length {
+                        alerts.append(MatchAlert(at: now.addingTimeInterval(length - stopped),
+                                                 kind: .quarterBreakOver(half: half)))
+                    }
+                }
+            default:
+                break
             }
         }
 

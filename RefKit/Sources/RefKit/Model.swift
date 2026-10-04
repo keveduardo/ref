@@ -85,13 +85,17 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     /// asked for (Kevin, 2026-10-04): youth matches rarely announce any, and
     /// the clock shows the overrun either way.
     public var addedTimeButton: Bool
+    /// A break partway through each half, with the clock stopped — nil when
+    /// the match has none.
+    public var quarterBreak: QuarterBreak?
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
                 kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
                 sinBinMinutes: Int = MatchDefaults.standard.sinBinMinutes,
                 formatID: String? = nil,
                 halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
-                addedTimeButton: Bool = MatchDefaults.standard.addedTimeButton) {
+                addedTimeButton: Bool = MatchDefaults.standard.addedTimeButton,
+                quarterBreak: QuarterBreak? = nil) {
         self.id = id
         self.home = home
         self.away = away
@@ -103,11 +107,12 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.formatID = formatID
         self.halfTimeMinutes = halfTimeMinutes
         self.addedTimeButton = addedTimeButton
+        self.quarterBreak = quarterBreak
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, home, away, competition, kickOff, clock, squads, sinBinMinutes, formatID, halfTimeMinutes
-        case addedTimeButton
+        case addedTimeButton, quarterBreak
     }
 
     /// ! Written out for one reason: a setup saved by build 22 or 25 has no
@@ -128,6 +133,7 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         halfTimeMinutes = try c.decodeIfPresent(Int.self, forKey: .halfTimeMinutes)
             ?? MatchDefaults.standard.halfTimeMinutes
         addedTimeButton = try c.decodeIfPresent(Bool.self, forKey: .addedTimeButton) ?? false
+        quarterBreak = try c.decodeIfPresent(QuarterBreak.self, forKey: .quarterBreak)
     }
 
     public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
@@ -151,17 +157,20 @@ public struct MatchDefaults: Codable, Sendable, Equatable {
     public var sinBinMinutes: Int
     public var halfTimeMinutes: Int
     public var addedTimeButton: Bool
+    /// Quarter breaks for a quick start, nil for none.
+    public var quarterBreak: QuarterBreak?
 
     public init(halfMinutes: Int = 45, sinBinMinutes: Int = 10, halfTimeMinutes: Int = 5,
-                addedTimeButton: Bool = false) {
+                addedTimeButton: Bool = false, quarterBreak: QuarterBreak? = nil) {
         self.halfMinutes = halfMinutes
         self.sinBinMinutes = sinBinMinutes
         self.halfTimeMinutes = halfTimeMinutes
         self.addedTimeButton = addedTimeButton
+        self.quarterBreak = quarterBreak
     }
 
     private enum CodingKeys: String, CodingKey {
-        case halfMinutes, sinBinMinutes, halfTimeMinutes, addedTimeButton
+        case halfMinutes, sinBinMinutes, halfTimeMinutes, addedTimeButton, quarterBreak
     }
 
     /// Missing `halfTimeMinutes` (an assignment the watch saved from build 22
@@ -172,6 +181,7 @@ public struct MatchDefaults: Codable, Sendable, Equatable {
         sinBinMinutes = try c.decode(Int.self, forKey: .sinBinMinutes)
         halfTimeMinutes = try c.decodeIfPresent(Int.self, forKey: .halfTimeMinutes) ?? 5
         addedTimeButton = try c.decodeIfPresent(Bool.self, forKey: .addedTimeButton) ?? false
+        quarterBreak = try c.decodeIfPresent(QuarterBreak.self, forKey: .quarterBreak)
     }
 
     /// The adult game: 45-minute halves, a five-minute break.
@@ -196,5 +206,26 @@ extension MatchSetup {
         var swapped = self
         (swapped.home, swapped.away) = (away, home)
         return swapped
+    }
+}
+
+/// A quarter break: the clock stops partway through each half for a drink
+/// and substitutions, then starts again (Kevin, 2026-10-04).
+public struct QuarterBreak: Codable, Sendable, Equatable {
+    /// Minutes into each half when the break is due; nil means midway, so it
+    /// follows the half length when that changes.
+    public var atMinute: Int?
+    /// How long the break runs before the watch buzzes.
+    public var breakMinutes: Int
+
+    public init(atMinute: Int? = nil, breakMinutes: Int = 2) {
+        self.atMinute = atMinute
+        self.breakMinutes = breakMinutes
+    }
+
+    /// Seconds into a half when the break is due.
+    public func mark(halfLength: TimeInterval) -> TimeInterval {
+        if let atMinute { return TimeInterval(atMinute * 60) }
+        return (halfLength / 2 / 60).rounded(.down) * 60
     }
 }

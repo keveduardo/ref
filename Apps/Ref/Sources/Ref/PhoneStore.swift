@@ -106,14 +106,15 @@ enum RouteFiles {
                      clock: ClockConfig,
                      halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
                      addedTimeButton: Bool = false,
-                     formatID: String? = nil) -> Match {
+                     formatID: String? = nil,
+                     quarterBreak: QuarterBreak? = nil) -> Match {
         // Team sheets ride along when both teams are known — the watch offers
         // their numbers instead of 1–18.
         let sheets = [home, away].compactMap { squad(for: $0) }
         let setup = MatchSetup(home: home, away: away, competition: competition,
                                kickOff: kickOff, clock: clock, squads: sheets,
                                formatID: formatID, halfTimeMinutes: halfTimeMinutes,
-                               addedTimeButton: addedTimeButton)
+                               addedTimeButton: addedTimeButton, quarterBreak: quarterBreak)
         let match = Match(setup: setup)
         try? matches.save(match)
         reload()
@@ -133,6 +134,7 @@ enum RouteFiles {
             var setup = game.matchSetup(halfTimeMinutes: defaults == 0
                                         ? MatchDefaults.standard.halfTimeMinutes : defaults)
             setup.addedTimeButton = UserDefaults.standard.bool(forKey: "ref.addedTimeButton")
+            setup.quarterBreak = QuarterBreakDefaults.value
             guard !all.contains(where: { $0.id == setup.id }) else { continue }
             try? matches.save(Match(setup: setup))
             new += 1

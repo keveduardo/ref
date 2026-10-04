@@ -153,6 +153,31 @@ public struct MatchClock: Sendable, Equatable {
         return max(0, now.timeIntervalSince(end))
     }
 
+    /// How long the clock has been stopped, while it is paused (a quarter
+    /// break): from the last pause to `now`.
+    public func pauseElapsed(at now: Date) -> TimeInterval? {
+        guard case .paused = phase(at: now),
+              let pause = anchors.last(where: { event in
+                  guard event.at <= now, case .clockPaused = event.kind else { return false }
+                  return true
+              }) else { return nil }
+        return max(0, now.timeIntervalSince(pause.at))
+    }
+
+    /// Whether the clock has already been stopped in this half — a quarter
+    /// break taken, so its alert and button are done for the half.
+    public func pausedInHalf(_ half: Int, at now: Date) -> Bool {
+        var current: Int?
+        for event in anchors where event.at <= now {
+            switch event.kind {
+            case .kickOff(let h): current = h
+            case .clockPaused: if current == half { return true }
+            default: break
+            }
+        }
+        return false
+    }
+
     /// The clock face: "45:00 +2:10" once past the half length, "44:00" when
     /// counting down, "82:30" under a cumulative display. Whole seconds, and
     /// never a negative number.
