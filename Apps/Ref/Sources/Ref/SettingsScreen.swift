@@ -9,6 +9,7 @@ struct SettingsScreen: View {
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = 45
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
+    @AppStorage("ref.addedTimeButton") private var addedTimeButton = false
 
     var body: some View {
         NavigationStack {
@@ -20,6 +21,7 @@ struct SettingsScreen: View {
                     Picker("Half-time", selection: $halfTimeMinutes) {
                         ForEach(1...15, id: \.self) { Text("\($0) minutes") }
                     }
+                    Toggle("Added time button", isOn: $addedTimeButton)
                 }
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)

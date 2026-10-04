@@ -132,11 +132,14 @@ struct LiveScreen: View {
             // explained (Kevin, 2026-10-04).
             let lastHalf = clock.currentHalf(at: now) >= clock.config.halves
             HStack(spacing: 4) {
-                Button {
-                    Haptics.play(.click)
-                    session.tapAddedTime()
-                } label: {
-                    Text("+1 min")
+                // Only when the match announces added time — off by default.
+                if session.match?.setup.addedTimeButton == true {
+                    Button {
+                        Haptics.play(.click)
+                        session.tapAddedTime()
+                    } label: {
+                        Text("+1 min")
+                    }
                 }
                 Button {
                     showingRecord = true

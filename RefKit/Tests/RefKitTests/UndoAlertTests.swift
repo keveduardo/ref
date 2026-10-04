@@ -211,3 +211,23 @@ struct MetricsTests {
         #expect(old.distanceMeters == 8_540)
     }
 }
+
+@Suite("added time button")
+struct AddedTimeButtonTests {
+    @Test func offUnlessAskedForAndOffForOldRecords() throws {
+        #expect(!Fixture.setup.addedTimeButton)
+        #expect(!MatchDefaults.standard.addedTimeButton)
+        var json = try JSONSerialization.jsonObject(with: SyncPayload.encode(Fixture.setup)) as! [String: Any]
+        json.removeValue(forKey: "addedTimeButton")
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let old = try decoder.decode(MatchSetup.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(!old.addedTimeButton)
+
+        var on = Fixture.setup
+        on.addedTimeButton = true
+        let back = try SyncPayload.decode(SyncPayload.Assignment.self,
+                                          from: SyncPayload.encode(SyncPayload.Assignment(setups: [on])))
+        #expect(back.setups.first?.addedTimeButton == true)
+    }
+}

@@ -54,6 +54,7 @@ struct MatchEditScreen: View {
                         ForEach(1...15, id: \.self) { Text("\($0) minutes") }
                     }
                     Toggle("Count down", isOn: $setup.clock.countsDown)
+                    Toggle("Added time button", isOn: $setup.addedTimeButton)
                 } header: {
                     Text("Clock")
                 } footer: {

@@ -25,6 +25,7 @@ struct MatchSetupScreen: View {
     // changing them here changes this match, not the defaults.
     @State private var halfMinutes: Int
     @State private var halfTimeMinutes: Int
+    @State private var addedTimeButton: Bool
 
     init(store: PhoneStore) {
         self.store = store
@@ -33,6 +34,7 @@ struct MatchSetupScreen: View {
         let rest = defaults.integer(forKey: "ref.halfTimeMinutes")
         _halfMinutes = State(initialValue: half == 0 ? MatchDefaults.standard.halfMinutes : half)
         _halfTimeMinutes = State(initialValue: rest == 0 ? MatchDefaults.standard.halfTimeMinutes : rest)
+        _addedTimeButton = State(initialValue: defaults.bool(forKey: "ref.addedTimeButton"))
     }
 
     var body: some View {
@@ -75,10 +77,11 @@ struct MatchSetupScreen: View {
                         ForEach(halfTimeLengths, id: \.self) { Text("\($0) minutes") }
                     }
                     Toggle("Count down", isOn: $countsDown)
+                    Toggle("Added time button", isOn: $addedTimeButton)
                 } header: {
                     Text("Clock")
                 } footer: {
-                    Text("The watch buzzes when half-time is up.")
+                    Text("The watch buzzes when half-time is up. The added time button puts \u{201C}+1 min\u{201D} on the watch for announcing stoppage time.")
                 }
                 Section {
                     Button("Save match") { save() }
@@ -133,6 +136,7 @@ struct MatchSetupScreen: View {
             kickOff: hasKickOff ? kickOff : nil,
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
             halfTimeMinutes: halfTimeMinutes,
+            addedTimeButton: addedTimeButton,
             formatID: formatID)
         dismiss()
     }

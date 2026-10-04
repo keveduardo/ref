@@ -98,7 +98,8 @@ import RefKit
             home: .placeholder(.home),
             away: .placeholder(.away),
             clock: ClockConfig(halfMinutes: defaults.halfMinutes, countsDown: true),
-            halfTimeMinutes: defaults.halfTimeMinutes)))
+            halfTimeMinutes: defaults.halfTimeMinutes,
+            addedTimeButton: defaults.addedTimeButton)))
     }
 
     /// Take on a match — the phone's assignment, or quick start.
