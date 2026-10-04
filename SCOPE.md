@@ -123,13 +123,23 @@ Still to build, in this order:
    on the phone.
    Same build: swipe right for home, left for away, and the face's buttons
    say "+1 min" and "End half".
-2. **Optional sign-in: Sign in with Apple or Google, for backup and sync.**
-   The app stays fully usable signed out. It needs a small Worker with D1
-   for the backup (read `~/dev/brisaloca-home/API-TOKENS.md` before any
-   token), a Google OAuth client (Kevin, Google Cloud console), and the Sign
-   in with Apple capability on `com.brisaloca.ref`. Apple requires Sign in
-   with Apple whenever Google sign-in is offered (guideline 4.8), and a
-   delete-account button when accounts exist (5.1.1(v)).
+2. **Optional sign-in** — ✅ Apple (2026-10-04), Google waiting on Kevin.
+   `server/`, a Worker at **reftime.brisaloca.com** (D1 `reftime`), built
+   like soccer's: `/privacy` and `/support` for App Store Connect, and an API
+   for Sign in with Apple (the token check is copied from
+   soccer/src/apple.js), backup and sync of matches and team sheets, sign
+   out, and delete account. Health numbers, the field's location and routes
+   are never uploaded. Settings › Account in the app. **Google** is coded on
+   both ends but off: it needs Kevin to create an iOS OAuth client in Google
+   Cloud Console (bundle `com.brisaloca.ref`), then its id goes in
+   `wrangler.jsonc` as `GOOGLE_CLIENT_ID`, plus the app's URL scheme.
+   Apple's guideline 4.8 is already met, because Sign in with Apple is offered.
+   **Unproven on a device**: the first real sign-in, and a sync between two
+   phones.
+   Same day: a watch quick start appears on the phone, and edits made there
+   go back to the running match (names and colours at any time; the clock
+   only before kick-off).
+
 3. **Schedule sync from CGI Sports** (AYSO Region 34, cgisports.com/ref/5524).
    Researched 2026-10-04: it has **no calendar feed and no API** (its own
    feature list), the region's public view is off, and the schedule is

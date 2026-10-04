@@ -60,6 +60,17 @@ Saturday — all fixed, in RefKit with tests where it could be:
   time. `WorkoutRecorder.recover()` uses `recoverActiveWorkoutSession`. It
   compiles in CI but has never run.
 
+## The server (`server/`)
+
+`reftime.brisaloca.com`, a Worker with D1 `reftime`, serving the privacy and
+support pages and the optional backup API. Tests: `cd server && npm test`
+(node:sqlite with the real migration). Deploying follows the estate's rules
+in ~/.claude/CLAUDE.md: `npm run migrate:remote` as its own command and read
+its result, then `npm run deploy`, which runs the guard. It needs no API
+token; wrangler's login covers Workers and D1. The app's backup strips
+`metrics` and `pitch` before upload. Keep it that way, because the privacy page
+promises it.
+
 ## The loop this repo runs on
 
 - **A code change**: commit to `main`, push. CI runs `kit` (Linux, `swift test`),
