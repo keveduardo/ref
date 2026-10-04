@@ -129,12 +129,19 @@ Still to build, in this order:
    in with Apple capability on `com.brisaloca.ref`. Apple requires Sign in
    with Apple whenever Google sign-in is offered (guideline 4.8), and a
    delete-account button when accounts exist (5.1.1(v)).
-3. **Schedule sync from AYSO Region 34's CGI Sports scheduler**
-   (cgisports.com/ref/5524). It is behind a login. If it offers a per-referee
-   calendar link (iCal), the app subscribes to it and turns assignments into
-   upcoming matches, with the division parsed into the AYSO preset. If not,
-   it would mean storing the referee's password and scraping the site,
-   which is fragile and needs the region's permission.
+3. **Schedule sync from CGI Sports** (AYSO Region 34, cgisports.com/ref/5524).
+   Researched 2026-10-04: it has **no calendar feed and no API** (its own
+   feature list), the region's public view is off, and the schedule is
+   behind a login. Its "Game reminder" emails are one field per line, though.
+   ✅ **Paste reminder email** (build 31): `ScheduledGame` in RefKit parses
+   them, the division maps to the AYSO preset, and the game id becomes the
+   match id. Still to do: hands-off import. With sign-in (item 2), the user
+   gets a forwarding address on Cloudflare Email Routing; a Gmail filter
+   forwards `from:noreply@cgisports.com` to it, and a Worker parses and syncs.
+   A share extension (Mail → Share → RefTime) is a cheaper middle step.
+   Reminders arrive a day or two ahead, so this fills the near term, not a
+   whole season.
+
 4. **App Store submission readiness**: a privacy manifest
    (`PrivacyInfo.xcprivacy`, UserDefaults reason CA92.1), a privacy policy
    page (required for HealthKit), a support URL, the privacy "nutrition
