@@ -5,17 +5,14 @@ layout and current state; this file is the plan.
 
 ## What this is
 
-The RefSix experience — the App Store's leading soccer-referee app — built for
-Kevin himself: the **watch runs the match** (clock, score, cards, subs, sin
-bins) and the **phone sets up before and reports after**. RefSix's own
-description matches this split: pick the match, add team sheets, send them to
-the watch; incidents are recorded on the watch with no phone and no internet on
-match day; the phone then shows the report and the season record
-([App Store](https://apps.apple.com/us/app/refsix-soccer-referee-app/id1235649461),
-[refsix.com](https://refsix.com/)).
+A soccer referee app for iPhone and Apple Watch, built for Kevin himself: the
+**watch runs the match** (clock, score, cards, subs, sin bins) and the **phone
+sets up before and reports after**. On match day the referee picks the match on
+the phone and sends it to the watch; incidents are recorded on the watch with
+no phone and no internet; the report and the season record are read back on the
+phone.
 
-**Our own app with the same feature set — own name, icon, code and copy.**
-Nothing from RefSix is copied.
+The app is its own thing throughout: its own name, icon, code and copy.
 
 The estate has already solved the hard part: **Apple Watch apps ship from this
 box with no Mac**. Rowing and Swim are built by XcodeGen on a GitHub macOS

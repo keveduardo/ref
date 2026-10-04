@@ -1,9 +1,9 @@
 # ref
 
-A soccer referee app for iPhone and Apple Watch, in the shape RefSix made
-familiar: **the watch runs the match** (clock, score, cards, substitutions,
-sin bins) with the phone in the bag, and **the phone sets up before and reports
-after**. Built the `~/dev` way — no Mac in the house.
+A soccer referee app for iPhone and Apple Watch: **the watch runs the match**
+(clock, score, cards, substitutions, sin bins) with the phone in the bag, and
+**the phone sets up before and reports after**. Built the `~/dev` way — no Mac
+in the house.
 
 **`SCOPE.md` is the plan** — read that first. This file is the layout and the
 current state of the machine.
