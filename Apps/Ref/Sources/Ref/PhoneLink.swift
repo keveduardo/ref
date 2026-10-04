@@ -21,6 +21,7 @@ import WatchConnectivity
     /// isolation — handing it to a non-isolated parameter is an error.
     private let onFinished: (@MainActor (Match) -> Void)?
     private let onRoute: (@MainActor () -> Void)?
+    private let onStarted: (@MainActor (MatchSetup) -> Void)?
 
     var status: String {
         if !activated { return "Not activated" }
@@ -28,9 +29,11 @@ import WatchConnectivity
     }
 
     init(onFinished: (@MainActor (Match) -> Void)? = nil,
-         onRoute: (@MainActor () -> Void)? = nil) {
+         onRoute: (@MainActor () -> Void)? = nil,
+         onStarted: (@MainActor (MatchSetup) -> Void)? = nil) {
         self.onFinished = onFinished
         self.onRoute = onRoute
+        self.onStarted = onStarted
         super.init()
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
@@ -90,8 +93,15 @@ extension PhoneLink: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession,
                              didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        // Only the Sendable piece crosses the hop — a `[String: Any]` cannot.
-        let data = userInfo["finishedMatch"] as? Data
-        Task { @MainActor in self.ingest(matchData: data) }
+        // Only the Sendable pieces cross the hop — a `[String: Any]` cannot.
+        let finished = userInfo["finishedMatch"] as? Data
+        let started = userInfo["startedMatch"] as? Data
+        Task { @MainActor in
+            if let finished { self.ingest(matchData: finished) }
+            if let started,
+               let payload = try? SyncPayload.decode(SyncPayload.StartedMatch.self, from: started) {
+                self.onStarted?(payload.setup)
+            }
+        }
     }
 }

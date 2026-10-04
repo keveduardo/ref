@@ -39,6 +39,20 @@ public enum SyncPayload {
         }
     }
 
+    /// Watch → phone, the moment the watch takes on a match (a quick start, or
+    /// one from the phone): the phone lists it under Upcoming so its teams can
+    /// be named and coloured there, mid-match too. The phone's edits come back
+    /// in the next `Assignment`.
+    public struct StartedMatch: Codable, Sendable, Equatable {
+        public var version: Int
+        public var setup: MatchSetup
+
+        public init(setup: MatchSetup) {
+            self.version = SyncPayload.version
+            self.setup = setup
+        }
+    }
+
     /// Watch → phone, after a match: the route behind the pitch diagram. Too
     /// big for user info (a fix every 2 s for 100 minutes), so it travels as
     /// a file (`transferFile`), and the phone files it by match id.

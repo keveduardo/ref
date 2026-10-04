@@ -230,3 +230,29 @@ public struct QuarterBreak: Codable, Sendable, Equatable {
         return (halfLength / 2 / 60).rounded(.down) * 60
     }
 }
+
+extension MatchSetup {
+    /// The phone's edits to a match the watch is already running. Names,
+    /// short names, colours, home and away, competition and team sheets always
+    /// come across — they change nothing about the match's record. The clock
+    /// (half length, count-down, half-time, quarter breaks, added-time button)
+    /// only before kick-off: changing it mid-half would rewrite the minutes of
+    /// everything already recorded.
+    public func applyingEdits(_ edited: MatchSetup, kickedOff: Bool) -> MatchSetup {
+        guard edited.id == id else { return self }
+        var merged = self
+        merged.home = edited.home
+        merged.away = edited.away
+        merged.competition = edited.competition
+        merged.squads = edited.squads
+        merged.kickOff = edited.kickOff
+        if !kickedOff {
+            merged.clock = edited.clock
+            merged.halfTimeMinutes = edited.halfTimeMinutes
+            merged.quarterBreak = edited.quarterBreak
+            merged.addedTimeButton = edited.addedTimeButton
+            merged.formatID = edited.formatID
+        }
+        return merged
+    }
+}

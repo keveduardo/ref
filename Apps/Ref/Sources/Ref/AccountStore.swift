@@ -301,16 +301,22 @@ struct SyncLedger: Codable {
     var pushed: [String: String] = [:]
     var tombstones: Set<String> = []
 
-    private static var url: URL {
-        PhoneStore.directory.appendingPathComponent("sync-ledger.json")
+    /// ! Not `PhoneStore.directory`: that is main-actor isolated, and the
+    /// ledger is read from nonisolated code. Same folder, spelled out.
+    private static var directory: URL {
+        let base = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first ?? URL.temporaryDirectory
+        return base.appendingPathComponent("Ref", isDirectory: true)
     }
+
+    private static var url: URL { directory.appendingPathComponent("sync-ledger.json") }
 
     static func load() -> SyncLedger {
         (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(SyncLedger.self, from: $0) } ?? SyncLedger()
     }
 
     func save() {
-        try? FileManager.default.createDirectory(at: PhoneStore.directory, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         try? JSONEncoder().encode(self).write(to: Self.url, options: .atomic)
     }
 }

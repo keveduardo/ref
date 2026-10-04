@@ -170,6 +170,14 @@ enum RouteFiles {
         onChange?()
     }
 
+    /// A match the watch took on (a quick start, usually): listed under
+    /// Upcoming so it can be edited here. One already here is left alone —
+    /// the phone's copy is where edits are made.
+    func addStartedOnWatch(_ setup: MatchSetup) {
+        guard !all.contains(where: { $0.id == setup.id }) else { return }
+        save(Match(setup: setup))
+    }
+
     // MARK: - From the backup
 
     /// A match or team sheet that changed on another phone. A match keeps the

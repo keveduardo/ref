@@ -58,7 +58,7 @@ struct MatchEditScreen: View {
                 } header: {
                     Text("Clock")
                 } footer: {
-                    Text("Changes reach the watch until the match is started there.")
+                    Text("Team names, colours and sheets reach the watch any time, mid-match too. Clock changes reach it only before kick-off.")
                 }
                 QuarterBreakSection(quarterBreak: $setup.quarterBreak,
                                     halfMinutes: Int(setup.clock.halfLength / 60))

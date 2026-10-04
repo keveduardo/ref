@@ -55,3 +55,39 @@ struct GeoDistanceTests {
         #expect(GeoDistance.metres(kept) == 0)
     }
 }
+
+@Suite("editing a running match from the phone")
+struct LiveEditTests {
+    @Test func namesAndColoursAlwaysTheClockOnlyBeforeKickOff() {
+        let running = MatchSetup(home: .placeholder(.home), away: .placeholder(.away),
+                                 clock: ClockConfig(halfMinutes: 25))
+        var edited = running
+        edited.home = Team(id: running.home.id, name: "Sharks", abbreviation: "SHK", color: .green)
+        edited.competition = "AYSO 10U Girls"
+        edited.clock = ClockConfig(halfMinutes: 30)
+        edited.quarterBreak = QuarterBreak()
+
+        let live = running.applyingEdits(edited, kickedOff: true)
+        #expect(live.home.name == "Sharks")
+        #expect(live.home.color == .green)
+        #expect(live.competition == "AYSO 10U Girls")
+        #expect(live.clock.halfLength == TimeInterval(25 * 60))
+        #expect(live.quarterBreak == nil)
+
+        let before = running.applyingEdits(edited, kickedOff: false)
+        #expect(before.clock.halfLength == TimeInterval(30 * 60))
+        #expect(before.quarterBreak != nil)
+    }
+
+    @Test func anotherMatchsEditsAreIgnored() {
+        let mine = MatchSetup(home: .placeholder(.home), away: .placeholder(.away))
+        let other = MatchSetup(home: Team(name: "X"), away: Team(name: "Y"))
+        #expect(mine.applyingEdits(other, kickedOff: false) == mine)
+    }
+
+    @Test func aStartedMatchSurvivesTheWire() throws {
+        let payload = SyncPayload.StartedMatch(setup: Fixture.setup)
+        let back = try SyncPayload.decode(SyncPayload.StartedMatch.self, from: SyncPayload.encode(payload))
+        #expect(back == payload)
+    }
+}

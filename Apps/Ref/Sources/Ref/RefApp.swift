@@ -17,7 +17,8 @@ struct RefApp: App {
         let store = PhoneStore()
         _store = State(initialValue: store)
         _link = State(initialValue: PhoneLink(onFinished: { match in store.save(match) },
-                                              onRoute: { store.routesChanged() }))
+                                              onRoute: { store.routesChanged() },
+                                              onStarted: { setup in store.addStartedOnWatch(setup) }))
         // The optional backup: told of every change, signed out by default.
         let account = AccountStore()
         account.attach(store)

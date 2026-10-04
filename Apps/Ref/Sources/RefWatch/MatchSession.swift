@@ -35,6 +35,9 @@ import RefKit
         // A match left in progress by a crash or a flat battery is still here.
         match = try? store.current()
         playedIDs = Set(((try? store.all()) ?? []).map(\.id))
+        // The phone's edits to the match in hand — names and colours any
+        // time, the clock only before kick-off.
+        link.onAssignment = { [weak self] setups in self?.applyPhoneEdits(setups) }
         guard recovers, let match else { return }
         switch match.clock.phase(at: Date()) {
         case .notStarted:
@@ -110,9 +113,21 @@ import RefKit
                 ?? defaults.quarterBreak)))
     }
 
-    /// Take on a match — the phone's assignment, or quick start.
+    /// Take on a match — the phone's assignment, or quick start — and tell
+    /// the phone, which lists it so its teams can be named and coloured there.
     func assign(_ match: Match) {
         self.match = match
+        persist()
+        link.sendStarted(match.setup)
+    }
+
+    private func applyPhoneEdits(_ setups: [MatchSetup]) {
+        guard var current = match, let edited = setups.first(where: { $0.id == current.id }) else { return }
+        let kickedOff = current.clock.phase(at: Date()) != .notStarted
+        let merged = current.setup.applyingEdits(edited, kickedOff: kickedOff)
+        guard merged != current.setup else { return }
+        current.setup = merged
+        match = current
         persist()
     }
 

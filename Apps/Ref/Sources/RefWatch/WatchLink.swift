@@ -28,6 +28,10 @@ import WatchConnectivity
     /// dropped.
     private var pending: [Match] = []
     private var pendingRoutes: [SyncPayload.Route] = []
+    private var pendingStarts: [MatchSetup] = []
+    /// Told of every assignment from the phone — the session takes the
+    /// phone's edits to the match it is running from it.
+    @ObservationIgnored var onAssignment: (@MainActor ([MatchSetup]) -> Void)?
 
     override init() {
         super.init()
@@ -54,6 +58,17 @@ import WatchConnectivity
         WCSession.default.transferUserInfo(["finishedMatch": data])
     }
 
+    /// The match the watch just took on, so the phone lists it and its teams
+    /// can be named there. Queued like a finished match.
+    func sendStarted(_ setup: MatchSetup) {
+        guard activated else {
+            pendingStarts.append(setup)
+            return
+        }
+        guard let data = try? SyncPayload.encode(SyncPayload.StartedMatch(setup: setup)) else { return }
+        WCSession.default.transferUserInfo(["startedMatch": data])
+    }
+
     /// The route behind the pitch diagram, as a file — too big for user
     /// info. The system owns the delivery once it is queued.
     func send(_ route: SyncPayload.Route) {
@@ -75,6 +90,9 @@ import WatchConnectivity
         let routes = pendingRoutes
         pendingRoutes = []
         for route in routes { send(route) }
+        let starts = pendingStarts
+        pendingStarts = []
+        for setup in starts { sendStarted(setup) }
     }
 
     // MARK: - Receiving
@@ -88,6 +106,7 @@ import WatchConnectivity
         assignments = assignment.setups
         defaults = assignment.defaults
         Self.saveAssignment(assignment)
+        onAssignment?(assignment.setups)
     }
 
     // MARK: - Where the assignment lives on disk
