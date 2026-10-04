@@ -7,6 +7,7 @@ import SwiftUI
 struct RefApp: App {
     @State private var store: PhoneStore
     @State private var link: PhoneLink
+    @State private var account: AccountStore
 
     init() {
         // ! Wired here, not in a view's `.task`: WatchConnectivity can wake
@@ -17,6 +18,10 @@ struct RefApp: App {
         _store = State(initialValue: store)
         _link = State(initialValue: PhoneLink(onFinished: { match in store.save(match) },
                                               onRoute: { store.routesChanged() }))
+        // The optional backup: told of every change, signed out by default.
+        let account = AccountStore()
+        account.attach(store)
+        _account = State(initialValue: account)
     }
 
     var body: some Scene {
@@ -25,10 +30,10 @@ struct RefApp: App {
             if let page = RenderDemo.page {
                 RenderDemo(page: page)
             } else {
-                RefScreen(store: store, link: link)
+                RefScreen(store: store, link: link, account: account)
             }
             #else
-            RefScreen(store: store, link: link)
+            RefScreen(store: store, link: link, account: account)
             #endif
         }
     }
@@ -51,7 +56,7 @@ struct RenderDemo: View {
     var body: some View {
         switch page {
         case .matches:
-            RefScreen(store: .demo(), link: PhoneLink())
+            RefScreen(store: .demo(), link: PhoneLink(), account: AccountStore())
         case .setup:
             MatchSetupScreen(store: .demo())
         case .teams:
@@ -61,7 +66,7 @@ struct RenderDemo: View {
         case .stats:
             StatsScreen(store: .demo())
         case .settings:
-            SettingsScreen(link: PhoneLink())
+            SettingsScreen(link: PhoneLink(), account: AccountStore())
         }
     }
 }

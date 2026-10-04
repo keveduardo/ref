@@ -35,6 +35,10 @@ enum RouteFiles {
     private let routesDirectory: URL
     /// Bumped when a route arrives, so a screen showing that match redraws.
     private(set) var routesVersion = 0
+    /// Told of every change made on this phone — the account backs it up.
+    /// Changes that arrive from the backup (`applyFromSync`) do not call it.
+    @ObservationIgnored var onChange: (@MainActor () -> Void)?
+    @ObservationIgnored var onDelete: (@MainActor (String, UUID) -> Void)?
 
     /// Every match on the shelf — upcoming and played alike; `isFinished`
     /// tells them apart.
@@ -88,11 +92,14 @@ enum RouteFiles {
     func saveTeam(_ squad: Squad) {
         try? library.save(squad)
         reload()
+        onChange?()
     }
 
     func deleteTeam(_ squad: Squad) {
         try? library.delete(teamID: squad.team.id)
         reload()
+        onDelete?("team", squad.id)
+        onChange?()
     }
 
     func squad(for team: Team) -> Squad? {
@@ -118,6 +125,7 @@ enum RouteFiles {
         let match = Match(setup: setup)
         try? matches.save(match)
         reload()
+        onChange?()
         return match
     }
 
@@ -145,16 +153,55 @@ enum RouteFiles {
             new += 1
         }
         reload()
+        if new > 0 { onChange?() }
         return (new, games.count)
     }
 
     func save(_ match: Match) {
         try? matches.save(match)
         reload()
+        onChange?()
     }
 
     func delete(_ match: Match) {
         try? matches.delete(id: match.id)
+        reload()
+        onDelete?("match", match.id)
+        onChange?()
+    }
+
+    // MARK: - From the backup
+
+    /// A match or team sheet that changed on another phone. A match keeps the
+    /// health numbers and field this phone has for it — those never travel.
+    func applyFromSync(kind: String, body: String) {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let data = Data(body.utf8)
+        switch kind {
+        case "match":
+            guard var incoming = try? decoder.decode(Match.self, from: data) else { return }
+            if let local = all.first(where: { $0.id == incoming.id }) {
+                incoming.metrics = local.metrics
+                incoming.pitch = local.pitch
+            }
+            try? matches.save(incoming)
+        case "team":
+            guard let squad = try? decoder.decode(Squad.self, from: data) else { return }
+            try? library.save(squad)
+        default:
+            return
+        }
+        reload()
+    }
+
+    /// Deleted on another phone.
+    func removeFromSync(kind: String, id: UUID) {
+        switch kind {
+        case "match": try? matches.delete(id: id)
+        case "team": try? library.delete(teamID: id)
+        default: return
+        }
         reload()
     }
 }

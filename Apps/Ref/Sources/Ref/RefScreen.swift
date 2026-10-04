@@ -6,6 +6,9 @@ import SwiftUI
 struct RefScreen: View {
     let store: PhoneStore
     let link: PhoneLink
+    let account: AccountStore
+
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = MatchDefaults.standard.halfMinutes
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
@@ -21,7 +24,7 @@ struct RefScreen: View {
                 .tabItem { Label("Teams", systemImage: "person.3") }
             StatsScreen(store: store)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
-            SettingsScreen(link: link)
+            SettingsScreen(link: link, account: account)
                 .tabItem { Label("Settings", systemImage: "gear") }
         }
         // Activation completes after launch, so the first push goes then;
@@ -31,6 +34,10 @@ struct RefScreen: View {
         .onChange(of: halfMinutes) { _, _ in pushAssignment() }
         .onChange(of: halfTimeMinutes) { _, _ in pushAssignment() }
         .onChange(of: addedTimeButton) { _, _ in pushAssignment() }
+        // Back in the foreground: pick up what changed on another phone.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await account.sync() } }
+        }
         .onChange(of: quarterBreak) { _, _ in pushAssignment() }
         .onChange(of: quarterBreakMinutes) { _, _ in pushAssignment() }
     }

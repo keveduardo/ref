@@ -52,6 +52,9 @@ targets:
         PRODUCT_NAME: Ref
         PRODUCT_MODULE_NAME: Ref
         PRODUCT_BUNDLE_IDENTIFIER: com.brisaloca.ref
+        # Sign in with Apple, for the optional backup. Committed, like the
+        # watch's, and switched on for the App ID (enable-capability.mjs).
+        CODE_SIGN_ENTITLEMENTS: Entitlements/Ref.entitlements
         # iPhone only (Kevin, 2026-10-04) — no iPad, so no iPad screenshots
         # and no all-orientations rule at upload.
         TARGETED_DEVICE_FAMILY: "1"

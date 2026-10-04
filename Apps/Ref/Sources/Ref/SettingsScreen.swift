@@ -1,3 +1,4 @@
+import AuthenticationServices
 import RefKit
 import SwiftUI
 
@@ -6,6 +7,10 @@ import SwiftUI
 /// itself, since each device has its own `UserDefaults`.
 struct SettingsScreen: View {
     let link: PhoneLink
+    let account: AccountStore
+
+    @State private var confirmingDelete = false
+    @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = 45
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
@@ -31,6 +36,7 @@ struct SettingsScreen: View {
                         }
                     }
                 }
+                accountSection
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)
                     Text("Upcoming matches and these defaults travel to the watch; finished matches come back here.")
@@ -39,6 +45,54 @@ struct SettingsScreen: View {
                 }
             }
             .navigationTitle("Settings")
+        }
+    }
+
+    /// Optional: signed out, the app works fully and nothing leaves the phone.
+    @ViewBuilder
+    private var accountSection: some View {
+        Section {
+            if account.signedIn {
+                LabeledContent("Signed in", value: account.email ?? "with Apple")
+                if let last = account.lastSynced {
+                    LabeledContent("Backed up", value: last.formatted(.relative(presentation: .named)))
+                }
+                Button {
+                    Task { await account.sync() }
+                } label: {
+                    HStack {
+                        Text("Back up now")
+                        if account.syncing { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(account.syncing)
+                Button("Sign out") { Task { await account.signOut() } }
+                Button("Delete account", role: .destructive) { confirmingDelete = true }
+            } else {
+                SignInWithAppleButton(.signIn) { request in
+                    account.prepare(request)
+                } onCompletion: { result in
+                    Task { await account.complete(result) }
+                }
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 44)
+            }
+            if let error = account.lastError {
+                Text(error).font(.footnote).foregroundStyle(.red)
+            }
+        } header: {
+            Text("Account")
+        } footer: {
+            Text(account.signedIn
+                 ? "Matches and team sheets back up and sync to your other iPhones. Health numbers and routes stay on this phone."
+                 : "Optional. Sign in to back up your matches and team sheets and keep them on a new iPhone. Health numbers and routes never leave this phone.")
+        }
+        .confirmationDialog("Delete your account?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Delete account and backup", role: .destructive) {
+                Task { await account.deleteAccount() }
+            }
+        } message: {
+            Text("Everything backed up is deleted now. Matches on this iPhone stay.")
         }
     }
 }
