@@ -1,24 +1,58 @@
 import Foundation
 import Observation
+import RefKit
 import WatchConnectivity
 
-/// The phone's half of the link to the watch. P0: activation and the delegate
-/// conformances only — the assignment going out and the finished match coming
-/// back arrive with the sync work (P4).
+/// The phone's half of the link to the watch.
+///
+/// Assignments go out with `updateApplicationContext` (latest-wins: the watch
+/// always has the newest set of matches); finished matches come back as
+/// `transferUserInfo` and are handed to `onFinished`, which the app wires to
+/// the store.
 ///
 /// The concurrency pattern is Swim's (`Apps/Swim/Sources/SwimSession.swift`,
 /// explained in SWIM.md): `@MainActor @Observable`, every delegate method
-/// `nonisolated`, and only Sendable values crossing the hop back.
+/// `nonisolated`, only Sendable values crossing the hop.
 @MainActor @Observable final class PhoneLink: NSObject {
     private(set) var activated = false
 
-    var status: String { activated ? "Connected" : "Not activated" }
+    /// ! `@MainActor`, not a bare closure: the app assigns this from a
+    /// main-actor context, and in Swift 6 a non-Sendable closure keeps that
+    /// isolation — handing it to a non-isolated parameter is an error.
+    var onFinished: (@MainActor (Match) -> Void)?
+
+    var status: String {
+        if !activated { return "Not activated" }
+        return WCSession.default.isPaired ? "Connected" : "No watch paired"
+    }
 
     override init() {
         super.init()
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
+    }
+
+    // MARK: - Sending
+
+    /// The upcoming matches, as the watch will offer them. Silent when there
+    /// is nothing to say or nobody to say it to — the next change sends again.
+    func sendAssignment(_ setups: [MatchSetup]) {
+        guard activated, WCSession.default.isPaired,
+              let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups)) else {
+            return
+        }
+        try? WCSession.default.updateApplicationContext(["assignment": data])
+    }
+
+    // MARK: - Receiving
+
+    private func ingest(userInfo: [String: Any]) {
+        guard let data = userInfo["finishedMatch"] as? Data,
+              let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self, from: data) else {
+            return
+        }
+        onFinished?(payload.match)
     }
 }
 
@@ -35,8 +69,13 @@ extension PhoneLink: WCSessionDelegate {
 
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
         // The phone moved to a new watch; without reactivating here the link
-        // silently stops receiving. (P4 is where it starts to matter.)
+        // silently stops receiving.
         WCSession.default.activate()
     }
     #endif
+
+    nonisolated func session(_ session: WCSession,
+                             didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        Task { @MainActor in self.ingest(userInfo: userInfo) }
+    }
 }

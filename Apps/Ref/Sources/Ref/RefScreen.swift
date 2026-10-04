@@ -18,6 +18,19 @@ struct RefScreen: View {
             SettingsScreen(link: link)
                 .tabItem { Label("Settings", systemImage: "gear") }
         }
+        .task {
+            // A match finished on the watch lands on this shelf.
+            link.onFinished = { match in store.save(match) }
+            pushAssignment()
+        }
+        .onChange(of: store.upcoming.map(\.id)) { _, _ in
+            pushAssignment()
+        }
+    }
+
+    /// The watch always has the newest set of matches to offer.
+    private func pushAssignment() {
+        link.sendAssignment(store.upcoming.map(\.setup))
     }
 }
 

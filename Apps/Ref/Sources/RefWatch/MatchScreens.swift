@@ -63,7 +63,9 @@ struct SummaryScreen: View {
                             .font(.footnote)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Text("Saved to the phone's shelf when it links (P4).")
+                    Text(session.link.activated
+                         ? "The report is on its way to the phone."
+                         : "The report goes to the phone when it is near again.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)

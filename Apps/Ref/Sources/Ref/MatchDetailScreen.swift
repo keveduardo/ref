@@ -36,9 +36,8 @@ struct MatchDetailScreen: View {
                 }
             } else {
                 Section("Watch") {
-                    Label("Send to watch", systemImage: "applewatch")
-                        .foregroundStyle(.secondary)
-                    Text("The link to the watch arrives in P4 — for now, quick start on the watch and rename it here afterwards.")
+                    Label("Sent to watch", systemImage: "applewatch")
+                    Text("An upcoming match travels to the watch automatically while the two are near each other.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

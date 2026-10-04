@@ -1,15 +1,13 @@
 import Foundation
 import HealthKit
 import Observation
+import RefKit
 
 /// The match's HealthKit workout: heart rate and energy while the referee is
-/// on the pitch, behind the distance the location recorder sums. P0: the
-/// session, the builder and both delegate conformances compile; nothing starts
-/// one — P4 gives it a caller, and the metrics land in the match record the
-/// watch sends home, so the phone needs no Health permission of its own.
+/// on the pitch, behind the distance the location recorder sums.
 ///
 /// Beyond the numbers, the running session is what keeps the app alive with
-/// the wrist down (`workout-processing`), which for a referee is the point.
+/// the wrist down (`workout-processing`) — for a referee, that is the point.
 /// The shape follows `Apps/Swim/Sources/SwimSession.swift`: `@MainActor`
 /// state, `nonisolated` delegate methods, only Sendable values crossing.
 @MainActor @Observable final class WorkoutRecorder: NSObject {
@@ -20,21 +18,75 @@ import Observation
     private(set) var heartRate: Double?
     private(set) var activeCalories: Double?
 
-    /// P4: the session starts at kick-off and is finished at full time; a
-    /// match that never kicked off is discarded, not saved (the rule Swim and
-    /// Rowing both use).
-    func prepare() {
-        let config = HKWorkoutConfiguration()
-        config.activityType = .soccer
-        config.locationType = .outdoor
-        session = try? HKWorkoutSession(healthStore: store, configuration: config)
-        session?.delegate = self
-        if let session {
-            builder = session.associatedWorkoutBuilder()
-            builder?.dataSource = HKLiveWorkoutDataSource(healthStore: store,
-                                                          workoutConfiguration: config)
-            builder?.delegate = self
+    private static var heartRateType: HKQuantityType { HKQuantityType(.heartRate) }
+    private static var energyType: HKQuantityType { HKQuantityType(.activeEnergyBurned) }
+    private static var beatUnit: HKUnit { .count().unitDivided(by: .minute()) }
+
+    /// Asked once, before a match — never during one. A refusal costs the
+    /// report's numbers, not the match.
+    func requestAccess() async {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let share: Set<HKSampleType> = [HKObjectType.workoutType()]
+        let read: Set<HKObjectType> = [Self.heartRateType, Self.energyType,
+                                       HKQuantityType(.distanceWalkingRunning)]
+        _ = try? await store.requestAuthorization(toShare: share, read: read)
+    }
+
+    /// Kick-off. The session runs for the whole match.
+    func start(at date: Date) {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .soccer
+        configuration.locationType = .outdoor
+        guard let session = try? HKWorkoutSession(healthStore: store, configuration: configuration) else {
+            return
         }
+        self.session = session
+        session.delegate = self
+        let builder = session.associatedWorkoutBuilder()
+        builder.dataSource = HKLiveWorkoutDataSource(healthStore: store,
+                                                     workoutConfiguration: configuration)
+        builder.delegate = self
+        self.builder = builder
+        session.startActivity(with: date)
+        builder.beginCollection(withStart: date) { _, _ in }
+    }
+
+    /// Full time: end the collection, save the workout, and freeze what it
+    /// cost into a `MatchMetrics`. Distance comes from the location recorder,
+    /// not from here — HealthKit does not count it for a third-party soccer
+    /// workout unless the app feeds it the route, and the referee's walk is
+    /// ours to measure anyway.
+    func finish() async -> MatchMetrics? {
+        guard let session, let builder else { return nil }
+        session.end()
+        let end = Date()
+
+        // ! `nonisolated(unsafe)` because the SDK's completion handlers are
+        // `@Sendable` and the builder is not. It is used from this actor only,
+        // and only to finish a workout that has already been ended.
+        nonisolated(unsafe) let finisher = builder
+        let finished: HKWorkout? = await withCheckedContinuation { continuation in
+            finisher.endCollection(withEnd: end) { _, _ in
+                finisher.finishWorkout { workout, _ in
+                    continuation.resume(returning: workout)
+                }
+            }
+        }
+
+        self.session = nil
+        self.builder = nil
+        heartRate = nil
+        activeCalories = nil
+
+        guard let workout = finished else { return nil }
+        let stats = workout.statistics(for: Self.heartRateType)
+        return MatchMetrics(
+            distanceMeters: nil,
+            averageHeartRate: stats?.averageQuantity()?.doubleValue(for: Self.beatUnit),
+            maxHeartRate: stats?.maximumQuantity()?.doubleValue(for: Self.beatUnit),
+            activeCalories: workout.statistics(for: Self.energyType)?
+                .sumQuantity()?.doubleValue(for: .kilocalorie()),
+            workoutUUID: workout.uuid.uuidString)
     }
 }
 
@@ -50,7 +102,18 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
 
 extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder,
-                                    didCollectDataOf collectedTypes: Set<HKSampleType>) {}
+                                    didCollectDataOf collectedTypes: Set<HKSampleType>) {
+        let heartRate = workoutBuilder.statistics(for: HKQuantityType(.heartRate))?
+            .mostRecentQuantity()?
+            .doubleValue(for: .count().unitDivided(by: .minute()))
+        let calories = workoutBuilder.statistics(for: HKQuantityType(.activeEnergyBurned))?
+            .sumQuantity()?
+            .doubleValue(for: .kilocalorie())
+        Task { @MainActor in
+            if let heartRate { self.heartRate = heartRate }
+            if let calories { self.activeCalories = calories }
+        }
+    }
 
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
 }

@@ -151,7 +151,7 @@ struct RecordFlow: View {
         }
     }
 
-    private func onStep(_ side: TeamSide, off: PlayerRef) -> some View {
+    private func onStep(_ side: TeamSide, _ off: PlayerRef) -> some View {
         PlayerPicker(
             squad: session.match?.setup.squad(for: side),
             allowNone: false,

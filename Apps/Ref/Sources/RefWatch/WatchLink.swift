@@ -1,22 +1,74 @@
 import Foundation
 import Observation
+import RefKit
 import WatchConnectivity
 
-/// The watch's half of the link to the phone. P0: activation and the delegate
-/// conformances only — the match coming down and the finished match going back
-/// arrive with the sync work (P4).
+/// The watch's half of the link to the phone.
 ///
-/// The concurrency pattern is Swim's (`Apps/Swim/Sources/SwimSession.swift`,
-/// explained in SWIM.md): `@MainActor @Observable`, every delegate method
-/// `nonisolated`, and only Sendable values crossing the hop back.
+/// Two directions with different guarantees, on purpose:
+/// - **Assignments come down** as `applicationContext` — latest-wins, small,
+///   and the last one sent is still there after a relaunch.
+/// - **Finished matches go up** as `transferUserInfo` — queued and delivered
+///   when it can be, which means it can also arrive twice; the phone dedupes
+///   by match id.
+///
+/// The concurrency pattern is Swim's (SWIM.md): `@MainActor @Observable`,
+/// every delegate method `nonisolated`, only Sendable values crossing the hop.
 @MainActor @Observable final class WatchLink: NSObject {
     private(set) var activated = false
+    /// The phone's current assignment, mirrored to disk so it survives a
+    /// relaunch on the pitch.
+    private(set) var assignments: [MatchSetup] = []
 
     override init() {
         super.init()
+        assignments = Self.loadAssignments()
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
+    }
+
+    // MARK: - Sending
+
+    /// The finished match, on its way to the phone's shelf.
+    func send(_ match: Match) {
+        guard activated,
+              let data = try? SyncPayload.encode(SyncPayload.FinishedMatch(match: match)) else {
+            return
+        }
+        WCSession.default.transferUserInfo(["finishedMatch": data])
+    }
+
+    // MARK: - Receiving
+
+    private func ingest(applicationContext: [String: Any]) {
+        guard let data = applicationContext["assignment"] as? Data,
+              let assignment = try? SyncPayload.decode(SyncPayload.Assignment.self, from: data) else {
+            return
+        }
+        assignments = assignment.setups
+        Self.saveAssignments(assignments)
+    }
+
+    // MARK: - Where the assignment lives on disk
+
+    private static var file: URL {
+        MatchSession.containerDirectory.appendingPathComponent("assignments.json")
+    }
+
+    private static func loadAssignments() -> [MatchSetup] {
+        guard let data = try? Data(contentsOf: file) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([MatchSetup].self, from: data)) ?? []
+    }
+
+    private static func saveAssignments(_ setups: [MatchSetup]) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try? FileManager.default.createDirectory(at: MatchSession.containerDirectory,
+                                                 withIntermediateDirectories: true)
+        try? encoder.encode(setups).write(to: file, options: .atomic)
     }
 }
 
@@ -25,6 +77,22 @@ extension WatchLink: WCSessionDelegate {
                              activationDidCompleteWith activationState: WCSessionActivationState,
                              error: (any Error)?) {
         let activated = activationState == .activated
-        Task { @MainActor in self.activated = activated }
+        Task { @MainActor in
+            self.activated = activated
+            // A context that arrived before activation is still waiting here.
+            self.ingest(applicationContext: WCSession.default.receivedApplicationContext)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession,
+                             didReceiveApplicationContext applicationContext: [String: Any]) {
+        Task { @MainActor in
+            self.ingest(applicationContext: applicationContext)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession,
+                             didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        // The watch is the sender of finished matches, not a receiver.
     }
 }

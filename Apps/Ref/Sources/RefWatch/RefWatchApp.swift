@@ -55,7 +55,7 @@ struct RenderDemo: View {
     var body: some View {
         switch page {
         case .start:
-            StartScreen(session: .showing("start"))
+            StartScreen(session: .showing("start"), requestsAccess: false)
         case .live:
             LiveScreen(session: .showing("live"))
         case .record:

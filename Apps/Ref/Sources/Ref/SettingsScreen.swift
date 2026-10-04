@@ -23,7 +23,7 @@ struct SettingsScreen: View {
                 }
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)
-                    Text("Assignments and finished matches travel over the link in P4.")
+                    Text("Upcoming matches travel to the watch; finished ones come back here.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

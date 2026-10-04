@@ -30,6 +30,7 @@ struct LiveScreen: View {
                     .foregroundStyle(.secondary)
                 if !dimmed {
                     binsRow(at: now)
+                    healthRow
                     controls(clock, at: now)
                 }
             }
@@ -81,6 +82,18 @@ struct LiveScreen: View {
                         .background(.orange.opacity(0.35), in: Capsule())
                 }
             }
+        }
+    }
+
+    /// The referee's own heart rate, when the workout is running — the one
+    /// health number worth a glance mid-match.
+    @ViewBuilder
+    private var healthRow: some View {
+        if let heartRate = session.workout.heartRate {
+            Text("♥ \(Int(heartRate))")
+                .font(.system(size: 11, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(.red.opacity(0.85))
         }
     }
 

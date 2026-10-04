@@ -13,6 +13,13 @@ import RefKit
 
     private(set) var match: Match?
 
+    /// The link to the phone and the two recorders that make the fitness
+    /// numbers. One session owns one of each; the live screen reads their
+    /// published values.
+    let link = WatchLink()
+    let workout = WorkoutRecorder()
+    let location = LocationRecorder()
+
     init(store: MatchStore = MatchStore(directory: MatchSession.containerDirectory)) {
         self.store = store
         // A match left in progress by a crash or a flat battery is still here.
@@ -57,10 +64,18 @@ import RefKit
             clock: ClockConfig(halfMinutes: halfMinutes))))
     }
 
-    /// Take on a match — quick start today, the phone's assignment in P4.
+    /// Take on a match — the phone's assignment, or quick start.
     func assign(_ match: Match) {
         self.match = match
         persist()
+    }
+
+    /// Ask for Health and location once, before the match — a system sheet at
+    /// kick-off is the worst moment for one. A refusal costs the report's
+    /// numbers, never the match.
+    func requestHealthAccess() async {
+        await workout.requestAccess()
+        location.requestAccess()
     }
 
     func discard() {
@@ -70,7 +85,12 @@ import RefKit
 
     // MARK: - The clock
 
-    func kickOff() { append(.kickOff(half: 1)) }
+    func kickOff() {
+        let now = Date()
+        append(.kickOff(half: 1))
+        workout.start(at: now)
+        location.start()
+    }
 
     func endHalf() { append(.halfEnd(half: halfAtNow)) }
 
@@ -78,11 +98,23 @@ import RefKit
 
     func fullTime() {
         append(.fullTime)
-        guard let match else { return }
-        // The match moves to the finished shelf; the current slot goes away,
-        // so the next launch starts clean. (P4 sends it to the phone from here.)
-        try? store.save(match)
+        Task { await finishMatch() }
+    }
+
+    /// Full time, all the way through: the workout is saved to Health, the
+    /// distance is summed, both are frozen into the record, and the record
+    /// goes to the phone's shelf — here, and over the link when it can.
+    private func finishMatch() async {
+        guard var current = match else { return }
+        var metrics = await workout.finish() ?? MatchMetrics()
+        metrics.distanceMeters = location.stop()
+        if metrics != MatchMetrics() {
+            current.metrics = metrics
+        }
+        match = current
+        try? store.save(current)
         try? store.clearCurrent()
+        link.send(current)
     }
 
     /// One tap, one announced minute.
