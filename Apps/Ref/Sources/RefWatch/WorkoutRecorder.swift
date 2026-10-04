@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import HealthKit
 import Observation
@@ -28,7 +29,7 @@ import RefKit
     /// report's numbers, not the match.
     func requestAccess() async {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let share: Set<HKSampleType> = [HKObjectType.workoutType()]
+        let share: Set<HKSampleType> = [HKObjectType.workoutType(), HKSeriesType.workoutRoute()]
         let read: Set<HKObjectType> = [Self.heartRateType, Self.energyType,
                                        Self.distanceType, Self.stepType]
         _ = try? await store.requestAuthorization(toShare: share, read: read)
@@ -91,7 +92,7 @@ import RefKit
     /// cost into a `MatchMetrics` — heart rate, energy, steps and HealthKit's
     /// walking/running distance. The session falls back to the GPS sum when
     /// HealthKit has no distance.
-    func finish() async -> MatchMetrics? {
+    func finish(route: [RoutePoint] = []) async -> MatchMetrics? {
         guard let session, let builder else { return nil }
         session.end()
         let end = Date()
@@ -114,6 +115,7 @@ import RefKit
         activeCalories = nil
 
         guard let workout = finished else { return nil }
+        await saveRoute(route, to: workout)
         let stats = workout.statistics(for: Self.heartRateType)
         return MatchMetrics(
             distanceMeters: workout.statistics(for: Self.distanceType)?
@@ -125,6 +127,32 @@ import RefKit
             steps: workout.statistics(for: Self.stepType)?
                 .sumQuantity().map { Int($0.doubleValue(for: .count())) },
             workoutUUID: workout.uuid.uuidString)
+    }
+}
+
+extension WorkoutRecorder {
+    /// The route, attached to the saved workout — Fitness then draws the map
+    /// of the match. A failure here costs the map in Fitness, nothing else.
+    fileprivate func saveRoute(_ route: [RoutePoint], to workout: HKWorkout) async {
+        guard route.count > 1 else { return }
+        let locations = route.map {
+            CLLocation(coordinate: CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude),
+                       altitude: 0, horizontalAccuracy: $0.accuracy, verticalAccuracy: -1,
+                       timestamp: $0.at)
+        }
+        // ! `nonisolated(unsafe)` as in `finish()`: the builder is not
+        // Sendable and the SDK's completion handlers are; it is created,
+        // used and dropped inside this one call.
+        nonisolated(unsafe) let routeBuilder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
+        nonisolated(unsafe) let finishedWorkout = workout
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            routeBuilder.insertRouteData(locations) { inserted, _ in
+                guard inserted else { continuation.resume(); return }
+                routeBuilder.finishRoute(with: finishedWorkout, metadata: nil) { _, _ in
+                    continuation.resume()
+                }
+            }
+        }
     }
 }
 

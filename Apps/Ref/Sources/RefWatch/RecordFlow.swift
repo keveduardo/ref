@@ -10,6 +10,12 @@ import SwiftUI
 /// and the number alone is recorded.
 struct RecordFlow: View {
     let session: MatchSession
+    /// Set on the swipe pages (home to the right of the live face, away to
+    /// the left): the team is already chosen, so a card is two taps.
+    var side: TeamSide? = nil
+    /// What "done" means on a swipe page — back to the live face. Without it
+    /// the flow is a sheet, and done dismisses it.
+    var onDone: (@MainActor () -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var step: Step = .menu
@@ -81,11 +87,16 @@ struct RecordFlow: View {
 
     private var menu: some View {
         ScrollView {
+            pageHeader
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
                       spacing: 6) {
                 ForEach(RecordKind.allCases, id: \.self) { kind in
                     Button {
-                        step = .team(kind)
+                        if let side {
+                            step = kind == .substitution ? .off(side) : .player(kind, side)
+                        } else {
+                            step = .team(kind)
+                        }
                     } label: {
                         VStack(spacing: 3) {
                             Image(systemName: kind.symbol)
@@ -110,10 +121,29 @@ struct RecordFlow: View {
                     }
                 }
             }
-            Button("Cancel") { dismiss() }
-                .font(.footnote)
-                .padding(.top, 4)
+            if side == nil {
+                Button("Cancel") { dismiss() }
+                    .font(.footnote)
+                    .padding(.top, 4)
+            }
         }
+    }
+
+    /// The team a swipe page records for, in its colour, above the grid.
+    @ViewBuilder
+    private var pageHeader: some View {
+        if let side, let team = session.match?.setup.team(side) {
+            Text(team.name)
+                .font(.headline)
+                .foregroundStyle(team.color.watchColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+    }
+
+    private func finish() {
+        step = .menu
+        if let onDone { onDone() } else { dismiss() }
     }
 
     /// The confirmation names the line exactly as the report would, so the
@@ -130,7 +160,7 @@ struct RecordFlow: View {
                 Button("Undo", role: .destructive) {
                     session.undo(event)
                     Haptics.play(.directionDown)
-                    dismiss()
+                    finish()
                 }
                 Button("Keep it") { step = .menu }
                     .font(.footnote)
@@ -172,7 +202,7 @@ struct RecordFlow: View {
                 break // never reaches here
             }
             Haptics.recorded()
-            dismiss()
+            finish()
         }
     }
 
@@ -194,7 +224,7 @@ struct RecordFlow: View {
         ) { on in
             session.substitution(side: side, off: off, on: on)
             Haptics.recorded()
-            dismiss()
+            finish()
         }
     }
 

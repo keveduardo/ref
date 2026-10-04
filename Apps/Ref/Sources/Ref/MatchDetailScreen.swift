@@ -21,6 +21,7 @@ struct MatchDetailScreen: View {
                 if let metrics = match.metrics {
                     metricsSection(metrics)
                 }
+                movementSection
                 let entries = match.report.timeline
                 if entries.isEmpty {
                     Section("Timeline") {
@@ -108,6 +109,35 @@ struct MatchDetailScreen: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// The pitch diagram and what it says — once the route has arrived.
+    @ViewBuilder
+    private var movementSection: some View {
+        if let route = store.route(for: match.id), !route.isEmpty,
+           let frame = PitchFrame.resolve(marked: match.pitch, route: route) {
+            let size = match.setup.pitchSize
+            let report = MovementReport.make(points: route, frame: frame, size: size, clock: match.clock)
+            Section {
+                PitchHeatmap(report: report, size: size)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                ForEach(Array(report.distanceByHalf.enumerated()), id: \.offset) { index, metres in
+                    LabeledContent(index == 0 ? "First half" : index == 1 ? "Second half" : "Half \(index + 1)",
+                                   value: String(format: "%.2f km", metres / 1000))
+                }
+                LabeledContent("Top speed", value: String(format: "%.1f km/h", report.topSpeed * 3.6))
+                LabeledContent("Sprints (20+ km/h)", value: "\(report.sprints)")
+                LabeledContent("Thirds", value: report.thirds
+                    .map { "\(Int(($0 * 100).rounded()))%" }.joined(separator: " · "))
+                LabeledContent("On the diagonal", value: "\(Int((report.onDiagonal * 100).rounded()))%")
+            } header: {
+                Text("Movement")
+            } footer: {
+                Text(frame.marked
+                     ? "Field marked on the watch; the goal you faced is on the right. Thirds read left to right."
+                     : "Field worked out from your running. Tap Mark field on the watch before kick-off for an exact map.")
+            }
+        }
     }
 
     private func metricsSection(_ metrics: MatchMetrics) -> some View {

@@ -15,7 +15,8 @@ struct RefApp: App {
         // gone for good.
         let store = PhoneStore()
         _store = State(initialValue: store)
-        _link = State(initialValue: PhoneLink(onFinished: { match in store.save(match) }))
+        _link = State(initialValue: PhoneLink(onFinished: { match in store.save(match) },
+                                              onRoute: { store.routesChanged() }))
     }
 
     var body: some Scene {

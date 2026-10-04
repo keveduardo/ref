@@ -5,9 +5,36 @@ import RefKit
 /// The phone's model: the teams, the shelf of matches, and the one on the
 /// watch. Everything is a file in the app's own container; nothing here talks
 /// to a server, and nothing needs one.
+/// Where routes live on the phone, one JSON file per match. Not on the
+/// main actor: `PhoneLink` files a route from inside the WatchConnectivity
+/// callback, before the system deletes the transferred file.
+enum RouteFiles {
+    static var directory: URL {
+        let base = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first ?? URL.temporaryDirectory
+        return base.appendingPathComponent("Ref/routes", isDirectory: true)
+    }
+
+    static func url(for matchID: UUID, in directory: URL = directory) -> URL {
+        directory.appendingPathComponent("\(matchID.uuidString).json")
+    }
+
+    /// Files a received route by its match id. Returns false when the file is
+    /// not a route this build can read.
+    @discardableResult
+    static func file(_ data: Data, in directory: URL = directory) -> Bool {
+        guard let route = try? SyncPayload.decode(SyncPayload.Route.self, from: data) else { return false }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return (try? data.write(to: url(for: route.matchID, in: directory), options: .atomic)) != nil
+    }
+}
+
 @MainActor @Observable final class PhoneStore {
     private let matches: MatchStore
     private let library: TeamLibrary
+    private let routesDirectory: URL
+    /// Bumped when a route arrives, so a screen showing that match redraws.
+    private(set) var routesVersion = 0
 
     /// Every match on the shelf — upcoming and played alike; `isFinished`
     /// tells them apart.
@@ -15,9 +42,11 @@ import RefKit
     private(set) var squads: [Squad] = []
 
     init(matches: MatchStore = MatchStore(directory: PhoneStore.directory),
-         library: TeamLibrary = TeamLibrary(directory: PhoneStore.directory)) {
+         library: TeamLibrary = TeamLibrary(directory: PhoneStore.directory),
+         routesDirectory: URL = RouteFiles.directory) {
         self.matches = matches
         self.library = library
+        self.routesDirectory = routesDirectory
         reload()
     }
 
@@ -40,6 +69,19 @@ import RefKit
     var played: [Match] { all.filter(\.isFinished) }
 
     var stats: SeasonStats { SeasonStats.make(from: played) }
+
+    // MARK: - Routes
+
+    /// The route the watch recorded for a match, if it has arrived.
+    func route(for matchID: UUID) -> [RoutePoint]? {
+        _ = routesVersion
+        guard let data = try? Data(contentsOf: RouteFiles.url(for: matchID, in: routesDirectory)) else {
+            return nil
+        }
+        return try? SyncPayload.decode(SyncPayload.Route.self, from: data).points
+    }
+
+    func routesChanged() { routesVersion += 1 }
 
     // MARK: - Teams
 
@@ -115,7 +157,8 @@ extension PhoneStore {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ref-phone-render-\(UUID().uuidString)", isDirectory: true)
         let store = PhoneStore(matches: MatchStore(directory: dir),
-                               library: TeamLibrary(directory: dir))
+                               library: TeamLibrary(directory: dir),
+                               routesDirectory: dir.appendingPathComponent("routes"))
 
         let home = Team(name: "Real Madrid Club", abbreviation: "RMC", color: .white)
         let away = Team(name: "Arsenal", abbreviation: "ARS", color: .red)
@@ -151,8 +194,21 @@ extension PhoneStore {
             MatchEvent(at: at(1 * 86_400), kind: .fullTime),
         ])
         played.metrics = MatchMetrics(distanceMeters: 9_120, averageHeartRate: 134,
-                                      maxHeartRate: 181, activeCalories: 812)
+                                      maxHeartRate: 181, activeCalories: 812, steps: 11_406)
+        let field = PitchFrame(latitude: 33.85, longitude: -118.38, bearing: 30, marked: true)
+        played.pitch = field
         store.save(played)
+        // A plausible diagonal: corner to corner with the play, drifting.
+        let kick = at(2 * 86_400 + 40 * 60)
+        var points: [RoutePoint] = []
+        for i in 0..<2_700 {
+            let t = Double(i) * 2
+            let along = sin(t / 140) * 0.8 + sin(t / 37) * 0.15
+            let x = along * 42, y = along * 22 + sin(t / 23) * 6
+            points.append(field.point(x: x, y: y, at: kick.addingTimeInterval(t)))
+        }
+        RouteFiles.file((try? SyncPayload.encode(SyncPayload.Route(matchID: played.id, points: points))) ?? Data(),
+                        in: dir.appendingPathComponent("routes"))
 
         store.createMatch(home: away, away: home, competition: "League — Saturday",
                           kickOff: now.addingTimeInterval(2 * 86_400), clock: .adult)

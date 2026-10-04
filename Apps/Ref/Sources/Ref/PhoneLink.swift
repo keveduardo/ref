@@ -20,14 +20,17 @@ import WatchConnectivity
     /// main-actor context, and in Swift 6 a non-Sendable closure keeps that
     /// isolation — handing it to a non-isolated parameter is an error.
     private let onFinished: (@MainActor (Match) -> Void)?
+    private let onRoute: (@MainActor () -> Void)?
 
     var status: String {
         if !activated { return "Not activated" }
         return WCSession.default.isPaired ? "Connected" : "No watch paired"
     }
 
-    init(onFinished: (@MainActor (Match) -> Void)? = nil) {
+    init(onFinished: (@MainActor (Match) -> Void)? = nil,
+         onRoute: (@MainActor () -> Void)? = nil) {
         self.onFinished = onFinished
+        self.onRoute = onRoute
         super.init()
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
@@ -77,6 +80,13 @@ extension PhoneLink: WCSessionDelegate {
         WCSession.default.activate()
     }
     #endif
+
+    /// A route, as a file. ! Filed here, synchronously: the system deletes
+    /// the transferred file when this method returns.
+    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        guard let data = try? Data(contentsOf: file.fileURL), RouteFiles.file(data) else { return }
+        Task { @MainActor in self.onRoute?() }
+    }
 
     nonisolated func session(_ session: WCSession,
                              didReceiveUserInfo userInfo: [String: Any] = [:]) {

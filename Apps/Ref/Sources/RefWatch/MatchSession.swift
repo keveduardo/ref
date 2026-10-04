@@ -145,10 +145,12 @@ import RefKit
     private func finishMatch() async {
         guard var current = match else { return }
         playedIDs.insert(current.id)
-        var metrics = await workout.finish() ?? MatchMetrics()
+        let gps = location.stop()
+        let route = SyncPayload.Route.thinned(GeoDistance.filtered(location.points))
+        // The route goes into the Health workout too, so Fitness shows the map.
+        var metrics = await workout.finish(route: route) ?? MatchMetrics()
         // HealthKit's distance (GPS plus stride calibration) when it has one;
         // our own GPS sum when it does not.
-        let gps = location.stop()
         if (metrics.distanceMeters ?? 0) <= 0 {
             metrics.distanceMeters = gps
         }
@@ -164,6 +166,28 @@ import RefKit
         try? store.save(current)
         try? store.clearCurrent()
         link.send(current)
+        if !route.isEmpty {
+            link.send(SyncPayload.Route(matchID: current.id, points: route))
+        }
+    }
+
+    // MARK: - The field
+
+    /// "Mark field": the centre spot and the way the referee faces, from the
+    /// newest GPS fix and compass reading. False when the fix is not good
+    /// enough yet. Without a compass the centre alone is kept (`marked`
+    /// false), and the phone takes the field's direction from the route.
+    @discardableResult
+    func markField() -> Bool {
+        guard var current = match,
+              let fix = location.latestFix, fix.accuracy > 0, fix.accuracy <= 20 else { return false }
+        let heading = location.latestHeading
+        guard heading != nil || !location.compassAvailable else { return false }
+        current.pitch = PitchFrame(latitude: fix.latitude, longitude: fix.longitude,
+                                   bearing: heading ?? 0, marked: heading != nil)
+        match = current
+        persist()
+        return true
     }
 
     /// One tap, one announced minute.

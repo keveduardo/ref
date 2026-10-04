@@ -42,7 +42,7 @@ struct RootScreen: View {
 /// launched as `-renderDemo <page>` by the `render` job of ref.yml. Debug
 /// builds only.
 struct RenderDemo: View {
-    enum Page: String { case start, live, record, halftime, summary }
+    enum Page: String { case start, live, home, record, halftime, summary }
 
     static var page: Page? {
         let args = ProcessInfo.processInfo.arguments
@@ -58,6 +58,9 @@ struct RenderDemo: View {
             StartScreen(session: .showing("start"), requestsAccess: false)
         case .live:
             LiveScreen(session: .showing("live"))
+        case .home:
+            // The page a swipe right reaches mid-match.
+            RecordFlow(session: .showing("live"), side: .home, onDone: {})
         case .record:
             RecordFlow(session: .showing("live"))
         case .halftime:

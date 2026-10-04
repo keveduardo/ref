@@ -124,6 +124,9 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
 
     public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
 
+    /// The field size to draw: the division's, or full size.
+    public var pitchSize: PitchSize { format?.pitch ?? .adult }
+
     public func team(_ side: TeamSide) -> Team { side == .home ? home : away }
 
     public func squad(for side: TeamSide) -> Squad? {

@@ -94,6 +94,9 @@ public struct Match: Codable, Sendable, Identifiable, Equatable {
     public var setup: MatchSetup
     public var events: EventLog
     public var metrics: MatchMetrics?
+    /// The field as the referee marked it on the watch before kick-off —
+    /// nil when they did not, and the phone works it out from the route.
+    public var pitch: PitchFrame?
     /// When the record was first created — history sorts on this, because a
     /// match with no kick-off time is perfectly normal.
     public var createdAt: Date

@@ -27,6 +27,7 @@ import WatchConnectivity
     /// a relaunch); before that, a match sent at the wrong moment was simply
     /// dropped.
     private var pending: [Match] = []
+    private var pendingRoutes: [SyncPayload.Route] = []
 
     override init() {
         super.init()
@@ -53,10 +54,27 @@ import WatchConnectivity
         WCSession.default.transferUserInfo(["finishedMatch": data])
     }
 
+    /// The route behind the pitch diagram, as a file — too big for user
+    /// info. The system owns the delivery once it is queued.
+    func send(_ route: SyncPayload.Route) {
+        guard activated else {
+            pendingRoutes.append(route)
+            return
+        }
+        guard let data = try? SyncPayload.encode(route) else { return }
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("route-\(route.matchID.uuidString).json")
+        guard (try? data.write(to: file, options: .atomic)) != nil else { return }
+        WCSession.default.transferFile(file, metadata: ["kind": "route"])
+    }
+
     private func flushPending() {
         let waiting = pending
         pending = []
         for match in waiting { send(match) }
+        let routes = pendingRoutes
+        pendingRoutes = []
+        for route in routes { send(route) }
     }
 
     // MARK: - Receiving

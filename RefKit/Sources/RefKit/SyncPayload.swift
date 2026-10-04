@@ -39,6 +39,32 @@ public enum SyncPayload {
         }
     }
 
+    /// Watch → phone, after a match: the route behind the pitch diagram. Too
+    /// big for user info (a fix every 2 s for 100 minutes), so it travels as
+    /// a file (`transferFile`), and the phone files it by match id.
+    public struct Route: Codable, Sendable, Equatable {
+        public var version: Int
+        public var matchID: UUID
+        public var points: [RoutePoint]
+
+        public init(matchID: UUID, points: [RoutePoint]) {
+            self.version = SyncPayload.version
+            self.matchID = matchID
+            self.points = points
+        }
+
+        /// One fix every `interval` seconds at most — enough for a heatmap,
+        /// a fraction of the size.
+        public static func thinned(_ points: [RoutePoint], every interval: TimeInterval = 2) -> [RoutePoint] {
+            var kept: [RoutePoint] = []
+            for point in points.sorted(by: { $0.at < $1.at }) {
+                if let last = kept.last, point.at.timeIntervalSince(last.at) < interval { continue }
+                kept.append(point)
+            }
+            return kept
+        }
+    }
+
     public enum Refusal: Error, Equatable {
         /// The sender speaks a newer protocol than this build understands.
         case futureVersion(Int)
