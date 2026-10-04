@@ -90,15 +90,19 @@ import RefKit
         link.assignments.filter { !playedIDs.contains($0.id) }
     }
 
-    /// Quick start: two teams to be named on the phone later, the phone's
-    /// default half length and break, kick-off waiting.
-    func startQuick() {
+    /// Quick start: two teams to be named on the phone later, kick-off
+    /// waiting. With a division, its half length and name (Kevin, 2026-10-04:
+    /// "choose the age group so the defaults are part of the quick start");
+    /// without one, the phone's defaults.
+    func startQuick(_ format: MatchFormat? = nil) {
         let defaults = link.defaults
         assign(Match(setup: MatchSetup(
             home: .placeholder(.home),
             away: .placeholder(.away),
-            clock: ClockConfig(halfMinutes: defaults.halfMinutes, countsDown: true),
-            halfTimeMinutes: defaults.halfTimeMinutes,
+            competition: format?.title,
+            clock: ClockConfig(halfMinutes: format?.halfMinutes ?? defaults.halfMinutes, countsDown: true),
+            formatID: format?.id,
+            halfTimeMinutes: format?.halfTimeMinutes.lowerBound ?? defaults.halfTimeMinutes,
             addedTimeButton: defaults.addedTimeButton)))
     }
 

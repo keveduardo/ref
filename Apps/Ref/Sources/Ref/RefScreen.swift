@@ -162,17 +162,13 @@ extension MatchesScreen {
     }
 }
 
-/// Delete from either side: a swipe right (Kevin's habit) or left (iOS's).
-/// A long swipe deletes at once; the Matches screen offers Undo for a few
-/// seconds after.
+/// Swipe left to delete, the iOS way. A long swipe deletes at once; the
+/// Matches screen offers Undo for a few seconds after.
 struct SwipeToDelete: ViewModifier {
     let action: () -> Void
 
     func body(content: Content) -> some View {
         content
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button("Delete", systemImage: "trash", role: .destructive, action: action)
-            }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button("Delete", systemImage: "trash", role: .destructive, action: action)
             }
