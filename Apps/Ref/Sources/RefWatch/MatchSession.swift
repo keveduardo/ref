@@ -97,7 +97,7 @@ import RefKit
         assign(Match(setup: MatchSetup(
             home: .placeholder(.home),
             away: .placeholder(.away),
-            clock: ClockConfig(halfMinutes: defaults.halfMinutes),
+            clock: ClockConfig(halfMinutes: defaults.halfMinutes, countsDown: true),
             halfTimeMinutes: defaults.halfTimeMinutes)))
     }
 

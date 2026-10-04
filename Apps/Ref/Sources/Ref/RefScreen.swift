@@ -40,6 +40,7 @@ struct RefScreen: View {
 struct MatchesScreen: View {
     let store: PhoneStore
     @State private var settingUp = false
+    @State private var importResult: String?
 
     var body: some View {
         NavigationStack {
@@ -72,16 +73,52 @@ struct MatchesScreen: View {
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        settingUp = true
+                    Menu {
+                        Button {
+                            settingUp = true
+                        } label: {
+                            Label("New match", systemImage: "plus")
+                        }
+                        Button {
+                            pasteReminder()
+                        } label: {
+                            Label("Paste reminder email", systemImage: "doc.on.clipboard")
+                        }
                     } label: {
-                        Label("New match", systemImage: "plus")
+                        Label("Add", systemImage: "plus")
                     }
                 }
             }
             .sheet(isPresented: $settingUp) {
                 MatchSetupScreen(store: store)
             }
+            .alert(importResult ?? "", isPresented: Binding(
+                get: { importResult != nil }, set: { if !$0 { importResult = nil } })) {
+                Button("OK") { importResult = nil }
+            }
+        }
+    }
+}
+
+extension MatchesScreen {
+    /// The text of a scheduler's reminder email, copied in Mail or Gmail,
+    /// becomes upcoming matches — CGI Sports has no calendar feed to
+    /// subscribe to, but its reminders are one field per line.
+    fileprivate func pasteReminder() {
+        guard let text = UIPasteboard.general.string, !text.isEmpty else {
+            importResult = "Nothing to paste. Copy the text of a game reminder email first."
+            return
+        }
+        let result = store.importGames(from: text)
+        switch (result.new, result.found) {
+        case (_, 0):
+            importResult = "No games found. Copy the whole reminder, from \u{201C}Game ID\u{201D} to \u{201C}Visitor\u{201D}."
+        case (0, _):
+            importResult = "Already on your list."
+        case (1, _):
+            importResult = "1 match added."
+        case (let n, _):
+            importResult = "\(n) matches added."
         }
     }
 }

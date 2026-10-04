@@ -76,6 +76,26 @@ import RefKit
         return match
     }
 
+    /// Games read from a scheduler's reminder email, onto the shelf. A game
+    /// already here (same scheduler id) is left as it is — the referee may
+    /// have edited it — so pasting the same reminder twice changes nothing.
+    /// Returns how many were new.
+    @discardableResult
+    func importGames(from text: String) -> (new: Int, found: Int) {
+        let games = ScheduledGame.parse(text)
+        let defaults = UserDefaults.standard.integer(forKey: "ref.halfTimeMinutes")
+        var new = 0
+        for game in games {
+            let setup = game.matchSetup(halfTimeMinutes: defaults == 0
+                                        ? MatchDefaults.standard.halfTimeMinutes : defaults)
+            guard !all.contains(where: { $0.id == setup.id }) else { continue }
+            try? matches.save(Match(setup: setup))
+            new += 1
+        }
+        reload()
+        return (new, games.count)
+    }
+
     func save(_ match: Match) {
         try? matches.save(match)
         reload()

@@ -19,7 +19,8 @@ struct MatchSetupScreen: View {
     @State private var newAway = ""
     @State private var hasKickOff = true
     @State private var kickOff = Date()
-    @State private var countsDown = false
+    // Count down by default (Kevin, 2026-10-04); one switch to turn off.
+    @State private var countsDown = true
     // This match's own values, starting from the defaults in Settings —
     // changing them here changes this match, not the defaults.
     @State private var halfMinutes: Int
