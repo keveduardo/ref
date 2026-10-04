@@ -104,9 +104,9 @@ public struct MatchReport: Codable, Sendable, Equatable {
             case .sinBin(let side, let player, let minutes):
                 totals.sinBins += 1
                 text = "Sin bin (\(minutes)′) — \(describe(side, player, in: match))"
-            case .substitution(let side, _, let on):
+            case .substitution(let side, let off, let on):
                 totals.substitutions += 1
-                text = "Substitution — \(match.setup.team(side).abbreviation) #\(shirt(on, in: match)) on"
+                text = "Substitution — \(match.setup.team(side).abbreviation) #\(off.number) off, #\(on.number) on"
             case .note(let note):
                 text = note
             case .addedTime(let half, let seconds):
@@ -199,18 +199,22 @@ public struct MatchReport: Codable, Sendable, Equatable {
         }
     }
 
-    private static func describe(_ side: TeamSide, _ player: UUID?, in match: Match) -> String {
+    private static func describe(_ side: TeamSide, _ player: PlayerRef?, in match: Match) -> String {
         let team = match.setup.team(side)
         guard let player else { return team.name }
-        return "\(team.abbreviation) #\(shirt(player, in: match))"
+        if player.number > 0 { return "\(team.abbreviation) #\(player.number)" }
+        if let id = player.id, let name = name(of: id, in: match) {
+            return "\(team.abbreviation) \(name)"
+        }
+        return team.name
     }
 
-    private static func shirt(_ player: UUID, in match: Match) -> Int {
+    private static func name(of id: UUID, in match: Match) -> String? {
         for squad in match.setup.squads {
-            if let found = squad.players.first(where: { $0.id == player }) {
-                return found.number
+            if let found = squad.players.first(where: { $0.id == id }) {
+                return found.name
             }
         }
-        return 0
+        return nil
     }
 }

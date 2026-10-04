@@ -34,13 +34,13 @@ enum Fixture {
         let events: [MatchEvent] = [
             event(0, .kickOff(half: 1)),
             // 11:30 — the 12th minute, as a referee writes it.
-            event(11 * 60 + 30, .goal(side: .home, scorer: home9.id)),
-            event(34 * 60, .yellowCard(side: .away, player: away7.id)),
+            event(11 * 60 + 30, .goal(side: .home, scorer: PlayerRef(home9))),
+            event(34 * 60, .yellowCard(side: .away, player: PlayerRef(away7))),
             event(45 * 60, .addedTime(half: 1, seconds: 120)),
-            event(45 * 60 + 130, .goal(side: .away, scorer: away11.id)),
+            event(45 * 60 + 130, .goal(side: .away, scorer: PlayerRef(away11))),
             event(45 * 60 + 130, .halfEnd(half: 1)),
             event(60 * 60, .kickOff(half: 2)),
-            event(60 * 60 + 600, .redCard(side: .home, player: home4.id)),
+            event(60 * 60 + 600, .redCard(side: .home, player: PlayerRef(home4))),
             event(105 * 60, .fullTime),
         ]
         return Match(setup: setup, events: EventLog(events: events),

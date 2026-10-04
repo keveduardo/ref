@@ -25,8 +25,8 @@ struct EventLogTests {
 struct ScoreTests {
     @Test func goalsAndOwnGoalsCountForTheRightSide() {
         var log = EventLog()
-        log.append(Fixture.event(0, .goal(side: .home, scorer: Fixture.home9.id)))
-        log.append(Fixture.event(60, .ownGoal(side: .away, scorer: Fixture.away7.id)))
+        log.append(Fixture.event(0, .goal(side: .home, scorer: PlayerRef(Fixture.home9))))
+        log.append(Fixture.event(60, .ownGoal(side: .away, scorer: PlayerRef(Fixture.away7))))
         let score = Score.from(log)
         // An own goal by the away side is a home goal.
         #expect(score.home == 2)
@@ -58,7 +58,7 @@ struct SinBinTests {
 
     @Test func aSinBinExpiresExactlyAtItsDuration() {
         let c = clock([(0, .kickOff(half: 1))])
-        let bin = SinBin(side: .home, player: Fixture.home4.id,
+        let bin = SinBin(side: .home, player: PlayerRef(Fixture.home4),
                          start: Fixture.at(600), minutes: 10, clock: .match)
         #expect(bin.remaining(at: Fixture.at(600 + 599), clock: c) == 1)
         #expect(bin.remaining(at: Fixture.at(600 + 600), clock: c) == 0)
@@ -72,7 +72,7 @@ struct SinBinTests {
         let c = clock([(0, .kickOff(half: 1)),
                        (45 * 60, .halfEnd(half: 1)),
                        (60 * 60, .kickOff(half: 2))])
-        let bin = SinBin(side: .home, player: Fixture.home4.id,
+        let bin = SinBin(side: .home, player: PlayerRef(Fixture.home4),
                          start: Fixture.at(40 * 60), minutes: 10, clock: .match)
         // …but at half time itself, five minutes of play in, five remain.
         let atHalfTime = Fixture.at(45 * 60 + 300)
@@ -88,9 +88,9 @@ struct SinBinTests {
                        (45 * 60, .halfEnd(half: 1)),
                        (60 * 60, .kickOff(half: 2))])
         let start = Fixture.at(40 * 60)
-        let wall = SinBin(side: .home, player: Fixture.home4.id,
+        let wall = SinBin(side: .home, player: PlayerRef(Fixture.home4),
                           start: start, minutes: 10, clock: .wall)
-        let playing = SinBin(side: .home, player: Fixture.home4.id,
+        let playing = SinBin(side: .home, player: PlayerRef(Fixture.home4),
                              start: start, minutes: 10, clock: .match)
         let duringBreak = Fixture.at(47 * 60)
         #expect(wall.remaining(at: duringBreak, clock: c) == 3 * 60)
@@ -106,8 +106,8 @@ struct SinBinTests {
     @Test func theLogListsItsSinBinsOldestFirst() {
         var log = EventLog()
         log.append(Fixture.event(0, .kickOff(half: 1)))
-        log.append(Fixture.event(600, .sinBin(side: .home, player: Fixture.home4.id, minutes: 10)))
-        log.append(Fixture.event(1200, .sinBin(side: .away, player: Fixture.away7.id, minutes: 5)))
+        log.append(Fixture.event(600, .sinBin(side: .home, player: PlayerRef(Fixture.home4), minutes: 10)))
+        log.append(Fixture.event(1200, .sinBin(side: .away, player: PlayerRef(Fixture.away7), minutes: 5)))
         let bins = log.sinBins()
         #expect(bins.count == 2)
         #expect(bins.first?.side == .home)

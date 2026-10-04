@@ -8,6 +8,27 @@ public enum TeamSide: String, Codable, Sendable, Equatable, CaseIterable {
     public var title: String { self == .home ? "Home" : "Away" }
 }
 
+/// A player as an incident refers to them.
+///
+/// The number is the primary key on purpose: on the pitch the referee records
+/// by shirt number, two taps, and the roster is often unknown. `id` is filled
+/// in only when a team sheet exists, and the report prefers a name when the
+/// squad lookup finds one.
+public struct PlayerRef: Codable, Sendable, Equatable {
+    public var id: UUID?
+    /// Shirt number. 0 means "not given".
+    public var number: Int
+
+    public init(id: UUID? = nil, number: Int = 0) {
+        self.id = id
+        self.number = number
+    }
+
+    public init(_ player: Player) {
+        self.init(id: player.id, number: player.number)
+    }
+}
+
 /// What happened in a match, in the order it happened.
 ///
 /// The log is the only input. The clock, the score, the report and the stats
@@ -39,15 +60,15 @@ public struct MatchEvent: Codable, Sendable, Identifiable, Equatable {
 
         // What the referee records. The clock deliberately ignores these;
         // the score, cards and report read them (P1).
-        case goal(side: TeamSide, scorer: UUID?)
-        case ownGoal(side: TeamSide, scorer: UUID?)
+        case goal(side: TeamSide, scorer: PlayerRef?)
+        case ownGoal(side: TeamSide, scorer: PlayerRef?)
         case disallowedGoal(side: TeamSide)
-        case yellowCard(side: TeamSide, player: UUID)
-        case secondYellow(side: TeamSide, player: UUID)
-        case redCard(side: TeamSide, player: UUID)
-        case sinBin(side: TeamSide, player: UUID, minutes: Int)
-        case sinBinEnd(side: TeamSide, player: UUID)
-        case substitution(side: TeamSide, off: UUID, on: UUID)
+        case yellowCard(side: TeamSide, player: PlayerRef)
+        case secondYellow(side: TeamSide, player: PlayerRef)
+        case redCard(side: TeamSide, player: PlayerRef)
+        case sinBin(side: TeamSide, player: PlayerRef, minutes: Int)
+        case sinBinEnd(side: TeamSide, player: PlayerRef)
+        case substitution(side: TeamSide, off: PlayerRef, on: PlayerRef)
         case note(String)
     }
 }

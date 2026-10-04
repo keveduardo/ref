@@ -26,7 +26,7 @@ struct MatchStoreTests {
         let store = tempStore()
         var log = EventLog()
         log.append(Fixture.event(0, .kickOff(half: 1)))
-        log.append(Fixture.event(600, .goal(side: .home, scorer: Fixture.home9.id)))
+        log.append(Fixture.event(600, .goal(side: .home, scorer: PlayerRef(Fixture.home9))))
         // An explicit createdAt: the store writes ISO-8601, which is whole
         // seconds, so a Date() with sub-second parts is the one thing that
         // does not come back identical (harmless, but not what this test is

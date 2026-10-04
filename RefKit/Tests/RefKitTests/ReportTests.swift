@@ -38,7 +38,7 @@ struct ReportTests {
     @Test func aSecondYellowIsAlsoARed() {
         var log = EventLog()
         log.append(Fixture.event(0, .kickOff(half: 1)))
-        log.append(Fixture.event(600, .secondYellow(side: .home, player: Fixture.home4.id)))
+        log.append(Fixture.event(600, .secondYellow(side: .home, player: PlayerRef(Fixture.home4))))
         let report = MatchReport.make(from: Match(setup: Fixture.setup, events: log))
         #expect(report.totals.yellowCards == 1)
         #expect(report.totals.redCards == 1)

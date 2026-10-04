@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Ref on the wrist: the clock, the score, the cards — recorded here, with the
-/// phone in the bag. P0 is the skeleton; the live screens are P2. See SCOPE.md.
+/// phone in the bag. See SCOPE.md.
 @main
 struct RefWatchApp: App {
     var body: some Scene {
@@ -10,11 +10,29 @@ struct RefWatchApp: App {
             if let page = RenderDemo.page {
                 RenderDemo(page: page)
             } else {
-                LiveScreen()
+                RootScreen()
             }
             #else
-            LiveScreen()
+            RootScreen()
             #endif
+        }
+    }
+}
+
+/// One place decides what the watch is showing; the session decides the rest.
+struct RootScreen: View {
+    @State private var session = MatchSession()
+
+    var body: some View {
+        switch session.stage {
+        case .home:
+            StartScreen(session: session)
+        case .ready, .live:
+            LiveScreen(session: session)
+        case .halfTime:
+            HalfTimeScreen(session: session)
+        case .summary:
+            SummaryScreen(session: session)
         }
     }
 }
@@ -24,7 +42,7 @@ struct RefWatchApp: App {
 /// launched as `-renderDemo <page>` by the `render` job of ref.yml. Debug
 /// builds only.
 struct RenderDemo: View {
-    enum Page: String { case start, live }
+    enum Page: String { case start, live, record, halftime, summary }
 
     static var page: Page? {
         let args = ProcessInfo.processInfo.arguments
@@ -36,8 +54,16 @@ struct RenderDemo: View {
 
     var body: some View {
         switch page {
-        case .start: StartScreen()
-        case .live: LiveScreen()
+        case .start:
+            StartScreen(session: .showing("start"))
+        case .live:
+            LiveScreen(session: .showing("live"))
+        case .record:
+            RecordFlow(session: .showing("live"))
+        case .halftime:
+            HalfTimeScreen(session: .showing("halftime"))
+        case .summary:
+            SummaryScreen(session: .showing("summary"))
         }
     }
 }

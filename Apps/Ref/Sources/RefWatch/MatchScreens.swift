@@ -1,0 +1,79 @@
+import RefKit
+import SwiftUI
+
+/// The break: the score, how long it has been running, and the whistle that
+/// starts the second half.
+struct HalfTimeScreen: View {
+    let session: MatchSession
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            VStack(spacing: 3) {
+                Text("Half time")
+                    .font(.headline)
+                if let elapsed = session.clock.halfTimeElapsed(at: context.date) {
+                    Text(ClockFormat.mmss(elapsed))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                }
+                scoreLine
+                Button("Start 2nd half") {
+                    Haptics.play(.start)
+                    session.startNextHalf()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    private var scoreLine: some View {
+        HStack(spacing: 6) {
+            if let setup = session.match?.setup {
+                Text(setup.home.abbreviation).foregroundStyle(setup.home.color.watchColor)
+                Text(session.score.text).font(.body.bold()).monospacedDigit()
+                Text(setup.away.abbreviation).foregroundStyle(setup.away.color.watchColor)
+            }
+        }
+        .font(.footnote)
+    }
+}
+
+/// Full time: the score, the report so far, and the way out. Sending the
+/// match to the phone joins this screen in P4.
+struct SummaryScreen: View {
+    let session: MatchSession
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                Text("Full time")
+                    .font(.headline)
+                if let setup = session.match?.setup {
+                    HStack(spacing: 6) {
+                        Text(setup.home.abbreviation).foregroundStyle(setup.home.color.watchColor)
+                        Text(session.score.text).font(.title3.bold()).monospacedDigit()
+                        Text(setup.away.abbreviation).foregroundStyle(setup.away.color.watchColor)
+                    }
+                    .font(.headline)
+                }
+                if let match = session.match {
+                    let entries = match.report.timeline
+                    ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                        Text(entry.line)
+                            .font(.footnote)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text("Saved to the phone's shelf when it links (P4).")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+                Button("Done") {
+                    Haptics.play(.click)
+                    session.discard()
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+}

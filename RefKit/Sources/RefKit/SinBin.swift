@@ -15,12 +15,12 @@ public enum BinClock: String, Codable, Sendable, Equatable, CaseIterable {
 public struct SinBin: Codable, Sendable, Identifiable, Equatable {
     public var id: UUID
     public var side: TeamSide
-    public var player: UUID
+    public var player: PlayerRef
     public var start: Date
     public var duration: TimeInterval
     public var clock: BinClock
 
-    public init(id: UUID = UUID(), side: TeamSide, player: UUID, start: Date,
+    public init(id: UUID = UUID(), side: TeamSide, player: PlayerRef, start: Date,
                 minutes: Int, clock: BinClock = .match) {
         self.id = id
         self.side = side
