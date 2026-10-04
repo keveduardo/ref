@@ -1,0 +1,30 @@
+{
+  // RefTime's public pages (privacy, support — what App Store Connect links
+  // to) and its optional backup API. See ../SCOPE.md, "Optional sign-in".
+  // Deploy with `npm run deploy` (the guard refuses a dirty or unpushed tree);
+  // `npm run migrate:remote` first, as its own command, whenever a migration
+  // is new.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "reftime",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+  "observability": { "enabled": true },
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "reftime.brisaloca.com", "custom_domain": true }
+  ],
+  "vars": {
+    // Empty until Kevin creates RefTime's Google OAuth client; Google sign-in
+    // answers 503 and the app does not offer it until then.
+    "GOOGLE_CLIENT_ID": ""
+  },
+  "version_metadata": { "binding": "CF_VERSION" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "reftime",
+      "database_id": "926977cb-eb06-43a6-824b-147ed7f40cca",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
