@@ -98,15 +98,17 @@ struct MatchSetupScreen: View {
                     Text("The watch buzzes when half-time is up. The added time button puts \u{201C}+1 min\u{201D} on the watch for announcing stoppage time.")
                 }
                 QuarterBreakSection(quarterBreak: $quarterBreak, halfMinutes: halfMinutes)
-                Section {
-                    Button("Save match") { save() }
-                        .disabled(homeTeam.id == awayTeam.id)
-                }
             }
             .navigationTitle("New match")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                }
+                // Top right, always in reach however far the form scrolls
+                // (Kevin, 2026-10-04) — it used to sit at the bottom.
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(homeTeam.id == awayTeam.id)
                 }
             }
         }
