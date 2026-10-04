@@ -23,6 +23,16 @@ public struct TimelineEntry: Codable, Sendable, Equatable {
 
     /// "45+2' Goal — Home #9".
     public var line: String { "\(stamp) \(text)" }
+
+    /// The divider a list needs to keep the minutes honest: the second half
+    /// starts over at 1, so a flat list reads 45+3' then 28'.
+    public var halfTitle: String {
+        switch half {
+        case 1: "First half"
+        case 2: "Second half"
+        default: "Half \(half)"
+        }
+    }
 }
 
 public struct HalfSummary: Codable, Sendable, Equatable {

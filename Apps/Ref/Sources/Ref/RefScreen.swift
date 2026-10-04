@@ -91,12 +91,12 @@ struct MatchRow: View {
             HStack(spacing: 6) {
                 if match.isFinished {
                     Text(match.setup.home.abbreviation)
-                        .foregroundStyle(match.setup.home.color.phoneColor)
+                        .foregroundStyle(match.setup.home.color.phoneColorInk)
                     Text(match.score.text)
                         .font(.body.bold())
                         .monospacedDigit()
                     Text(match.setup.away.abbreviation)
-                        .foregroundStyle(match.setup.away.color.phoneColor)
+                        .foregroundStyle(match.setup.away.color.phoneColorInk)
                 } else {
                     Text("\(match.setup.home.abbreviation) vs \(match.setup.away.abbreviation)")
                         .font(.body.bold())

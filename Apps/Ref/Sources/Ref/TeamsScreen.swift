@@ -52,6 +52,7 @@ struct TeamRow: View {
         HStack(spacing: 10) {
             Circle()
                 .fill(squad.team.color.phoneColor)
+                .overlay(Circle().strokeBorder(.secondary.opacity(0.4), lineWidth: 0.5))
                 .frame(width: 12, height: 12)
             VStack(alignment: .leading, spacing: 1) {
                 Text(squad.team.name)

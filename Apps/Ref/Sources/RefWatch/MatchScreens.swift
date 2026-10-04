@@ -58,7 +58,16 @@ struct SummaryScreen: View {
                 }
                 if let match = session.match {
                     let entries = match.report.timeline
-                    ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                    ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                        // A half divider: the second half's minutes start over,
+                        // so without it the list reads 45+3' then 28'.
+                        if index > 0, entries[index - 1].half != entry.half {
+                            Text(entry.halfTitle)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 3)
+                        }
                         Text(entry.line)
                             .font(.footnote)
                             .frame(maxWidth: .infinity, alignment: .leading)

@@ -20,13 +20,21 @@ struct MatchDetailScreen: View {
                 if let metrics = match.metrics {
                     metricsSection(metrics)
                 }
-                Section("Timeline") {
-                    let entries = match.report.timeline
-                    if entries.isEmpty {
+                let entries = match.report.timeline
+                if entries.isEmpty {
+                    Section("Timeline") {
                         Text("No incidents.").foregroundStyle(.secondary)
                     }
-                    ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
-                        Text(entry.line)
+                } else {
+                    // Grouped by half. Without the grouping, a report reads
+                    // 13' → 31' → 45+3' → 28' → 36', which is right and looks
+                    // wrong — the second half's minutes start over.
+                    ForEach(halfGroups(entries)) { group in
+                        Section(group.entries.first?.halfTitle ?? "Timeline") {
+                            ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
+                                Text(entry.line)
+                            }
+                        }
                     }
                 }
                 Section {
@@ -77,9 +85,11 @@ struct MatchDetailScreen: View {
         VStack(spacing: 2) {
             Circle()
                 .fill(team.color.phoneColor)
+                .overlay(Circle().strokeBorder(.secondary.opacity(0.4), lineWidth: 0.5))
                 .frame(width: 14, height: 14)
             Text(team.abbreviation)
                 .font(.headline)
+                .foregroundStyle(team.color.phoneColorInk)
             Text(team.name)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -109,9 +119,35 @@ struct MatchDetailScreen: View {
         }
         return when
     }
+
+    // MARK: - Timeline grouping
+
+    private struct HalfGroup: Identifiable {
+        var half: Int
+        var entries: [TimelineEntry]
+        var id: Int { half }
+    }
+
+    private func halfGroups(_ entries: [TimelineEntry]) -> [HalfGroup] {
+        var groups: [HalfGroup] = []
+        for entry in entries {
+            if groups.last?.half == entry.half {
+                groups[groups.count - 1].entries.append(entry)
+            } else {
+                groups.append(HalfGroup(half: entry.half, entries: [entry]))
+            }
+        }
+        return groups
+    }
 }
 
 /// RefKit's colour tokens, as the phone sees them.
+///
+/// Two roles, because one colour cannot do both: `phoneColor` fills a dot
+/// (white is a real team colour and a white dot on a white card needs its
+/// hairline stroke), and `phoneColorInk` is for *text*, where white would be
+/// invisible in light mode — a white team's name is shown in secondary ink
+/// rather than unreadable.
 extension TeamColor {
     var phoneColor: Color {
         switch self {
@@ -124,5 +160,9 @@ extension TeamColor {
         case .black: .primary
         case .white: .white
         }
+    }
+
+    var phoneColorInk: Color {
+        self == .white ? .secondary : phoneColor
     }
 }
