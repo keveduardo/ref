@@ -142,4 +142,22 @@ public struct MatchFormat: Codable, Sendable, Equatable, Identifiable {
         guard let id else { return nil }
         return presets.first { $0.id == id }
     }
+
+    /// The division picked in two parts — the age from a short list, then
+    /// girls or boys (Kevin, 2026-10-04: twelve names in one list was long).
+    public static func preset(age: Int, gender: Gender) -> MatchFormat? {
+        preset(id: "ayso-\(age)u-\(gender.rawValue)")
+    }
+
+    /// 8, 10, 12… — from the id, which carries it.
+    public var age: Int {
+        Int(id.split(separator: "-").dropFirst().first?.dropLast() ?? "") ?? 0
+    }
+
+    public var gender: Gender {
+        id.hasSuffix(Gender.boys.rawValue) ? .boys : .girls
+    }
+
+    /// "AYSO 10U" — the name without girls or boys, for the age list.
+    public static func ageTitle(_ age: Int) -> String { "AYSO \(age)U" }
 }

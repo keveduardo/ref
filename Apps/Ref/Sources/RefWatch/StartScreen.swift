@@ -72,40 +72,55 @@ struct StartScreen: View {
     }
 }
 
-/// Quick start's one question: which division. The AYSO presets first, then
-/// "Other" for the phone's defaults.
+/// Quick start's question: which division — the age from a short list, then
+/// girls or boys. "Other" takes the phone's defaults.
 struct QuickStartList: View {
     let session: MatchSession
 
     @Environment(\.dismiss) private var dismiss
+    @State private var age: Int?
 
     var body: some View {
-        List {
-            ForEach(MatchFormat.presets) { format in
+        NavigationStack {
+            List {
+                ForEach(MatchFormat.ages, id: \.self) { age in
+                    if let format = MatchFormat.preset(age: age, gender: .girls) {
+                        Button {
+                            self.age = age
+                        } label: {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("\(age)U").font(.body.bold())
+                                Text("\(format.halfMinutes)-min halves · \(format.playersPerSide) v \(format.playersPerSide)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
                 Button {
-                    start(format)
+                    start(nil)
                 } label: {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(format.title.replacingOccurrences(of: "AYSO ", with: ""))
-                            .font(.body.bold())
-                        Text("\(format.halfMinutes)-min halves · \(format.playersPerSide) a side")
+                        Text("Other").font(.body.bold())
+                        Text("\(session.link.defaults.halfMinutes)-min halves")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            Button {
-                start(nil)
-            } label: {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Other").font(.body.bold())
-                    Text("\(session.link.defaults.halfMinutes)-min halves")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+            .navigationTitle("Age group")
+            .navigationDestination(item: $age) { age in
+                VStack(spacing: 8) {
+                    Text("\(age)U").font(.headline)
+                    ForEach(MatchFormat.Gender.allCases, id: \.self) { gender in
+                        Button(gender.title) {
+                            start(MatchFormat.preset(age: age, gender: gender))
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                 }
             }
         }
-        .navigationTitle("Age group")
     }
 
     private func start(_ format: MatchFormat?) {

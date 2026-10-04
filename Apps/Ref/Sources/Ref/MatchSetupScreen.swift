@@ -12,7 +12,14 @@ struct MatchSetupScreen: View {
     @State private var competition = ""
     /// The preset picked, if any. Picking one fills in its defaults; every
     /// field stays editable afterwards.
-    @State private var formatID: String?
+    /// The division, in two parts: the age from a short list, then girls or
+    /// boys underneath (Kevin, 2026-10-04).
+    @State private var age: Int?
+    @State private var gender: MatchFormat.Gender = .girls
+
+    private var formatID: String? {
+        age.flatMap { MatchFormat.preset(age: $0, gender: gender)?.id }
+    }
     @State private var homeID: UUID?
     @State private var awayID: UUID?
     @State private var newHome = ""
@@ -42,11 +49,17 @@ struct MatchSetupScreen: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Match type", selection: $formatID) {
-                        Text("Custom").tag(String?.none)
-                        ForEach(MatchFormat.presets) { format in
-                            Text(format.title).tag(Optional(format.id))
+                    Picker("Match type", selection: $age) {
+                        Text("Custom").tag(Int?.none)
+                        ForEach(MatchFormat.ages, id: \.self) { age in
+                            Text(MatchFormat.ageTitle(age)).tag(Optional(age))
                         }
+                    }
+                    if age != nil {
+                        Picker("Girls or boys", selection: $gender) {
+                            ForEach(MatchFormat.Gender.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
                     }
                 } header: {
                     Text("Match type")

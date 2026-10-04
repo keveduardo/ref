@@ -78,3 +78,16 @@ struct MatchFormatTests {
         #expect(Fixture.setup.format == nil)
     }
 }
+
+@Suite("age then gender")
+struct AgeGenderTests {
+    @Test func aDivisionIsAnAgeAndAGender() throws {
+        let f = try #require(MatchFormat.preset(age: 12, gender: .boys))
+        #expect(f.id == "ayso-12u-boys")
+        #expect(f.age == 12)
+        #expect(f.gender == .boys)
+        #expect(MatchFormat.ageTitle(12) == "AYSO 12U")
+        #expect(MatchFormat.preset(age: 7, gender: .girls) == nil)
+        #expect(MatchFormat.presets.map(\.age) == [8, 8, 10, 10, 12, 12, 14, 14, 16, 16, 19, 19])
+    }
+}
