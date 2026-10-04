@@ -9,6 +9,7 @@ struct MatchDetailScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var confirmingDelete = false
+    @State private var editing = false
 
     var body: some View {
         List {
@@ -56,6 +57,17 @@ struct MatchDetailScreen: View {
             }
         }
         .navigationTitle("Match")
+        .toolbar {
+            // Only before it is played: a finished match is a record.
+            if !match.isFinished {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit") { editing = true }
+                }
+            }
+        }
+        .sheet(isPresented: $editing) {
+            MatchEditScreen(store: store, match: match)
+        }
         .confirmationDialog("Delete this match?", isPresented: $confirmingDelete) {
             Button("Delete", role: .destructive) {
                 store.delete(match)

@@ -48,3 +48,21 @@ struct TeamLibraryTests {
         #expect(reopened == [squad])
     }
 }
+
+@Suite("quick matches")
+struct QuickMatchTests {
+    @Test func placeholdersAreToldApart() {
+        #expect(Team.placeholder(.home).abbreviation == "HOM")
+        #expect(Team.placeholder(.away).abbreviation == "AWY")
+        #expect(Team.placeholder(.home).color != Team.placeholder(.away).color)
+    }
+
+    @Test func swappingSidesKeepsEachTeamSheetWithItsTeam() {
+        let setup = Fixture.setup
+        let swapped = setup.swappingSides()
+        #expect(swapped.home == setup.away)
+        #expect(swapped.away == setup.home)
+        #expect(swapped.squad(for: .home)?.players == setup.squad(for: .away)?.players)
+        #expect(swapped.swappingSides() == setup)
+    }
+}

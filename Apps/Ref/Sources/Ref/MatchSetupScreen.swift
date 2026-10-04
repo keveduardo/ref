@@ -81,7 +81,7 @@ struct MatchSetupScreen: View {
                 }
                 Section {
                     Button("Save match") { save() }
-                        .disabled(homeTeam == nil || awayTeam == nil || homeTeam?.id == awayTeam?.id)
+                        .disabled(homeTeam.id == awayTeam.id)
                 }
             }
             .navigationTitle("New match")
@@ -98,15 +98,17 @@ struct MatchSetupScreen: View {
 
     // MARK: - Team resolution
 
-    private var homeTeam: Team? { resolve(homeID, newHome) }
-    private var awayTeam: Team? { resolve(awayID, newAway) }
+    private var homeTeam: Team { resolve(homeID, newHome, .home) }
+    private var awayTeam: Team { resolve(awayID, newAway, .away) }
 
-    private func resolve(_ id: UUID?, _ typed: String) -> Team? {
+    /// A team left blank is a placeholder ("Home", blue / "Away", red) — a
+    /// match can be made in two taps and named on the Edit screen later.
+    private func resolve(_ id: UUID?, _ typed: String, _ side: TeamSide) -> Team {
         if let id, let squad = store.squads.first(where: { $0.team.id == id }) {
             return squad.team
         }
         let name = typed.trimmingCharacters(in: .whitespaces)
-        return name.isEmpty ? nil : Team(name: name)
+        return name.isEmpty ? .placeholder(side) : Team(name: name, color: Team.placeholder(side).color)
     }
 
     @ViewBuilder
@@ -119,14 +121,13 @@ struct MatchSetupScreen: View {
             }
         }
         if selection.wrappedValue == nil {
-            TextField("\(label) team name", text: newName)
+            TextField("\(label) team name (optional)", text: newName)
         }
     }
 
     private func save() {
-        guard let home = homeTeam, let away = awayTeam else { return }
         store.createMatch(
-            home: home, away: away,
+            home: homeTeam, away: awayTeam,
             competition: competition.trimmingCharacters(in: .whitespaces).isEmpty ? nil : competition,
             kickOff: hasKickOff ? kickOff : nil,
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),

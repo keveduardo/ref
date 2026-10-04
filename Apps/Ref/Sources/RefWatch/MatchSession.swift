@@ -95,8 +95,8 @@ import RefKit
     func startQuick() {
         let defaults = link.defaults
         assign(Match(setup: MatchSetup(
-            home: Team(name: "Home", abbreviation: "HOM", color: .blue),
-            away: Team(name: "Away", abbreviation: "AWY", color: .red),
+            home: .placeholder(.home),
+            away: .placeholder(.away),
             clock: ClockConfig(halfMinutes: defaults.halfMinutes),
             halfTimeMinutes: defaults.halfTimeMinutes)))
     }

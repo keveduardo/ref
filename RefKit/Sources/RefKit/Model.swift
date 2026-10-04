@@ -160,3 +160,24 @@ public struct MatchDefaults: Codable, Sendable, Equatable {
     /// The adult game: 45-minute halves, a five-minute break.
     public static let standard = MatchDefaults()
 }
+
+extension Team {
+    /// A team to be named later — what a quick match starts with, on the
+    /// phone and on the watch alike. Blue at home, red away, so the two are
+    /// told apart before anyone edits them.
+    public static func placeholder(_ side: TeamSide) -> Team {
+        side == .home
+            ? Team(name: "Home", abbreviation: "HOM", color: .blue)
+            : Team(name: "Away", abbreviation: "AWY", color: .red)
+    }
+}
+
+extension MatchSetup {
+    /// Home and away the other way round. The squads follow their teams by
+    /// id, so a team sheet stays with its team.
+    public func swappingSides() -> MatchSetup {
+        var swapped = self
+        (swapped.home, swapped.away) = (away, home)
+        return swapped
+    }
+}
