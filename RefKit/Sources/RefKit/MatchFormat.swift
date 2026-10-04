@@ -128,8 +128,10 @@ public struct MatchFormat: Codable, Sendable, Equatable, Identifiable {
                            quarterSubstitutions: row.9, showsCards: row.10)
     }
 
-    /// The divisions in Region 34's table, youngest first.
-    public static let ages = [7, 8, 10, 12, 14, 16, 19]
+    /// The divisions offered, youngest first — Region 34's table without 7U,
+    /// which Kevin does not referee (2026-10-04). `ayso(7, _)` still knows
+    /// the row, should it come back.
+    public static let ages = [8, 10, 12, 14, 16, 19]
 
     /// What the phone's match-type picker offers, in its order.
     public static let presets: [MatchFormat] = ages.flatMap { age in

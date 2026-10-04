@@ -21,7 +21,7 @@ struct MatchFormatTests {
             (16, 40, 11, 7, 5, true, true, false, false, true, false, true),
             (19, 45, 11, 7, 5, true, true, false, false, true, false, true),
         ]
-        for row in table {
+        for row in table where MatchFormat.ages.contains(row.0) {
             for gender in ["girls", "boys"] {
                 let f = try preset("ayso-\(row.0)u-\(gender)")
                 #expect(f.halfMinutes == row.1, "\(f.title) half")
@@ -55,9 +55,10 @@ struct MatchFormatTests {
         #expect(girls.halfMinutes == boys.halfMinutes)
     }
 
-    @Test func thePickerOffersFourteenYoungestFirst() {
-        #expect(MatchFormat.presets.count == 14)
-        #expect(MatchFormat.presets.first?.title == "AYSO 7U Girls")
+    @Test func thePickerOffersTwelveYoungestFirstWithout7U() {
+        #expect(MatchFormat.presets.count == 12)
+        #expect(MatchFormat.presets.first?.title == "AYSO 8U Girls")
+        #expect(MatchFormat.preset(id: "ayso-7u-girls") == nil)
         #expect(MatchFormat.presets.last?.title == "AYSO 19U Boys")
     }
 

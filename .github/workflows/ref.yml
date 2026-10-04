@@ -200,6 +200,20 @@ jobs:
           brew install xcodegen
           cd Apps/Ref && xcodegen generate
 
+      - name: Note the development certificates before the archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          # Where asc.mjs looks, mode 600 — as the due job does.
+          dir="$HOME/.config/appstoreconnect/private_keys"
+          mkdir -p "$dir"
+          printf '%s\n' "$ASC_KEY_P8" > "$dir/AuthKey_$ASC_KEY_ID.p8"
+          chmod 600 "$dir/AuthKey_$ASC_KEY_ID.p8"
+          node tools/ci/dev-certs.mjs snapshot "$RUNNER_TEMP/certs-before.json"
+
       - name: Archive, sign and upload
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -250,6 +264,20 @@ jobs:
             -exportPath "$RUNNER_TEMP/export" \
             "${auth[@]}" 2>&1 | tail -40
           rm -f "$key"
+
+      # ! Always, pass or fail: the archive made a development certificate
+      # whose private key dies with this runner. Left behind, they pile up
+      # until Apple refuses the next archive (ship run #46, 2026-10-04).
+      - name: Revoke this run's throwaway development certificate
+        if: always()
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          [ -f "$RUNNER_TEMP/certs-before.json" ] || { echo "no snapshot — nothing to compare"; exit 0; }
+          node tools/ci/dev-certs.mjs revoke-new "$RUNNER_TEMP/certs-before.json"
+          rm -f "$HOME/.config/appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8"
 
   render:
     # Screenshots of the real SwiftUI, in simulators, for review on a phone.
