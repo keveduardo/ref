@@ -17,7 +17,9 @@ decisions behind it — including the phase table this file mirrors).
 
 ## The next action, exactly
 
-**Kevin — one morning, all on the website:**
+**Kevin — one morning, all on the website.** Claude cannot do these through
+Claude in Chrome: on 2026-10-04 auto mode refused both minting the key (as a
+secret-store write) and opening New App. They are Kevin's clicks.
 
 1. **Mint an App Store Connect API key** — developer.apple.com → Users and
    Access → Integrations → **Team Keys → +**, role **App Manager**, then
@@ -27,7 +29,11 @@ decisions behind it — including the phase table this file mirrors).
 2. **Create the app record** — App Store Connect → **Apps → + → New App** →
    iOS → bundle `com.brisaloca.ref`, name "Brisaloca Ref", SKU `REF-1`,
    English (U.S.). The API cannot create records; this one is always the
-   website.
+   website. ! The Bundle ID menu lists only *registered* ids, and nothing
+   has registered this one yet. If it is missing, first:
+   developer.apple.com → Certificates, IDs & Profiles → **Identifiers → +**
+   → App IDs → App → Explicit, `com.brisaloca.ref`, description "Ref". (The
+   watch id is registered by automatic signing at the first archive.)
 3. **HealthKit capability** on `com.brisaloca.ref.watchkitapp` — automatic
    signing usually switches it on at the first signed build. If it does not,
    one command from here (it also retires the stale profile):
