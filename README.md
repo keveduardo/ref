@@ -49,13 +49,13 @@ tools/make-icon.py   draws the app icon into both asset catalogs
   down is a device question, answered at the first real match.
 - **The `render` job screenshots both apps** in simulators, so the screens
   can be reviewed from a phone (the artifacts of a `render` run).
-- **Signing and upload exist but have not run** — the `ship` job needs the
-  three App Store Connect secrets, which need Kevin's errands (SCOPE.md).
-  Nothing has been signed or uploaded, and no match has been refereed with
-  it yet: the first real match is P5's acceptance test.
+- **On TestFlight**: build 22, uploaded by the `ship` job on 2026-10-04 and
+  processed VALID by Apple — the companion pairing is accepted. App Store
+  name "Brisaloca RefTime", "RefTime" under the icon, iPhone only. No match
+  has been refereed with it yet: the first real match is P5's acceptance
+  test.
 
 ## What is next
 
-P0.5–P5 in `SCOPE.md`: the three website errands (the only gate), the first
-TestFlight build, then the first real match — after which P6 is whatever
-that match teaches.
+P5 in `SCOPE.md`: install from TestFlight and referee a real match — after
+which P6 is whatever that match teaches.

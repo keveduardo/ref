@@ -12,45 +12,28 @@ decisions behind it — including the phase table this file mirrors).
 | The engine | `RefKit` — 54 tests, green on this box: `swift test --package-path RefKit` |
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |
-| Signed / uploaded | **Nothing.** No TestFlight build exists and no match has been refereed with it. |
-| The gate | One API key, Kevin's click (below). The bundle id and the app record are done. |
+| Signed / uploaded | **Build 22 on TestFlight** (2026-10-04, ship run 37231400733 at `ea029ec`): processed VALID — Apple accepted the companion pairing. Internal group "Household" (every build, Kevin in it). Expires 2027-01-02. **No match has been refereed with it yet.** |
+| The gate | None left for shipping. Next is P5's proof: Kevin installs build 22 from TestFlight and referees a real match. |
 
 ## The next action, exactly
 
-**Done 2026-10-04:** `com.brisaloca.ref` registered as an App ID, and the
-App Store Connect record created as **"Brisaloca RefTime"** (SKU `REF-1`;
-"RefTime" alone was taken). The name under the icon is RefTime.
+**Kevin:** open TestFlight on the iPhone, install **RefTime** (build 22) —
+the watch app installs with it (Watch app → Available Apps if it does not
+appear on its own) — and referee a match with it. First things to check,
+because only a real match can prove them: the wrist buzzes at 45:00 and at a
+sin bin's end *with the wrist down*; the report reaches the phone; heart rate
+and distance are in it.
 
-**Kevin — the one step left, on the website.** Claude cannot make it: Claude
-in Chrome is refused key creation as a secret-store write, with auto mode on
-or off.
-
-1. **Mint an App Store Connect API key** — appstoreconnect.apple.com → Users
-   and Access → Integrations → **Team Keys → +**, name "GitHub Actions -
-   RefTime", role **Admin** (trap 7), then download the `.p8` **once**.
-   ! Mobile Safari's download silently does nothing; it wants a desktop
-   browser (learned the hard way on 2026-09-22). Hand back: the **Key ID**
-   and where the `.p8` lives. The Issuer ID is
-   `4860996f-6b7c-4f9a-8985-3f3a5cbb6d09`.
-2. **HealthKit capability** on `com.brisaloca.ref.watchkitapp` — automatic
-   signing usually switches it on at the first signed build. If it does not,
-   one command from here (it also retires the stale profile):
-
-       node tools/ci/enable-capability.mjs healthkit com.brisaloca.ref.watchkitapp
-
-**Then, from this box** — set the three repository secrets and ship:
-
-    gh secret set ASC_KEY_ID    -R keveduardo/ref          # paste the Key ID
-    gh secret set ASC_ISSUER_ID -R keveduardo/ref          # paste the Issuer ID
-    gh secret set ASC_KEY_P8    -R keveduardo/ref < <path to the .p8>
+**Shipping a new build** after a code change, from this box:
 
     gh workflow run ref.yml -R keveduardo/ref -f upload=true
-    gh run list -R keveduardo/ref --limit 1
-    gh run watch <id> -R keveduardo/ref
 
-The `ship` job archives the iOS app (the watch app rides inside it), refuses to
-upload an archive that carries no watch app, and sends the build to TestFlight.
-Build numbers come from the run number; both bundles share it (ITMS demands it).
+The secrets are set (`ASC_KEY_ID` = `BDTARG624T`, an **Admin** team key —
+trap 7; its `.p8` is in `~/.config/appstoreconnect/private_keys/`). New
+builds reach the Household group automatically.
+
+**The weekly `due` job** now has its secrets; trigger it once by hand
+(`-f expiry_check=true`) before trusting the schedule.
 
 ## What the second session (2026-10-04) changed
 

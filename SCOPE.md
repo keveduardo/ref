@@ -99,7 +99,7 @@ methods, only Sendable values crossing the hop.
 | **P2** ✅ | Watch UI: Start → Live → record flows → HalfTime → Summary; haptics; dim mode | the render job's screenshots |
 | **P3** ✅ | Phone UI: Matches, MatchSetup, Teams, MatchDetail + share, Stats, Settings | the render job's screenshots |
 | **P4** ✅ | Sync + HealthKit: WCSession both ways, workout session, GPS distance | compiles and asserts in CI; the *device* proof is the first real match (P5) |
-| **P0.5** | Bundle ids registered (ASC API); Kevin's errands; the first signed upload | Apple accepts the pairing — the one thing no local build can prove |
+| **P0.5** ✅ | Bundle id registered, app record "Brisaloca RefTime", Admin API key, the first signed upload | Build 22 processed VALID, 2026-10-04 — Apple accepted the pairing |
 | **P4.5** ✅ | From a full read of both apps: undo (`.voided` events — the log stays append-only), resume a half ended by mistake, alarms (half length, added time, sin bin over), the sin bin length and quick-start defaults actually reaching the watch, the phone's finished-match handler wired before any view, workout recovery after a crash | 54 tests; CI build; render. Alarms with the wrist down: P5 |
 | **P5** | Ship v1: icon, listing notes, `ship` → TestFlight; install on Kevin's iPhone + watch | a real match refereed with it |
 | **P6** | Whatever that match teaches | his feedback |
