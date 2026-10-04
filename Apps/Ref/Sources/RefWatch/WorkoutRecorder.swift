@@ -51,6 +51,34 @@ import RefKit
         builder.beginCollection(withStart: date) { _, _ in }
     }
 
+    /// Relaunched mid-match (a crash, a reboot): take back the workout the
+    /// system kept running for us, or — when there is none — start a fresh
+    /// one from now. The heart rate before the crash is then lost from the
+    /// report; what matters more is that a running session keeps the app
+    /// alive with the wrist down, which is what the alarms ride on.
+    func recover() async {
+        guard session == nil, HKHealthStore.isHealthDataAvailable() else { return }
+        // ! `nonisolated(unsafe)` for the same reason as in `finish()`: the
+        // completion handler is `@Sendable`, the session it hands back is
+        // not, and it is only ever touched on this actor once it arrives.
+        nonisolated(unsafe) var recovered: HKWorkoutSession?
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            store.recoverActiveWorkoutSession { session, _ in
+                recovered = session
+                continuation.resume()
+            }
+        }
+        guard let recovered else {
+            start(at: Date())
+            return
+        }
+        session = recovered
+        recovered.delegate = self
+        let builder = recovered.associatedWorkoutBuilder()
+        builder.delegate = self
+        self.builder = builder
+    }
+
     /// Full time: end the collection, save the workout, and freeze what it
     /// cost into a `MatchMetrics`. Distance comes from the location recorder,
     /// not from here — HealthKit does not count it for a third-party soccer

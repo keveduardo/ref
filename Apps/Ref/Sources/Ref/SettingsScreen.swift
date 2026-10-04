@@ -1,9 +1,9 @@
 import RefKit
 import SwiftUI
 
-/// The defaults a new match starts from — the same keys the watch's
-/// `SessionSettings` reads, so the two agree the moment they share a store
-/// (the wire itself is P4).
+/// The defaults a new match starts from. They also travel to the watch with
+/// every assignment, for its quick start — the watch cannot read these keys
+/// itself, since each device has its own `UserDefaults`.
 struct SettingsScreen: View {
     let link: PhoneLink
 
@@ -23,7 +23,7 @@ struct SettingsScreen: View {
                 }
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)
-                    Text("Upcoming matches travel to the watch; finished ones come back here.")
+                    Text("Upcoming matches and these defaults travel to the watch; finished matches come back here.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

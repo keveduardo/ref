@@ -6,22 +6,40 @@ import SwiftUI
 struct HalfTimeScreen: View {
     let session: MatchSession
 
+    @State private var confirmingResume = false
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            VStack(spacing: 3) {
-                Text("Half time")
-                    .font(.headline)
-                if let elapsed = session.clock.halfTimeElapsed(at: context.date) {
-                    Text(ClockFormat.mmss(elapsed))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+            ScrollView {
+                VStack(spacing: 3) {
+                    Text("Half time")
+                        .font(.headline)
+                    if let elapsed = session.clock.halfTimeElapsed(at: context.date) {
+                        Text(ClockFormat.mmss(elapsed))
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                    }
+                    scoreLine
+                    Button("Start 2nd half") {
+                        Haptics.play(.start)
+                        session.startNextHalf()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    // The flag on the live face has no confirmation — one tap
+                    // must end a half — so a mis-tap is undone here instead.
+                    if let half = session.resumableHalf {
+                        Button(half == 1 ? "Resume 1st half" : "Resume half \(half)") {
+                            confirmingResume = true
+                        }
+                        .font(.footnote)
+                    }
                 }
-                scoreLine
-                Button("Start 2nd half") {
-                    Haptics.play(.start)
-                    session.startNextHalf()
-                }
-                .buttonStyle(.borderedProminent)
+            }
+        }
+        .confirmationDialog("The half ended by mistake?", isPresented: $confirmingResume) {
+            Button("Resume — the clock never stopped") {
+                Haptics.play(.start)
+                session.resumeHalf()
             }
         }
     }

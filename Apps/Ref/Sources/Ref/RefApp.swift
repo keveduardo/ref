@@ -5,8 +5,18 @@ import SwiftUI
 /// the report here. See SCOPE.md.
 @main
 struct RefApp: App {
-    @State private var store = PhoneStore()
-    @State private var link = PhoneLink()
+    @State private var store: PhoneStore
+    @State private var link: PhoneLink
+
+    init() {
+        // ! Wired here, not in a view's `.task`: WatchConnectivity can wake
+        // the app in the background to hand over a finished match, before any
+        // view exists — and a `transferUserInfo` handed to a nil handler is
+        // gone for good.
+        let store = PhoneStore()
+        _store = State(initialValue: store)
+        _link = State(initialValue: PhoneLink(onFinished: { match in store.save(match) }))
+    }
 
     var body: some Scene {
         WindowGroup {

@@ -2,6 +2,7 @@ import RefKit
 import SwiftUI
 
 /// Two taps to a card, three to a substitution — the whole point of the app.
+/// And three to take any of it back: Record → Undo → confirm.
 ///
 /// Numbers first, roster second: on the pitch the referee has a shirt in front
 /// of them, not a team sheet. When a squad is loaded the numbers it owns are
@@ -51,6 +52,7 @@ struct RecordFlow: View {
         case player(RecordKind, TeamSide)
         case off(TeamSide)
         case on(TeamSide, off: PlayerRef)
+        case undo(MatchEvent, text: String)
     }
 
     var body: some View {
@@ -72,6 +74,8 @@ struct RecordFlow: View {
             offStep(side)
         case .on(let side, let off):
             onStep(side, off)
+        case .undo(let event, let text):
+            undoStep(event, text)
         }
     }
 
@@ -95,9 +99,41 @@ struct RecordFlow: View {
                     }
                 }
             }
+            if let last = session.lastUndoable {
+                Button {
+                    step = .undo(last.event, text: last.text)
+                } label: {
+                    Label("Undo last", systemImage: "arrow.uturn.backward")
+                        .frame(maxWidth: .infinity)
+                }
+                .font(.footnote)
+                .padding(.top, 4)
+            }
             Button("Cancel") { dismiss() }
                 .font(.footnote)
                 .padding(.top, 4)
+        }
+    }
+
+    /// The confirmation names the line exactly as the report would, so the
+    /// referee takes back the incident they meant and no other.
+    private func undoStep(_ event: MatchEvent, _ text: String) -> some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                Text("Take this back?")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(text)
+                    .font(.body.bold())
+                    .multilineTextAlignment(.center)
+                Button("Undo", role: .destructive) {
+                    session.undo(event)
+                    Haptics.play(.directionDown)
+                    dismiss()
+                }
+                Button("Keep it") { step = .menu }
+                    .font(.footnote)
+            }
         }
     }
 

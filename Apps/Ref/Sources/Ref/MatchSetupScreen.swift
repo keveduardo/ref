@@ -1,8 +1,8 @@
 import RefKit
 import SwiftUI
 
-/// Set a match up: the teams, the clock, the kick-off. Saving it puts it on
-/// the shelf; it travels to the watch in P4.
+/// Set a match up: the teams, the clock, the kick-off, the sin bin. Saving it
+/// puts it on the shelf, and from there it travels to the watch.
 struct MatchSetupScreen: View {
     let store: PhoneStore
 
@@ -15,10 +15,20 @@ struct MatchSetupScreen: View {
     @State private var newAway = ""
     @State private var hasKickOff = true
     @State private var kickOff = Date()
-    @State private var halfMinutes = 45
     @State private var countsDown = false
+    // This match's own values, starting from the defaults in Settings —
+    // changing them here changes this match, not the defaults.
+    @State private var halfMinutes: Int
+    @State private var sinBinMinutes: Int
 
-    @AppStorage("ref.sinBinMinutes") private var sinBinMinutes = 10
+    init(store: PhoneStore) {
+        self.store = store
+        let defaults = UserDefaults.standard
+        let half = defaults.integer(forKey: "ref.halfMinutes")
+        let bin = defaults.integer(forKey: "ref.sinBinMinutes")
+        _halfMinutes = State(initialValue: half == 0 ? MatchDefaults.standard.halfMinutes : half)
+        _sinBinMinutes = State(initialValue: bin == 0 ? MatchDefaults.standard.sinBinMinutes : bin)
+    }
 
     var body: some View {
         NavigationStack {
@@ -50,7 +60,7 @@ struct MatchSetupScreen: View {
                 } header: {
                     Text("Sin bins")
                 } footer: {
-                    Text("The watch runs this countdown when you record one.")
+                    Text("The watch runs this countdown, and buzzes when the player may return.")
                 }
                 Section {
                     Button("Save match") { save() }
@@ -97,14 +107,12 @@ struct MatchSetupScreen: View {
 
     private func save() {
         guard let home = homeTeam, let away = awayTeam else { return }
-        // The defaults the watch reads, written where SessionSettings finds
-        // them (UserDefaults, mirrored properly in P4).
-        UserDefaults.standard.set(halfMinutes, forKey: "ref.halfMinutes")
         store.createMatch(
             home: home, away: away,
             competition: competition.trimmingCharacters(in: .whitespaces).isEmpty ? nil : competition,
             kickOff: hasKickOff ? kickOff : nil,
-            clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown))
+            clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
+            sinBinMinutes: sinBinMinutes)
         dismiss()
     }
 }

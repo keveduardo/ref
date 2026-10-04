@@ -16,10 +16,13 @@ public enum SyncPayload {
     public struct Assignment: Codable, Sendable, Equatable {
         public var version: Int
         public var setups: [MatchSetup]
+        /// The phone's defaults, for a quick start on the watch.
+        public var defaults: MatchDefaults
 
-        public init(setups: [MatchSetup]) {
+        public init(setups: [MatchSetup], defaults: MatchDefaults = .standard) {
             self.version = SyncPayload.version
             self.setups = setups
+            self.defaults = defaults
         }
     }
 

@@ -19,10 +19,21 @@ import WatchConnectivity
     /// The phone's current assignment, mirrored to disk so it survives a
     /// relaunch on the pitch.
     private(set) var assignments: [MatchSetup] = []
+    /// The phone's defaults, for quick start. They arrive with every
+    /// assignment, and are kept on disk with it.
+    private(set) var defaults: MatchDefaults = .standard
+    /// Finished matches waiting for the session to activate. Once handed to
+    /// `transferUserInfo`, the system owns the delivery (and keeps it across
+    /// a relaunch); before that, a match sent at the wrong moment was simply
+    /// dropped.
+    private var pending: [Match] = []
 
     override init() {
         super.init()
-        assignments = Self.loadAssignments()
+        if let saved = Self.loadAssignment() {
+            assignments = saved.setups
+            defaults = saved.defaults
+        }
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
@@ -32,11 +43,20 @@ import WatchConnectivity
 
     /// The finished match, on its way to the phone's shelf.
     func send(_ match: Match) {
-        guard activated,
-              let data = try? SyncPayload.encode(SyncPayload.FinishedMatch(match: match)) else {
+        guard activated else {
+            pending.append(match)
+            return
+        }
+        guard let data = try? SyncPayload.encode(SyncPayload.FinishedMatch(match: match)) else {
             return
         }
         WCSession.default.transferUserInfo(["finishedMatch": data])
+    }
+
+    private func flushPending() {
+        let waiting = pending
+        pending = []
+        for match in waiting { send(match) }
     }
 
     // MARK: - Receiving
@@ -48,7 +68,8 @@ import WatchConnectivity
             return
         }
         assignments = assignment.setups
-        Self.saveAssignments(assignments)
+        defaults = assignment.defaults
+        Self.saveAssignment(assignment)
     }
 
     // MARK: - Where the assignment lives on disk
@@ -57,19 +78,16 @@ import WatchConnectivity
         MatchSession.containerDirectory.appendingPathComponent("assignments.json")
     }
 
-    private static func loadAssignments() -> [MatchSetup] {
-        guard let data = try? Data(contentsOf: file) else { return [] }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([MatchSetup].self, from: data)) ?? []
+    /// Kept as the envelope it arrived in — the same encoding as the wire.
+    private static func loadAssignment() -> SyncPayload.Assignment? {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        return try? SyncPayload.decode(SyncPayload.Assignment.self, from: data)
     }
 
-    private static func saveAssignments(_ setups: [MatchSetup]) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+    private static func saveAssignment(_ assignment: SyncPayload.Assignment) {
         try? FileManager.default.createDirectory(at: MatchSession.containerDirectory,
                                                  withIntermediateDirectories: true)
-        try? encoder.encode(setups).write(to: file, options: .atomic)
+        try? SyncPayload.encode(assignment).write(to: file, options: .atomic)
     }
 }
 
@@ -80,6 +98,7 @@ extension WatchLink: WCSessionDelegate {
         let activated = activationState == .activated
         Task { @MainActor in
             self.activated = activated
+            if activated { self.flushPending() }
             // A context that arrived before activation is still waiting here.
             // Read on the main actor — a `[String: Any]` cannot cross.
             self.ingest(assignmentData: WCSession.default.receivedApplicationContext["assignment"] as? Data)

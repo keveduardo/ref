@@ -92,41 +92,16 @@ public struct MatchReport: Codable, Sendable, Equatable {
         var totals = MatchTotals(homeGoals: score.home, awayGoals: score.away)
 
         for event in match.events.events {
-            let stamp = stampFor(event.at, clock: clock, config: match.setup.clock)
-            var text: String?
             switch event.kind {
-            case .goal(let side, let scorer):
-                text = "Goal — \(describe(side, scorer, in: match))"
-            case .ownGoal(let side, let scorer):
-                text = "Own goal — \(describe(side, scorer, in: match))"
-            case .disallowedGoal(let side):
-                text = "Goal disallowed — \(match.setup.team(side).name)"
-            case .yellowCard(let side, let player):
-                totals.yellowCards += 1
-                text = "Yellow card — \(describe(side, player, in: match))"
-            case .secondYellow(let side, let player):
-                totals.yellowCards += 1
-                totals.redCards += 1
-                text = "Second yellow, sent off — \(describe(side, player, in: match))"
-            case .redCard(let side, let player):
-                totals.redCards += 1
-                text = "Red card — \(describe(side, player, in: match))"
-            case .sinBin(let side, let player, let minutes):
-                totals.sinBins += 1
-                text = "Sin bin (\(minutes)′) — \(describe(side, player, in: match))"
-            case .substitution(let side, let off, let on):
-                totals.substitutions += 1
-                text = "Substitution — \(match.setup.team(side).abbreviation) #\(off.number) off, #\(on.number) on"
-            case .note(let note):
-                text = note
-            case .addedTime(let half, let seconds):
-                let minutes = Int(seconds / 60)
-                let rem = Int(seconds) % 60
-                text = "Added time, \(ordinal(half)) half: \(minutes)′\(rem == 0 ? "" : String(format: "%02d″", rem))"
-            default:
-                text = nil // kick-offs, halves, pauses — the clock's own bookkeeping
+            case .yellowCard: totals.yellowCards += 1
+            case .secondYellow: totals.yellowCards += 1; totals.redCards += 1
+            case .redCard: totals.redCards += 1
+            case .sinBin: totals.sinBins += 1
+            case .substitution: totals.substitutions += 1
+            default: break
             }
-            if let text {
+            if let text = text(for: event.kind, in: match) {
+                let stamp = stampFor(event.at, clock: clock, config: match.setup.clock)
                 timeline.append(TimelineEntry(half: stamp.half, minute: stamp.minute,
                                               added: stamp.added, text: text))
             }
@@ -153,6 +128,40 @@ public struct MatchReport: Codable, Sendable, Equatable {
         }
 
         return MatchReport(score: score, timeline: timeline, halves: halves, totals: totals)
+    }
+
+    /// One event as the report words it — "Yellow card — ARS #7" — or nil
+    /// for the clock's own bookkeeping. The watch's undo button reuses it, so
+    /// the referee takes back exactly the line the report would have shown.
+    public static func text(for kind: MatchEvent.Kind, in match: Match) -> String? {
+        switch kind {
+        case .goal(let side, let scorer):
+            return "Goal — \(describe(side, scorer, in: match))"
+        case .ownGoal(let side, let scorer):
+            return "Own goal — \(describe(side, scorer, in: match))"
+        case .disallowedGoal(let side):
+            return "Goal disallowed — \(match.setup.team(side).name)"
+        case .yellowCard(let side, let player):
+            return "Yellow card — \(describe(side, player, in: match))"
+        case .secondYellow(let side, let player):
+            return "Second yellow, sent off — \(describe(side, player, in: match))"
+        case .redCard(let side, let player):
+            return "Red card — \(describe(side, player, in: match))"
+        case .sinBin(let side, let player, let minutes):
+            return "Sin bin (\(minutes)′) — \(describe(side, player, in: match))"
+        case .sinBinEnd(let side, let player):
+            return "Back from the sin bin — \(describe(side, player, in: match))"
+        case .substitution(let side, let off, let on):
+            return "Substitution — \(match.setup.team(side).abbreviation) #\(off.number) off, #\(on.number) on"
+        case .note(let note):
+            return note
+        case .addedTime(let half, let seconds):
+            let minutes = Int(seconds / 60)
+            let rem = Int(seconds) % 60
+            return "Added time, \(ordinal(half)) half: \(minutes)′\(rem == 0 ? "" : String(format: "%02d″", rem))"
+        default:
+            return nil // kick-offs, halves, pauses, voids — the clock's own bookkeeping
+        }
     }
 
     // MARK: - Text for the share sheet

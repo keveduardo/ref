@@ -70,6 +70,11 @@ public struct MatchEvent: Codable, Sendable, Identifiable, Equatable {
         case sinBinEnd(side: TeamSide, player: PlayerRef)
         case substitution(side: TeamSide, off: PlayerRef, on: PlayerRef)
         case note(String)
+
+        /// Takes back the event with this id — a mis-tap undone on the pitch.
+        /// The log stays append-only (so a re-delivered sync still merges by
+        /// id); `EventLog.events` simply leaves out the void and its target.
+        case voided(UUID)
     }
 }
 
@@ -82,6 +87,19 @@ extension MatchEvent.Kind {
             return true
         default:
             return false
+        }
+    }
+
+    /// What the referee may take back from the record menu: every incident,
+    /// and announced added time. Not the clock's own anchors — a half ended
+    /// by mistake is resumed from the break instead (`EventLog.lastHalfEnd`),
+    /// and kick-off and full time each have their own deliberate tap.
+    public var isUndoable: Bool {
+        switch self {
+        case .kickOff, .halfEnd, .clockPaused, .clockResumed, .fullTime, .voided:
+            return false
+        default:
+            return true
         }
     }
 }

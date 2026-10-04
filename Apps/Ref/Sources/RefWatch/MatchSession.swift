@@ -20,10 +20,41 @@ import RefKit
     let workout = WorkoutRecorder()
     let location = LocationRecorder()
 
-    init(store: MatchStore = MatchStore(directory: MatchSession.containerDirectory)) {
+    /// Ids of the matches already finished on this watch — so the phone's
+    /// list stops offering a match the moment it is played, not when the
+    /// phone next answers.
+    private(set) var playedIDs: Set<UUID> = []
+
+    private var alarm: Task<Void, Never>?
+
+    /// `recovers` is false only for the render job's fixed screens, which
+    /// must never start a workout in the simulator.
+    init(store: MatchStore = MatchStore(directory: MatchSession.containerDirectory),
+         recovers: Bool = true) {
         self.store = store
         // A match left in progress by a crash or a flat battery is still here.
         match = try? store.current()
+        playedIDs = Set(((try? store.all()) ?? []).map(\.id))
+        guard recovers, let match else { return }
+        switch match.clock.phase(at: Date()) {
+        case .notStarted:
+            break
+        case .fullTime:
+            // Full time was blown but the crash came before the record was
+            // saved and sent — finish that now, or "Done" would lose it.
+            if !playedIDs.contains(match.id) {
+                Task { await finishMatch() }
+            }
+        default:
+            // …and its workout, unless the crash took that. Without a running
+            // workout the app is suspended the moment the wrist drops, and
+            // the alarms never fire.
+            Task {
+                await workout.recover()
+                location.start()
+            }
+            replanAlarms()
+        }
     }
 
     static var containerDirectory: URL {
@@ -54,14 +85,20 @@ import RefKit
 
     // MARK: - Starting
 
-    /// Quick start: two teams to be named on the phone later, the configured
-    /// half length, kick-off waiting.
+    /// The phone's matches still to be played.
+    var offers: [MatchSetup] {
+        link.assignments.filter { !playedIDs.contains($0.id) }
+    }
+
+    /// Quick start: two teams to be named on the phone later, the phone's
+    /// default half length and sin bin, kick-off waiting.
     func startQuick() {
-        let halfMinutes = SessionSettings.halfMinutes
+        let defaults = link.defaults
         assign(Match(setup: MatchSetup(
             home: Team(name: "Home", abbreviation: "HOM", color: .blue),
             away: Team(name: "Away", abbreviation: "AWY", color: .red),
-            clock: ClockConfig(halfMinutes: halfMinutes))))
+            clock: ClockConfig(halfMinutes: defaults.halfMinutes),
+            sinBinMinutes: defaults.sinBinMinutes)))
     }
 
     /// Take on a match — the phone's assignment, or quick start.
@@ -81,6 +118,7 @@ import RefKit
     func discard() {
         match = nil
         try? store.clearCurrent()
+        replanAlarms()
     }
 
     // MARK: - The clock
@@ -106,12 +144,18 @@ import RefKit
     /// goes to the phone's shelf — here, and over the link when it can.
     private func finishMatch() async {
         guard var current = match else { return }
+        playedIDs.insert(current.id)
         var metrics = await workout.finish() ?? MatchMetrics()
         metrics.distanceMeters = location.stop()
         if metrics != MatchMetrics() {
             current.metrics = metrics
         }
-        match = current
+        // ! Saving the workout takes a moment, and "Done" may have been
+        // tapped meanwhile — the record is still saved and sent, but the
+        // summary is not put back on a screen the referee already left.
+        if match?.id == current.id {
+            match = current
+        }
         try? store.save(current)
         try? store.clearCurrent()
         link.send(current)
@@ -130,15 +174,49 @@ import RefKit
         append(.goal(side: side, scorer: scorer))
     }
 
+    /// A yellow to a player already booked is recorded as the second yellow
+    /// it is — the report then shows the sending-off.
     func card(_ card: Card, side: TeamSide, player: PlayerRef) {
         switch card {
-        case .yellow: append(.yellowCard(side: side, player: player))
-        case .red: append(.redCard(side: side, player: player))
+        case .yellow:
+            append(match?.events.hasYellow(side: side, player: player) == true
+                   ? .secondYellow(side: side, player: player)
+                   : .yellowCard(side: side, player: player))
+        case .red:
+            append(.redCard(side: side, player: player))
         }
     }
 
     func sinBin(side: TeamSide, player: PlayerRef) {
-        append(.sinBin(side: side, player: player, minutes: SessionSettings.sinBinMinutes))
+        let minutes = match?.setup.sinBinMinutes ?? MatchDefaults.standard.sinBinMinutes
+        append(.sinBin(side: side, player: player, minutes: minutes))
+    }
+
+    // MARK: - Taking it back
+
+    /// The newest incident still standing, with the report's own words for
+    /// it — what the record menu offers to undo.
+    var lastUndoable: (event: MatchEvent, text: String)? {
+        guard let match, let event = match.events.lastUndoable,
+              let text = MatchReport.text(for: event.kind, in: match) else { return nil }
+        return (event, text)
+    }
+
+    func undo(_ event: MatchEvent) {
+        append(.voided(event.id))
+    }
+
+    /// The half end the break is running from — "Resume" takes it back, and
+    /// the clock carries on as though the whistle had never gone.
+    var resumableHalf: Int? {
+        guard let event = match?.events.lastHalfEnd,
+              case .halfEnd(let half) = event.kind else { return nil }
+        return half
+    }
+
+    func resumeHalf() {
+        guard let event = match?.events.lastHalfEnd else { return }
+        append(.voided(event.id))
     }
 
     func substitution(side: TeamSide, off: PlayerRef, on: PlayerRef) {
@@ -165,22 +243,33 @@ import RefKit
     }
 
     private func persist() {
+        replanAlarms()
         guard let match else { return }
         try? store.saveCurrent(match)
     }
-}
 
-/// The watch's settings, mirrored from the phone's (P3/P4). The defaults are
-/// the adult game: 45-minute halves, ten-minute sin bins.
-enum SessionSettings {
-    static var halfMinutes: Int {
-        let stored = UserDefaults.standard.integer(forKey: "ref.halfMinutes")
-        return stored == 0 ? 45 : stored
-    }
+    // MARK: - Alarms
 
-    static var sinBinMinutes: Int {
-        let stored = UserDefaults.standard.integer(forKey: "ref.sinBinMinutes")
-        return stored == 0 ? 10 : stored
+    /// Sleep until the next moment the referee must feel — the half's length,
+    /// the added time used up, a sin bin over — buzz, and plan again. Planned
+    /// afresh after every event, because every event can move them (RefKit's
+    /// `upcomingAlerts` is a projection from now). With the wrist down this
+    /// only runs because the workout session keeps the app alive; without
+    /// Health access the app is suspended and the face is the only alarm.
+    private func replanAlarms() {
+        alarm?.cancel()
+        alarm = nil
+        guard let match, let next = match.upcomingAlerts(after: Date()).first else { return }
+        alarm = Task { [weak self] in
+            let wait = next.at.timeIntervalSinceNow
+            if wait > 0 {
+                try? await Task.sleep(for: .seconds(wait))
+            }
+            guard !Task.isCancelled, let self else { return }
+            await Haptics.alert(next.kind)
+            guard !Task.isCancelled else { return }
+            self.replanAlarms()
+        }
     }
 }
 
@@ -193,7 +282,7 @@ extension MatchSession {
     static func showing(_ page: String) -> MatchSession {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ref-render-\(page)-\(UUID().uuidString)", isDirectory: true)
-        let session = MatchSession(store: MatchStore(directory: dir))
+        let session = MatchSession(store: MatchStore(directory: dir), recovers: false)
         let now = Date()
         /// Whole seconds, so an older type-checker cannot read the arithmetic
         /// as an Int (the Swift 6.0 trap from the kit's tests).

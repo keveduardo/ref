@@ -71,9 +71,14 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     public var clock: ClockConfig
     /// Team sheets when the referee has them; empty is fine.
     public var squads: [Squad]
+    /// How long a sin bin lasts in this match. It rides with the setup
+    /// because the watch cannot read the phone's settings — the two devices
+    /// have separate `UserDefaults`.
+    public var sinBinMinutes: Int
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
-                kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = []) {
+                kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
+                sinBinMinutes: Int = MatchDefaults.standard.sinBinMinutes) {
         self.id = id
         self.home = home
         self.away = away
@@ -81,6 +86,7 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.kickOff = kickOff
         self.clock = clock
         self.squads = squads
+        self.sinBinMinutes = sinBinMinutes
     }
 
     public func team(_ side: TeamSide) -> Team { side == .home ? home : away }
@@ -89,4 +95,20 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         let wanted = team(side).id
         return squads.first { $0.team.id == wanted }
     }
+}
+
+/// The referee's defaults, set on the phone: what a new match starts from,
+/// and what the watch's quick start uses. Sent with every assignment, because
+/// the watch cannot read the phone's settings.
+public struct MatchDefaults: Codable, Sendable, Equatable {
+    public var halfMinutes: Int
+    public var sinBinMinutes: Int
+
+    public init(halfMinutes: Int = 45, sinBinMinutes: Int = 10) {
+        self.halfMinutes = halfMinutes
+        self.sinBinMinutes = sinBinMinutes
+    }
+
+    /// The adult game: 45-minute halves, ten-minute sin bins.
+    public static let standard = MatchDefaults()
 }

@@ -149,4 +149,21 @@ enum Haptics {
     static func recorded() {
         play(.notification)
     }
+
+    /// The alarms, each with its own rhythm so the referee knows which one
+    /// it is without looking: the half's length is three long buzzes, the
+    /// added time used up is two, and a sin bin over is a rising pair.
+    @MainActor
+    static func alert(_ kind: MatchAlert.Kind) async {
+        let (type, count): (WKHapticType, Int)
+        switch kind {
+        case .halfLength: (type, count) = (.notification, 3)
+        case .addedTimeUp: (type, count) = (.notification, 2)
+        case .binOver: (type, count) = (.directionUp, 2)
+        }
+        for index in 0..<count {
+            if index > 0 { try? await Task.sleep(for: .milliseconds(700)) }
+            play(type)
+        }
+    }
 }

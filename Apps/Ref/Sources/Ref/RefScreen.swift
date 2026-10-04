@@ -7,6 +7,9 @@ struct RefScreen: View {
     let store: PhoneStore
     let link: PhoneLink
 
+    @AppStorage("ref.halfMinutes") private var halfMinutes = MatchDefaults.standard.halfMinutes
+    @AppStorage("ref.sinBinMinutes") private var sinBinMinutes = MatchDefaults.standard.sinBinMinutes
+
     var body: some View {
         TabView {
             MatchesScreen(store: store)
@@ -18,19 +21,19 @@ struct RefScreen: View {
             SettingsScreen(link: link)
                 .tabItem { Label("Settings", systemImage: "gear") }
         }
-        .task {
-            // A match finished on the watch lands on this shelf.
-            link.onFinished = { match in store.save(match) }
-            pushAssignment()
-        }
-        .onChange(of: store.upcoming.map(\.id)) { _, _ in
-            pushAssignment()
-        }
+        // Activation completes after launch, so the first push goes then;
+        // after that, whenever the matches or the defaults change.
+        .onChange(of: link.activated, initial: true) { _, _ in pushAssignment() }
+        .onChange(of: store.upcoming.map(\.setup)) { _, _ in pushAssignment() }
+        .onChange(of: halfMinutes) { _, _ in pushAssignment() }
+        .onChange(of: sinBinMinutes) { _, _ in pushAssignment() }
     }
 
     /// The watch always has the newest set of matches to offer.
     private func pushAssignment() {
-        link.sendAssignment(store.upcoming.map(\.setup))
+        link.sendAssignment(store.upcoming.map(\.setup),
+                            defaults: MatchDefaults(halfMinutes: halfMinutes,
+                                                    sinBinMinutes: sinBinMinutes))
     }
 }
 

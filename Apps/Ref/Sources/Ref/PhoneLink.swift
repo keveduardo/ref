@@ -19,14 +19,15 @@ import WatchConnectivity
     /// ! `@MainActor`, not a bare closure: the app assigns this from a
     /// main-actor context, and in Swift 6 a non-Sendable closure keeps that
     /// isolation — handing it to a non-isolated parameter is an error.
-    var onFinished: (@MainActor (Match) -> Void)?
+    private let onFinished: (@MainActor (Match) -> Void)?
 
     var status: String {
         if !activated { return "Not activated" }
         return WCSession.default.isPaired ? "Connected" : "No watch paired"
     }
 
-    override init() {
+    init(onFinished: (@MainActor (Match) -> Void)? = nil) {
+        self.onFinished = onFinished
         super.init()
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
@@ -35,11 +36,13 @@ import WatchConnectivity
 
     // MARK: - Sending
 
-    /// The upcoming matches, as the watch will offer them. Silent when there
-    /// is nothing to say or nobody to say it to — the next change sends again.
-    func sendAssignment(_ setups: [MatchSetup]) {
+    /// The upcoming matches, as the watch will offer them, and the defaults
+    /// its quick start uses. Silent when there is nobody to say it to — the
+    /// app sends again when activation completes, and on every change.
+    func sendAssignment(_ setups: [MatchSetup], defaults: MatchDefaults) {
         guard activated, WCSession.default.isPaired,
-              let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups)) else {
+              let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups,
+                                                                        defaults: defaults)) else {
             return
         }
         try? WCSession.default.updateApplicationContext(["assignment": data])

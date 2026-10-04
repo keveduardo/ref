@@ -12,11 +12,11 @@ struct StartScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
-                if !session.link.assignments.isEmpty {
+                if !session.offers.isEmpty {
                     Text("From the phone")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    ForEach(session.link.assignments, id: \.id) { setup in
+                    ForEach(session.offers, id: \.id) { setup in
                         Button {
                             Haptics.play(.start)
                             session.assign(Match(setup: setup))
@@ -38,7 +38,7 @@ struct StartScreen: View {
                     Image(systemName: "soccerball")
                 }
 
-                if session.link.assignments.isEmpty {
+                if session.offers.isEmpty {
                     // Alone, quick start is the way in.
                     Button("Quick start") {
                         Haptics.play(.start)
@@ -53,7 +53,7 @@ struct StartScreen: View {
                     .buttonStyle(.bordered)
                 }
 
-                Text("\(SessionSettings.halfMinutes)-minute halves. Matches set up on the phone appear here.")
+                Text("Quick start: \(session.link.defaults.halfMinutes)-minute halves. Matches set up on the phone appear here.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
