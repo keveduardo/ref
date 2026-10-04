@@ -10,15 +10,18 @@ struct PitchHeatmap: View {
 
     var body: some View {
         Canvas { context, canvas in
-            let scale = min(canvas.width / size.length, canvas.height / size.width)
-            let field = CGRect(x: (canvas.width - size.length * scale) / 2,
-                               y: (canvas.height - size.width * scale) / 2,
-                               width: size.length * scale, height: size.width * scale)
+            // ! CGFloat throughout: mixing it with the kit's Doubles makes
+            // `/` ambiguous to the type-checker.
+            let length = CGFloat(size.length), width = CGFloat(size.width)
+            let scale = min(canvas.width / length, canvas.height / width)
+            let field = CGRect(x: (canvas.width - length * scale) / 2,
+                               y: (canvas.height - width * scale) / 2,
+                               width: length * scale, height: width * scale)
             context.fill(Path(field), with: .color(Color(red: 0.16, green: 0.45, blue: 0.24)))
 
             // Heat, under the lines. Rows run from the right touchline (as the
             // referee faced) to the left, so row 0 is drawn at the bottom.
-            let hottest = max(report.hottest, 1)
+            let hottest = max(report.hottest, 1.0)
             let cellW = field.width / CGFloat(report.columns)
             let cellH = field.height / CGFloat(report.rows)
             for row in 0..<report.rows {
@@ -38,15 +41,15 @@ struct PitchHeatmap: View {
             lines.addRect(field)
             lines.move(to: CGPoint(x: field.midX, y: field.minY))
             lines.addLine(to: CGPoint(x: field.midX, y: field.maxY))
-            let radius = min(9.15, size.width * 0.13) * scale
+            let radius = CGFloat(min(9.15, size.width * 0.13)) * scale
             lines.addEllipse(in: CGRect(x: field.midX - radius, y: field.midY - radius,
                                         width: radius * 2, height: radius * 2))
-            let depth = size.penaltyDepth * scale, wide = size.penaltyWidth * scale
+            let depth = CGFloat(size.penaltyDepth) * scale, wide = CGFloat(size.penaltyWidth) * scale
             lines.addRect(CGRect(x: field.minX, y: field.midY - wide / 2, width: depth, height: wide))
             lines.addRect(CGRect(x: field.maxX - depth, y: field.midY - wide / 2, width: depth, height: wide))
             context.stroke(lines, with: .color(.white.opacity(0.85)), lineWidth: 1.5)
         }
-        .aspectRatio(size.length / size.width, contentMode: .fit)
+        .aspectRatio(CGFloat(size.length / size.width), contentMode: .fit)
         .accessibilityLabel("Heatmap of where you moved on the field")
     }
 
