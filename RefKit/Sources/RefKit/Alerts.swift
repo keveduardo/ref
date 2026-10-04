@@ -1,12 +1,14 @@
 import Foundation
 
 /// A moment the referee must feel on the wrist without looking: the half's
-/// length reached, the announced added time used up, a player free to return
-/// from the sin bin.
+/// length reached, the announced added time used up, the break over, a player
+/// free to return from the sin bin.
 public struct MatchAlert: Sendable, Equatable {
     public enum Kind: Sendable, Equatable {
         case halfLength(half: Int)
         case addedTimeUp(half: Int)
+        /// The break has run its `MatchSetup.halfTimeMinutes`.
+        case halfTimeOver(next: Int)
         case binOver(binID: UUID, side: TeamSide, player: PlayerRef)
     }
 
@@ -43,6 +45,15 @@ extension Match {
             if added > 0, elapsed < length + added {
                 alerts.append(MatchAlert(at: now.addingTimeInterval(length + added - elapsed),
                                          kind: .addedTimeUp(half: half)))
+            }
+        }
+
+        if case .halfTime(let next) = clock.phase(at: now),
+           let elapsed = clock.halfTimeElapsed(at: now) {
+            let length = TimeInterval(setup.halfTimeMinutes * 60)
+            if elapsed < length {
+                alerts.append(MatchAlert(at: now.addingTimeInterval(length - elapsed),
+                                         kind: .halfTimeOver(next: next)))
             }
         }
 

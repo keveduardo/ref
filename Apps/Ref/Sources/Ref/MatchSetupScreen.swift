@@ -1,8 +1,8 @@
 import RefKit
 import SwiftUI
 
-/// Set a match up: the match type, the teams, the clock, the kick-off, the
-/// sin bin. Saving it puts it on the shelf, and from there it travels to the
+/// Set a match up: the match type, the teams, the kick-off, the clock and the
+/// break. Saving it puts it on the shelf, and from there it travels to the
 /// watch.
 struct MatchSetupScreen: View {
     let store: PhoneStore
@@ -23,15 +23,15 @@ struct MatchSetupScreen: View {
     // This match's own values, starting from the defaults in Settings —
     // changing them here changes this match, not the defaults.
     @State private var halfMinutes: Int
-    @State private var sinBinMinutes: Int
+    @State private var halfTimeMinutes: Int
 
     init(store: PhoneStore) {
         self.store = store
         let defaults = UserDefaults.standard
         let half = defaults.integer(forKey: "ref.halfMinutes")
-        let bin = defaults.integer(forKey: "ref.sinBinMinutes")
+        let rest = defaults.integer(forKey: "ref.halfTimeMinutes")
         _halfMinutes = State(initialValue: half == 0 ? MatchDefaults.standard.halfMinutes : half)
-        _sinBinMinutes = State(initialValue: bin == 0 ? MatchDefaults.standard.sinBinMinutes : bin)
+        _halfTimeMinutes = State(initialValue: rest == 0 ? MatchDefaults.standard.halfTimeMinutes : rest)
     }
 
     var body: some View {
@@ -66,20 +66,18 @@ struct MatchSetupScreen: View {
                                    displayedComponents: [.date, .hourAndMinute])
                     }
                 }
-                Section("Clock") {
+                Section {
                     Picker("Half length", selection: $halfMinutes) {
                         ForEach(halfLengths, id: \.self) { Text("\($0) minutes") }
                     }
-                    Toggle("Count down", isOn: $countsDown)
-                }
-                Section {
-                    Picker("Sin bin", selection: $sinBinMinutes) {
-                        ForEach([5, 10, 15], id: \.self) { Text("\($0) minutes") }
+                    Picker("Half-time", selection: $halfTimeMinutes) {
+                        ForEach(halfTimeLengths, id: \.self) { Text("\($0) minutes") }
                     }
+                    Toggle("Count down", isOn: $countsDown)
                 } header: {
-                    Text("Sin bins")
+                    Text("Clock")
                 } footer: {
-                    Text("The watch runs this countdown, and buzzes when the player may return.")
+                    Text("The watch buzzes when half-time is up.")
                 }
                 Section {
                     Button("Save match") { save() }
@@ -96,6 +94,7 @@ struct MatchSetupScreen: View {
     }
 
     private let halfLengths = [20, 25, 30, 35, 40, 45]
+    private let halfTimeLengths = Array(1...15)
 
     // MARK: - Team resolution
 
@@ -131,7 +130,7 @@ struct MatchSetupScreen: View {
             competition: competition.trimmingCharacters(in: .whitespaces).isEmpty ? nil : competition,
             kickOff: hasKickOff ? kickOff : nil,
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
-            sinBinMinutes: sinBinMinutes,
+            halfTimeMinutes: halfTimeMinutes,
             formatID: formatID)
         dismiss()
     }
@@ -142,6 +141,8 @@ struct MatchSetupScreen: View {
     private func apply(from old: String?, to new: String?) {
         guard let format = MatchFormat.preset(id: new) else { return }
         halfMinutes = format.halfMinutes
+        // The rules allow a range; the shortest is the referee's usual call.
+        halfTimeMinutes = format.halfTimeMinutes.lowerBound
         let typed = competition.trimmingCharacters(in: .whitespaces)
         if typed.isEmpty || typed == MatchFormat.preset(id: old)?.title {
             competition = format.title

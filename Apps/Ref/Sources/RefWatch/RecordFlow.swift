@@ -15,7 +15,7 @@ struct RecordFlow: View {
     @State private var step: Step = .menu
 
     enum RecordKind: String, CaseIterable {
-        case goal, yellow, red, substitution, sinBin
+        case goal, yellow, red, substitution
 
         var title: String {
             switch self {
@@ -23,7 +23,6 @@ struct RecordFlow: View {
             case .yellow: "Yellow"
             case .red: "Red"
             case .substitution: "Sub"
-            case .sinBin: "Sin bin"
             }
         }
 
@@ -33,7 +32,6 @@ struct RecordFlow: View {
             case .yellow: "rectangle.portrait.fill"
             case .red: "rectangle.portrait.fill"
             case .substitution: "arrow.left.arrow.right"
-            case .sinBin: "timer"
             }
         }
 
@@ -98,7 +96,7 @@ struct RecordFlow: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                // The grid's sixth cell — on screen without scrolling.
+                // The grid's fifth cell — on screen without scrolling.
                 if let last = session.lastUndoable {
                     Button {
                         step = .undo(last.event, text: last.text)
@@ -170,8 +168,6 @@ struct RecordFlow: View {
                 session.card(.yellow, side: side, player: ref)
             case .red:
                 session.card(.red, side: side, player: ref)
-            case .sinBin:
-                session.sinBin(side: side, player: ref)
             case .substitution:
                 break // never reaches here
             }

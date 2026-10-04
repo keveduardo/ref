@@ -41,11 +41,13 @@ RefTime puts the match on your wrist and the paperwork on your phone.
   counting up with added time in its own field — 45:00 +2:30 — or counting
   down, whichever you run.
 - One tap adds a minute of added time, as you signal it.
-- Goal, yellow, red, substitution and sin bin in two or three taps. Numbers
+- Goal, yellow, red and substitution in two or three taps. Numbers
   from your team sheets, or 1–18 when you don't have them. A haptic confirms
   every recording without looking.
-- Sin bins run on playing time — the countdown pauses at half time, as the
-  laws say — and the watch shows who is still off and how long is left.
+- The wrist buzzes when the half's time is up, when added time runs out,
+  and when half-time is over (5 minutes by default, set per match).
+- AYSO 10U, 12U and 14U presets fill in the half length and remind you of
+  the rules that differ — players a side, ball size, heading, punts.
 - Half time and full time are one button each; full time asks first.
 - The screen stays readable with your wrist down, and the app keeps running
   through the whole match.
@@ -64,7 +66,7 @@ matches stay on your devices.
 
 ## Keywords (100)
 
-referee,soccer,football,watch,timer,cards,whistle,match,stoppage,sin bin
+referee,soccer,football,watch,timer,cards,whistle,match,stoppage,AYSO
 
 ## What's New
 

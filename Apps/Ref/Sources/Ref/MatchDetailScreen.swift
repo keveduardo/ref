@@ -103,6 +103,9 @@ struct MatchDetailScreen: View {
             if let meters = metrics.distanceMeters {
                 LabeledContent("Distance", value: String(format: "%.1f km", meters / 1000))
             }
+            if let steps = metrics.steps {
+                LabeledContent("Steps", value: steps.formatted())
+            }
             if let average = metrics.averageHeartRate {
                 LabeledContent("Heart rate", value: "\(Int(average)) avg / \(Int(metrics.maxHeartRate ?? 0)) max")
             }

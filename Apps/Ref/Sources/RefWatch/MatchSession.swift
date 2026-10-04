@@ -91,14 +91,14 @@ import RefKit
     }
 
     /// Quick start: two teams to be named on the phone later, the phone's
-    /// default half length and sin bin, kick-off waiting.
+    /// default half length and break, kick-off waiting.
     func startQuick() {
         let defaults = link.defaults
         assign(Match(setup: MatchSetup(
             home: Team(name: "Home", abbreviation: "HOM", color: .blue),
             away: Team(name: "Away", abbreviation: "AWY", color: .red),
             clock: ClockConfig(halfMinutes: defaults.halfMinutes),
-            sinBinMinutes: defaults.sinBinMinutes)))
+            halfTimeMinutes: defaults.halfTimeMinutes)))
     }
 
     /// Take on a match — the phone's assignment, or quick start.
@@ -146,7 +146,12 @@ import RefKit
         guard var current = match else { return }
         playedIDs.insert(current.id)
         var metrics = await workout.finish() ?? MatchMetrics()
-        metrics.distanceMeters = location.stop()
+        // HealthKit's distance (GPS plus stride calibration) when it has one;
+        // our own GPS sum when it does not.
+        let gps = location.stop()
+        if (metrics.distanceMeters ?? 0) <= 0 {
+            metrics.distanceMeters = gps
+        }
         if metrics != MatchMetrics() {
             current.metrics = metrics
         }
@@ -187,11 +192,6 @@ import RefKit
         }
     }
 
-    func sinBin(side: TeamSide, player: PlayerRef) {
-        let minutes = match?.setup.sinBinMinutes ?? MatchDefaults.standard.sinBinMinutes
-        append(.sinBin(side: side, player: player, minutes: minutes))
-    }
-
     // MARK: - Taking it back
 
     /// The newest incident still standing, with the report's own words for
@@ -223,16 +223,6 @@ import RefKit
         append(.substitution(side: side, off: off, on: on))
     }
 
-    /// Sin bins still running, with the time each player has left.
-    func activeBins(at now: Date) -> [(bin: SinBin, remaining: TimeInterval)] {
-        guard let match else { return [] }
-        let clock = match.clock
-        return match.events.sinBins()
-            .filter { !$0.isEnded(in: match.events) }
-            .map { ($0, $0.remaining(at: now, clock: clock)) }
-            .filter { $0.1 > 0 }
-    }
-
     // MARK: - Plumbing
 
     private func append(_ kind: MatchEvent.Kind) {
@@ -251,7 +241,7 @@ import RefKit
     // MARK: - Alarms
 
     /// Sleep until the next moment the referee must feel — the half's length,
-    /// the added time used up, a sin bin over — buzz, and plan again. Planned
+    /// the added time used up, the break over — buzz, and plan again. Planned
     /// afresh after every event, because every event can move them (RefKit's
     /// `upcomingAlerts` is a projection from now). With the wrist down this
     /// only runs because the workout session keeps the app alive; without
@@ -323,7 +313,6 @@ extension MatchSession {
                 event(12 * 60 + 34, .kickOff(half: 1)),
                 event(7 * 60, .goal(side: .home, scorer: PlayerRef(number: 9))),
                 event(4 * 60, .yellowCard(side: .away, player: PlayerRef(number: 7))),
-                event(2 * 60, .sinBin(side: .away, player: PlayerRef(number: 7), minutes: 10)),
             ]
         }
 

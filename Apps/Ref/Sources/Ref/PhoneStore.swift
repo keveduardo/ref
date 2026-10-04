@@ -62,14 +62,14 @@ import RefKit
     @discardableResult
     func createMatch(home: Team, away: Team, competition: String?, kickOff: Date?,
                      clock: ClockConfig,
-                     sinBinMinutes: Int = MatchDefaults.standard.sinBinMinutes,
+                     halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
                      formatID: String? = nil) -> Match {
         // Team sheets ride along when both teams are known — the watch offers
         // their numbers instead of 1–18.
         let sheets = [home, away].compactMap { squad(for: $0) }
         let setup = MatchSetup(home: home, away: away, competition: competition,
                                kickOff: kickOff, clock: clock, squads: sheets,
-                               sinBinMinutes: sinBinMinutes, formatID: formatID)
+                               formatID: formatID, halfTimeMinutes: halfTimeMinutes)
         let match = Match(setup: setup)
         try? matches.save(match)
         reload()

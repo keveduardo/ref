@@ -8,7 +8,7 @@ struct SettingsScreen: View {
     let link: PhoneLink
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = 45
-    @AppStorage("ref.sinBinMinutes") private var sinBinMinutes = 10
+    @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
 
     var body: some View {
         NavigationStack {
@@ -17,8 +17,8 @@ struct SettingsScreen: View {
                     Picker("Half length", selection: $halfMinutes) {
                         ForEach([20, 25, 30, 35, 40, 45], id: \.self) { Text("\($0) minutes") }
                     }
-                    Picker("Sin bin", selection: $sinBinMinutes) {
-                        ForEach([5, 10, 15], id: \.self) { Text("\($0) minutes") }
+                    Picker("Half-time", selection: $halfTimeMinutes) {
+                        ForEach(1...15, id: \.self) { Text("\($0) minutes") }
                     }
                 }
                 Section("Watch") {

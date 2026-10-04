@@ -188,6 +188,9 @@ public struct MatchReport: Codable, Sendable, Equatable {
         if let metrics = match.metrics, let meters = metrics.distanceMeters {
             lines.append(String(format: "Distance %.1f km.", meters / 1000))
         }
+        if let steps = match.metrics?.steps {
+            lines.append("\(steps.formatted()) steps.")
+        }
         return lines.joined(separator: "\n")
     }
 

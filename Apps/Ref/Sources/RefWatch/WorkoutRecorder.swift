@@ -20,6 +20,8 @@ import RefKit
 
     private static var heartRateType: HKQuantityType { HKQuantityType(.heartRate) }
     private static var energyType: HKQuantityType { HKQuantityType(.activeEnergyBurned) }
+    private static var stepType: HKQuantityType { HKQuantityType(.stepCount) }
+    private static var distanceType: HKQuantityType { HKQuantityType(.distanceWalkingRunning) }
     private static var beatUnit: HKUnit { .count().unitDivided(by: .minute()) }
 
     /// Asked once, before a match — never during one. A refusal costs the
@@ -28,7 +30,7 @@ import RefKit
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let share: Set<HKSampleType> = [HKObjectType.workoutType()]
         let read: Set<HKObjectType> = [Self.heartRateType, Self.energyType,
-                                       HKQuantityType(.distanceWalkingRunning)]
+                                       Self.distanceType, Self.stepType]
         _ = try? await store.requestAuthorization(toShare: share, read: read)
     }
 
@@ -43,8 +45,14 @@ import RefKit
         self.session = session
         session.delegate = self
         let builder = session.associatedWorkoutBuilder()
-        builder.dataSource = HKLiveWorkoutDataSource(healthStore: store,
-                                                     workoutConfiguration: configuration)
+        let source = HKLiveWorkoutDataSource(healthStore: store,
+                                             workoutConfiguration: configuration)
+        // A soccer workout's default collection is not guaranteed to include
+        // these two; asked for by name, they are counted into the workout —
+        // and so into the report and the Fitness app.
+        source.enableCollection(for: Self.stepType, predicate: nil)
+        source.enableCollection(for: Self.distanceType, predicate: nil)
+        builder.dataSource = source
         builder.delegate = self
         self.builder = builder
         session.startActivity(with: date)
@@ -80,10 +88,9 @@ import RefKit
     }
 
     /// Full time: end the collection, save the workout, and freeze what it
-    /// cost into a `MatchMetrics`. Distance comes from the location recorder,
-    /// not from here — HealthKit does not count it for a third-party soccer
-    /// workout unless the app feeds it the route, and the referee's walk is
-    /// ours to measure anyway.
+    /// cost into a `MatchMetrics` — heart rate, energy, steps and HealthKit's
+    /// walking/running distance. The session falls back to the GPS sum when
+    /// HealthKit has no distance.
     func finish() async -> MatchMetrics? {
         guard let session, let builder else { return nil }
         session.end()
@@ -109,11 +116,14 @@ import RefKit
         guard let workout = finished else { return nil }
         let stats = workout.statistics(for: Self.heartRateType)
         return MatchMetrics(
-            distanceMeters: nil,
+            distanceMeters: workout.statistics(for: Self.distanceType)?
+                .sumQuantity()?.doubleValue(for: .meter()),
             averageHeartRate: stats?.averageQuantity()?.doubleValue(for: Self.beatUnit),
             maxHeartRate: stats?.maximumQuantity()?.doubleValue(for: Self.beatUnit),
             activeCalories: workout.statistics(for: Self.energyType)?
                 .sumQuantity()?.doubleValue(for: .kilocalorie()),
+            steps: workout.statistics(for: Self.stepType)?
+                .sumQuantity().map { Int($0.doubleValue(for: .count())) },
             workoutUUID: workout.uuid.uuidString)
     }
 }

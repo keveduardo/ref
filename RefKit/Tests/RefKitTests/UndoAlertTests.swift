@@ -153,3 +153,61 @@ struct DefaultsTests {
         #expect(back.defaults.halfMinutes == 30)
     }
 }
+
+@Suite("half-time")
+struct HalfTimeTests {
+    @Test func theBreakBuzzesWhenItsMinutesAreUp() {
+        var setup = Fixture.setup
+        setup.halfTimeMinutes = 5
+        let m = Match(setup: setup, events: EventLog(events: [
+            Fixture.event(0, .kickOff(half: 1)),
+            Fixture.event(45 * 60, .halfEnd(half: 1))]))
+        let alerts = m.upcomingAlerts(after: Fixture.at(46 * 60))
+        #expect(alerts.map(\.kind) == [.halfTimeOver(next: 2)])
+        #expect(alerts.first?.at == Fixture.at(50 * 60))
+        // Once the break has run past it, nothing more.
+        #expect(m.upcomingAlerts(after: Fixture.at(51 * 60)).isEmpty)
+    }
+
+    @Test func theBreakLengthIsTheMatchsOwn() {
+        var setup = Fixture.setup
+        setup.halfTimeMinutes = 10
+        let m = Match(setup: setup, events: EventLog(events: [
+            Fixture.event(0, .kickOff(half: 1)),
+            Fixture.event(30 * 60, .halfEnd(half: 1))]))
+        #expect(m.upcomingAlerts(after: Fixture.at(30 * 60)).first?.at == Fixture.at(40 * 60))
+    }
+
+    @Test func aSetupSavedBeforeHalfTimeExistedStillLoads() throws {
+        // What build 22 wrote: no halfTimeMinutes, no formatID.
+        var json = try JSONSerialization.jsonObject(
+            with: SyncPayload.encode(Fixture.setup)) as! [String: Any]
+        json.removeValue(forKey: "halfTimeMinutes")
+        json.removeValue(forKey: "formatID")
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let old = try decoder.decode(MatchSetup.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(old.halfTimeMinutes == 5)
+        #expect(old.home == Fixture.setup.home)
+
+        let defaults = try JSONDecoder().decode(MatchDefaults.self,
+                                                from: Data(#"{"halfMinutes":30,"sinBinMinutes":10}"#.utf8))
+        #expect(defaults.halfTimeMinutes == 5)
+        #expect(defaults.halfMinutes == 30)
+    }
+}
+
+@Suite("metrics")
+struct MetricsTests {
+    @Test func stepsReachTheShareTextAndOldRecordsStillDecode() throws {
+        var match = Fixture.playedMatch()
+        match.metrics?.steps = 9_876
+        #expect(match.report.shareText(match: match).contains("9,876 steps."))
+
+        // A record from before steps were counted.
+        let old = try JSONDecoder().decode(MatchMetrics.self,
+                                           from: Data(#"{"distanceMeters":8540,"averageHeartRate":132}"#.utf8))
+        #expect(old.steps == nil)
+        #expect(old.distanceMeters == 8_540)
+    }
+}

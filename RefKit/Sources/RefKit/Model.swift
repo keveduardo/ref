@@ -79,11 +79,14 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     /// the report names the division and the watch can show its reminders.
     /// Optional, so a setup saved before formats existed still decodes.
     public var formatID: String?
+    /// How long the break runs — the watch buzzes when it is over.
+    public var halfTimeMinutes: Int
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
                 kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
                 sinBinMinutes: Int = MatchDefaults.standard.sinBinMinutes,
-                formatID: String? = nil) {
+                formatID: String? = nil,
+                halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes) {
         self.id = id
         self.home = home
         self.away = away
@@ -93,6 +96,30 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.squads = squads
         self.sinBinMinutes = sinBinMinutes
         self.formatID = formatID
+        self.halfTimeMinutes = halfTimeMinutes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, home, away, competition, kickOff, clock, squads, sinBinMinutes, formatID, halfTimeMinutes
+    }
+
+    /// ! Written out for one reason: a setup saved by build 22 or 25 has no
+    /// `halfTimeMinutes`, and a synthesized decoder would refuse the whole
+    /// match over it. Missing means the default.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        home = try c.decode(Team.self, forKey: .home)
+        away = try c.decode(Team.self, forKey: .away)
+        competition = try c.decodeIfPresent(String.self, forKey: .competition)
+        kickOff = try c.decodeIfPresent(Date.self, forKey: .kickOff)
+        clock = try c.decode(ClockConfig.self, forKey: .clock)
+        squads = try c.decode([Squad].self, forKey: .squads)
+        sinBinMinutes = try c.decodeIfPresent(Int.self, forKey: .sinBinMinutes)
+            ?? MatchDefaults.standard.sinBinMinutes
+        formatID = try c.decodeIfPresent(String.self, forKey: .formatID)
+        halfTimeMinutes = try c.decodeIfPresent(Int.self, forKey: .halfTimeMinutes)
+            ?? MatchDefaults.standard.halfTimeMinutes
     }
 
     public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
@@ -111,12 +138,25 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
 public struct MatchDefaults: Codable, Sendable, Equatable {
     public var halfMinutes: Int
     public var sinBinMinutes: Int
+    public var halfTimeMinutes: Int
 
-    public init(halfMinutes: Int = 45, sinBinMinutes: Int = 10) {
+    public init(halfMinutes: Int = 45, sinBinMinutes: Int = 10, halfTimeMinutes: Int = 5) {
         self.halfMinutes = halfMinutes
         self.sinBinMinutes = sinBinMinutes
+        self.halfTimeMinutes = halfTimeMinutes
     }
 
-    /// The adult game: 45-minute halves, ten-minute sin bins.
+    private enum CodingKeys: String, CodingKey { case halfMinutes, sinBinMinutes, halfTimeMinutes }
+
+    /// Missing `halfTimeMinutes` (an assignment the watch saved from build 22
+    /// or 25) means the default, not a refusal.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        halfMinutes = try c.decode(Int.self, forKey: .halfMinutes)
+        sinBinMinutes = try c.decode(Int.self, forKey: .sinBinMinutes)
+        halfTimeMinutes = try c.decodeIfPresent(Int.self, forKey: .halfTimeMinutes) ?? 5
+    }
+
+    /// The adult game: 45-minute halves, a five-minute break.
     public static let standard = MatchDefaults()
 }

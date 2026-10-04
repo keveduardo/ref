@@ -8,7 +8,7 @@ struct RefScreen: View {
     let link: PhoneLink
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = MatchDefaults.standard.halfMinutes
-    @AppStorage("ref.sinBinMinutes") private var sinBinMinutes = MatchDefaults.standard.sinBinMinutes
+    @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
 
     var body: some View {
         TabView {
@@ -26,14 +26,14 @@ struct RefScreen: View {
         .onChange(of: link.activated, initial: true) { _, _ in pushAssignment() }
         .onChange(of: store.upcoming.map(\.setup)) { _, _ in pushAssignment() }
         .onChange(of: halfMinutes) { _, _ in pushAssignment() }
-        .onChange(of: sinBinMinutes) { _, _ in pushAssignment() }
+        .onChange(of: halfTimeMinutes) { _, _ in pushAssignment() }
     }
 
     /// The watch always has the newest set of matches to offer.
     private func pushAssignment() {
         link.sendAssignment(store.upcoming.map(\.setup),
                             defaults: MatchDefaults(halfMinutes: halfMinutes,
-                                                    sinBinMinutes: sinBinMinutes))
+                                                    halfTimeMinutes: halfTimeMinutes))
     }
 }
 

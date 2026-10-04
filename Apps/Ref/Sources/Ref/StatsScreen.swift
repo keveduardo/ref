@@ -16,7 +16,6 @@ struct StatsScreen: View {
                 Section("Discipline") {
                     LabeledContent("Yellow cards", value: "\(stats.yellowCards)")
                     LabeledContent("Red cards", value: "\(stats.redCards)")
-                    LabeledContent("Sin bins", value: "\(stats.sinBins)")
                     LabeledContent("Cards per match", value: String(format: "%.1f", stats.cardsPerMatch))
                 }
             }

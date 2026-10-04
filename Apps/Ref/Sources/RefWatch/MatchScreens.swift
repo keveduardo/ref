@@ -18,6 +18,12 @@ struct HalfTimeScreen: View {
                         Text(ClockFormat.mmss(elapsed))
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .monospacedDigit()
+                        // The break's length — the wrist buzzes when it is up.
+                        if let minutes = session.match?.setup.halfTimeMinutes {
+                            Text("of \(minutes):00")
+                                .font(.footnote)
+                                .foregroundStyle(elapsed >= TimeInterval(minutes * 60) ? .orange : .secondary)
+                        }
                     }
                     scoreLine
                     Button("Start 2nd half") {

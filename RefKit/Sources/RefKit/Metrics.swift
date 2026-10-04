@@ -60,17 +60,21 @@ public struct MatchMetrics: Codable, Sendable, Equatable {
     public var averageHeartRate: Double?
     public var maxHeartRate: Double?
     public var activeCalories: Double?
+    /// Steps during the match. Optional like the rest, so a record from a
+    /// build before steps were counted still decodes.
+    public var steps: Int?
     /// The `HKWorkout`'s UUID, so the phone can find the workout in Health
     /// later (charts, a share sheet) without guessing by date.
     public var workoutUUID: String?
 
     public init(distanceMeters: Double? = nil, averageHeartRate: Double? = nil,
                 maxHeartRate: Double? = nil, activeCalories: Double? = nil,
-                workoutUUID: String? = nil) {
+                steps: Int? = nil, workoutUUID: String? = nil) {
         self.distanceMeters = distanceMeters
         self.averageHeartRate = averageHeartRate
         self.maxHeartRate = maxHeartRate
         self.activeCalories = activeCalories
+        self.steps = steps
         self.workoutUUID = workoutUUID
     }
 }
