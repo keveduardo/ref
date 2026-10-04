@@ -98,16 +98,19 @@ struct RecordFlow: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-            }
-            if let last = session.lastUndoable {
-                Button {
-                    step = .undo(last.event, text: last.text)
-                } label: {
-                    Label("Undo last", systemImage: "arrow.uturn.backward")
+                // The grid's sixth cell — on screen without scrolling.
+                if let last = session.lastUndoable {
+                    Button {
+                        step = .undo(last.event, text: last.text)
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: "arrow.uturn.backward")
+                            Text("Undo")
+                                .font(.footnote)
+                        }
                         .frame(maxWidth: .infinity)
+                    }
                 }
-                .font(.footnote)
-                .padding(.top, 4)
             }
             Button("Cancel") { dismiss() }
                 .font(.footnote)
