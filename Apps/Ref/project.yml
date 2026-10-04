@@ -59,6 +59,10 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # ! Portrait-only on a target that includes iPad must also declare
+        # full screen, or the upload is refused (ITMS-90474) — the first ship
+        # run's archive warned exactly this.
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
         # Crypto-free, so every upload never arrives as "Missing Compliance".
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         # ! No WKAppBundleIdentifier on this side: that key belongs to the
