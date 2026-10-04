@@ -70,6 +70,11 @@ public struct MatchEvent: Codable, Sendable, Identifiable, Equatable {
         case sinBinEnd(side: TeamSide, player: PlayerRef)
         case substitution(side: TeamSide, off: PlayerRef, on: PlayerRef)
         case note(String)
+        /// A quarter break taken in a half. The clock does not stop for it —
+        /// the half is a running clock (Kevin, 2026-10-04) — so this is an
+        /// incident, not a clock anchor: it starts the break timer and the
+        /// buzz at its end, and it goes in the report.
+        case quarterBreak(half: Int)
 
         /// Takes back the event with this id — a mis-tap undone on the pitch.
         /// The log stays append-only (so a re-delivered sync still merges by

@@ -72,6 +72,14 @@ public struct EventLog: Codable, Sendable, Equatable {
         return last
     }
 
+    /// The quarter break taken in a half, if one was.
+    public func quarterBreak(inHalf half: Int) -> MatchEvent? {
+        events.last { event in
+            if case .quarterBreak(let h) = event.kind { return h == half }
+            return false
+        }
+    }
+
     /// Whether this player already has a yellow card standing in this match —
     /// the next one is a second yellow. Matched by squad id when both have
     /// one, by shirt number otherwise; an unnumbered, unnamed player never

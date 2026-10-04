@@ -209,8 +209,9 @@ extension MatchSetup {
     }
 }
 
-/// A quarter break: the clock stops partway through each half for a drink
-/// and substitutions, then starts again (Kevin, 2026-10-04).
+/// A quarter break partway through each half, for a drink and substitutions.
+/// The match clock keeps running through it — the half is a running clock
+/// (Kevin, 2026-10-04); the break has its own timer and buzz.
 public struct QuarterBreak: Codable, Sendable, Equatable {
     /// Minutes into each half when the break is due; nil means midway, so it
     /// follows the half length when that changes.

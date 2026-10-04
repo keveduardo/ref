@@ -140,11 +140,9 @@ import RefKit
 
     func startNextHalf() { append(.kickOff(half: halfAtNow + 1)) }
 
-    /// The quarter break: the clock stops until `resumePlay()`. The workout
-    /// keeps running — the referee is still on the pitch.
-    func startQuarterBreak() { append(.clockPaused) }
-
-    func resumePlay() { append(.clockResumed) }
+    /// The quarter break. The match clock keeps running (the half is a
+    /// running clock); this starts the break's own timer and its buzz.
+    func startQuarterBreak() { append(.quarterBreak(half: halfAtNow)) }
 
     func fullTime() {
         append(.fullTime)

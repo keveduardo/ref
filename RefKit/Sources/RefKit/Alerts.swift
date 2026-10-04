@@ -52,25 +52,22 @@ extension Match {
             }
         }
 
-        if let quarter = setup.quarterBreak {
-            switch clock.phase(at: now) {
-            case .running(let half) where !clock.pausedInHalf(half, at: now):
+        // The quarter break: a buzz at the mark until one is taken in the
+        // half, then a buzz when it has run its minutes. The match clock runs
+        // through it.
+        if let quarter = setup.quarterBreak, case .running(let half) = clock.phase(at: now) {
+            if let taken = events.quarterBreak(inHalf: half) {
+                let end = taken.at.addingTimeInterval(TimeInterval(quarter.breakMinutes * 60))
+                if now < end {
+                    alerts.append(MatchAlert(at: end, kind: .quarterBreakOver(half: half)))
+                }
+            } else {
                 let mark = quarter.mark(halfLength: clock.config.halfLength)
                 let elapsed = clock.elapsed(inHalf: half, at: now)
                 if elapsed < mark {
                     alerts.append(MatchAlert(at: now.addingTimeInterval(mark - elapsed),
                                              kind: .quarterMark(half: half)))
                 }
-            case .paused(let half):
-                if let stopped = clock.pauseElapsed(at: now) {
-                    let length = TimeInterval(quarter.breakMinutes * 60)
-                    if stopped < length {
-                        alerts.append(MatchAlert(at: now.addingTimeInterval(length - stopped),
-                                                 kind: .quarterBreakOver(half: half)))
-                    }
-                }
-            default:
-                break
             }
         }
 

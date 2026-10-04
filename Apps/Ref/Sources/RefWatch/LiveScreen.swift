@@ -92,7 +92,7 @@ struct LiveScreen: View {
         switch clock.phase(at: now) {
         case .notStarted: return "Ready to kick off"
         case .running(let half): return half == 1 ? "1st half" : half == 2 ? "2nd half" : "Half \(half)"
-        case .paused: return "Quarter break"
+        case .paused(let half): return "Paused — half \(half)"
         case .halfTime: return "Half time"
         case .fullTime: return "Full time"
         }
@@ -127,40 +127,29 @@ struct LiveScreen: View {
                       systemImage: session.match?.pitch == nil ? "scope" : "checkmark.circle")
             }
             .font(.footnote)
-        case .paused:
-            // The quarter break: how long it has run against its length, and
-            // the way back to play. Recording still works — it is when subs
-            // come on.
-            if let stopped = clock.pauseElapsed(at: now) {
-                let minutes = session.match?.setup.quarterBreak?.breakMinutes ?? 2
-                Text("\(ClockFormat.mmss(stopped)) of \(minutes):00")
-                    .font(.footnote)
-                    .monospacedDigit()
-                    .foregroundStyle(stopped >= TimeInterval(minutes * 60) ? .orange : .secondary)
-            }
-            HStack(spacing: 4) {
-                Button("Record") { showingRecord = true }
-                    .tint(.green)
-                Button("Resume") {
-                    Haptics.play(.start)
-                    session.resumePlay()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .font(.footnote)
         case .running(let half):
-            // The quarter break, once its mark is reached and until taken.
-            if let quarter = session.match?.setup.quarterBreak,
-               !clock.pausedInHalf(half, at: now),
-               clock.elapsed(inHalf: half, at: now) >= quarter.mark(halfLength: clock.config.halfLength),
-               clock.elapsed(inHalf: half, at: now) < clock.config.halfLength {
-                Button("Quarter break") {
-                    Haptics.play(.stop)
-                    session.startQuarterBreak()
+            // The quarter break: its button from the mark until it is taken,
+            // then its own timer while it runs. The match clock never stops.
+            if let quarter = session.match?.setup.quarterBreak, let match = session.match {
+                if let taken = match.events.quarterBreak(inHalf: half) {
+                    let length = TimeInterval(quarter.breakMinutes * 60)
+                    let into = now.timeIntervalSince(taken.at)
+                    if into < length + 60 {
+                        Text("Break \(ClockFormat.mmss(into)) of \(quarter.breakMinutes):00")
+                            .font(.footnote)
+                            .monospacedDigit()
+                            .foregroundStyle(into >= length ? .orange : .secondary)
+                    }
+                } else if clock.elapsed(inHalf: half, at: now) >= quarter.mark(halfLength: clock.config.halfLength),
+                          clock.elapsed(inHalf: half, at: now) < clock.config.halfLength {
+                    Button("Quarter break") {
+                        Haptics.play(.stop)
+                        session.startQuarterBreak()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .font(.footnote)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .font(.footnote)
             }
             // Words, not symbols: "+1′" and a chequered flag had to be
             // explained (Kevin, 2026-10-04).

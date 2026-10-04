@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The quarter-break settings, shared by New Match and Edit: a switch, when
 /// in each half it falls (midway unless a minute is picked), and how long it
-/// lasts. The watch stops the clock for it and buzzes at both ends.
+/// lasts. The match clock runs through it; the watch buzzes at both ends.
 struct QuarterBreakSection: View {
     @Binding var quarterBreak: QuarterBreak?
     let halfMinutes: Int
@@ -32,7 +32,7 @@ struct QuarterBreakSection: View {
             Text("Quarter breaks")
         } footer: {
             if quarterBreak != nil {
-                Text("The watch buzzes at the quarter mark of each half. Tap Quarter break to stop the clock; it buzzes again when the break is up, and Resume starts the clock.")
+                Text("The watch buzzes at the quarter mark of each half. Tap Quarter break to start the break timer; the match clock keeps running, and the watch buzzes when the break is up.")
             }
         }
     }

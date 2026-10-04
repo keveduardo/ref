@@ -155,6 +155,8 @@ public struct MatchReport: Codable, Sendable, Equatable {
             return "Substitution — \(match.setup.team(side).abbreviation) #\(off.number) off, #\(on.number) on"
         case .note(let note):
             return note
+        case .quarterBreak:
+            return "Quarter break"
         case .addedTime(let half, let seconds):
             let minutes = Int(seconds / 60)
             let rem = Int(seconds) % 60
