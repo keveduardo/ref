@@ -120,21 +120,38 @@ jobs:
           xcodebuild -list -project Ref.xcodeproj
 
       - name: Build the iOS scheme, unsigned
-        # ! pipefail, or `tail` would report success for a failed build.
+        # ! On failure, print the errors — a `| tail -40` here once swallowed
+        # the actual error lines and cost a whole CI round trip (2026-10-04).
         run: |
           set -euo pipefail
           cd Apps/Ref
-          xcodebuild build -project Ref.xcodeproj -scheme Ref \
-            -destination 'generic/platform=iOS' -derivedDataPath dd \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+          log="$RUNNER_TEMP/build-ios.log"
+          if ! xcodebuild build -project Ref.xcodeproj -scheme Ref \
+                -destination 'generic/platform=iOS' -derivedDataPath dd \
+                CODE_SIGNING_ALLOWED=NO > "$log" 2>&1; then
+            echo "— errors —"
+            grep -E "error:" "$log" | sort -u | head -40
+            echo "— tail —"
+            tail -20 "$log"
+            exit 1
+          fi
+          tail -5 "$log"
 
       - name: Build the watch scheme, unsigned
         run: |
           set -euo pipefail
           cd Apps/Ref
-          xcodebuild build -project Ref.xcodeproj -scheme RefWatch \
-            -destination 'generic/platform=watchOS' -derivedDataPath dd-watch \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+          log="$RUNNER_TEMP/build-watch.log"
+          if ! xcodebuild build -project Ref.xcodeproj -scheme RefWatch \
+                -destination 'generic/platform=watchOS' -derivedDataPath dd-watch \
+                CODE_SIGNING_ALLOWED=NO > "$log" 2>&1; then
+            echo "— errors —"
+            grep -E "error:" "$log" | sort -u | head -40
+            echo "— tail —"
+            tail -20 "$log"
+            exit 1
+          fi
+          tail -5 "$log"
 
       - name: Assert the companion shape
         # Everything about this app that is new for the estate and would

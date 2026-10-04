@@ -1,46 +1,106 @@
 import RefKit
 import SwiftUI
 
-/// The phone's home — matches, teams and settings. P0 is a skeleton; the real
-/// screens are P3. What is real here already: the watch link's state, so the
-/// WatchConnectivity skeleton is exercised on every render.
+/// The phone's home: the shelf of matches, the teams, the season, the
+/// settings. Set a match up here, record it on the watch, read it back here.
 struct RefScreen: View {
-    @State private var link = PhoneLink()
+    let store: PhoneStore
+    let link: PhoneLink
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Match") {
-                    Text("Set a match up here, then send it to the watch.")
-                        .foregroundStyle(.secondary)
-                    LabeledContent("Quick start", value: "On the watch")
-                }
-                Section("Watch") {
-                    LabeledContent("Link", value: link.status)
-                }
-            }
-            .navigationTitle("Ref")
+        TabView {
+            MatchesScreen(store: store)
+                .tabItem { Label("Matches", systemImage: "soccerball") }
+            TeamsScreen(store: store)
+                .tabItem { Label("Teams", systemImage: "person.3") }
+            StatsScreen(store: store)
+                .tabItem { Label("Stats", systemImage: "chart.bar") }
+            SettingsScreen(link: link)
+                .tabItem { Label("Settings", systemImage: "gear") }
         }
     }
 }
 
-struct SetupPlaceholder: View {
+struct MatchesScreen: View {
+    let store: PhoneStore
+    @State private var settingUp = false
+
     var body: some View {
-        ContentUnavailableView("New match", systemImage: "sportscourt",
-                               description: Text("Teams, competition, half length — P3."))
+        NavigationStack {
+            List {
+                if store.upcoming.isEmpty && store.played.isEmpty {
+                    ContentUnavailableView(
+                        "No matches yet", systemImage: "soccerball",
+                        description: Text("Set one up and it goes to the watch."))
+                }
+                if !store.upcoming.isEmpty {
+                    Section("Upcoming") {
+                        ForEach(store.upcoming) { match in
+                            NavigationLink(value: match.id) { MatchRow(match: match) }
+                        }
+                    }
+                }
+                if !store.played.isEmpty {
+                    Section("Played") {
+                        ForEach(store.played) { match in
+                            NavigationLink(value: match.id) { MatchRow(match: match) }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Ref")
+            .navigationDestination(for: UUID.self) { id in
+                if let match = store.all.first(where: { $0.id == id }) {
+                    MatchDetailScreen(store: store, match: match)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        settingUp = true
+                    } label: {
+                        Label("New match", systemImage: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $settingUp) {
+                MatchSetupScreen(store: store)
+            }
+        }
     }
 }
 
-struct ReportPlaceholder: View {
-    var body: some View {
-        ContentUnavailableView("Match report", systemImage: "list.bullet.rectangle",
-                               description: Text("The timeline, score and fitness — P3."))
-    }
-}
+struct MatchRow: View {
+    let match: Match
 
-struct StatsPlaceholder: View {
     var body: some View {
-        ContentUnavailableView("Season", systemImage: "chart.bar",
-                               description: Text("Matches, cards, sin bins — P3."))
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                if match.isFinished {
+                    Text(match.setup.home.abbreviation)
+                        .foregroundStyle(match.setup.home.color.phoneColor)
+                    Text(match.score.text)
+                        .font(.body.bold())
+                        .monospacedDigit()
+                    Text(match.setup.away.abbreviation)
+                        .foregroundStyle(match.setup.away.color.phoneColor)
+                } else {
+                    Text("\(match.setup.home.abbreviation) vs \(match.setup.away.abbreviation)")
+                        .font(.body.bold())
+                }
+            }
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var subtitle: String {
+        let when = (match.setup.kickOff ?? match.createdAt)
+        let date = when.formatted(date: .abbreviated, time: .shortened)
+        if let competition = match.setup.competition, !competition.isEmpty {
+            return "\(competition) · \(date)"
+        }
+        return date
     }
 }

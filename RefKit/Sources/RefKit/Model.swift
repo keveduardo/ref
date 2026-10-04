@@ -48,9 +48,12 @@ public struct Player: Codable, Sendable, Identifiable, Equatable {
 
 /// One team's players. Team sheets are optional — a match with no squads is
 /// still fully recordable, by shirt number alone.
-public struct Squad: Codable, Sendable, Equatable {
+public struct Squad: Codable, Sendable, Equatable, Identifiable {
     public var team: Team
     public var players: [Player]
+
+    /// The team's id is the squad's id — one identity, not two.
+    public var id: UUID { team.id }
 
     public init(team: Team, players: [Player] = []) {
         self.team = team

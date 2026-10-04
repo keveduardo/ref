@@ -163,8 +163,10 @@ extension MatchSession {
             .appendingPathComponent("ref-render-\(page)-\(UUID().uuidString)", isDirectory: true)
         let session = MatchSession(store: MatchStore(directory: dir))
         let now = Date()
-        func event(_ ago: TimeInterval, _ kind: MatchEvent.Kind) -> MatchEvent {
-            MatchEvent(at: now.addingTimeInterval(-ago), kind: kind)
+        /// Whole seconds, so an older type-checker cannot read the arithmetic
+        /// as an Int (the Swift 6.0 trap from the kit's tests).
+        func event(_ ago: Int, _ kind: MatchEvent.Kind) -> MatchEvent {
+            MatchEvent(at: now.addingTimeInterval(TimeInterval(-ago)), kind: kind)
         }
 
         let home = Team(name: "Madrid", abbreviation: "RMA", color: .white)

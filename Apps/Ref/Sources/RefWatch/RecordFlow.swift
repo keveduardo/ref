@@ -165,7 +165,7 @@ struct RecordFlow: View {
 
     // MARK: - Bits
 
-    private func teamButtons(_ pick: @escaping (TeamSide) -> Void) -> some View {
+    private func teamButtons(_ pick: (TeamSide) -> Void) -> some View {
         VStack(spacing: 6) {
             ForEach(TeamSide.allCases, id: \.self) { side in
                 if let team = session.match?.setup.team(side) {
@@ -198,7 +198,11 @@ struct PlayerPicker: View {
     let squad: Squad?
     let allowNone: Bool
     let title: String
-    let pick: (PlayerRef) -> Void
+    /// ! `@MainActor`, not a bare closure type: the call sites build this
+    /// closure in a `@MainActor` context (the whole View is), and in Swift 6
+    /// a non-Sendable closure keeps that isolation — handing it to a
+    /// non-isolated parameter is an error, not a warning.
+    let pick: @MainActor (PlayerRef) -> Void
 
     private var numbers: [Int] {
         if let squad, !squad.players.isEmpty {

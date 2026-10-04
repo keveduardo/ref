@@ -24,24 +24,30 @@ tools/make-icon.py   draws the app icon into both asset catalogs
 
 ## What works today (2026-10-04)
 
-- **The engine's heart is real and tested.** `RefKit`'s clock — wall-clock
-  anchored, halves, added time as a separate field, pause/resume, countdown
-  and cumulative displays — passes 13 tests on this box:
+- **The engine is real and tested.** `RefKit` holds the clock (wall-clock
+  anchored, halves, added time as a separate field, count-up/countdown,
+  cumulative display), the incident log, the score, sin bins, the match
+  report, the JSON store and the versioned sync payloads — and 38 tests run
+  on this box:
 
       swift test --package-path RefKit
 
-- **The pipeline is proven for this app's shape** (P0), before any feature
-  code: CI's `build` job asserts what makes a *companion* watch app different
-  from Rowing's and Swim's watch-only ones — the watch app inside
-  `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier` pointing home, no
-  `WKWatchOnly`, and `CFBundleVersion`s that match (ITMS refuses a mismatch).
-  The `render` job screenshots both apps in simulators.
+- **The companion shape is proven by CI**, not by hope. The `build` job
+  asserts what makes Ref different from Rowing's and Swim's watch-only apps:
+  the watch app inside `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier`
+  pointing home, no `WKWatchOnly`, and `CFBundleVersion`s that match (ITMS
+  refuses a mismatch). Green on the first run, 2026-10-04.
+- **The watch UI exists**: the live face (score, clock, added time, running
+  sin-bin chips), the two-tap record flows (goal, cards, substitutions, sin
+  bins), half time and the summary. The phone UI is next (P3).
+- **The `render` job screenshots both apps** in simulators, so the screens
+  can be reviewed from a phone.
 - **Signing and upload exist but have not run** — the `ship` job needs the
-  three App Store Connect secrets, which need Kevin's errand (SCOPE.md). No
+  three App Store Connect secrets, which need Kevin's errands (SCOPE.md). No
   build has been signed or sent to TestFlight yet.
 
 ## What is next
 
-P1–P5 in `SCOPE.md`: the full engine (P1), the watch screens (P2), the phone
-screens (P3), sync + HealthKit (P4), and the first TestFlight build (P5 —
-gated only on the website errands, which can happen any time).
+P3–P5 in `SCOPE.md`: the phone screens (P3), sync + HealthKit (P4), and the
+first TestFlight build (P5 — gated only on the website errands, which can
+happen any time).
