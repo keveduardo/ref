@@ -24,30 +24,31 @@ tools/make-icon.py   draws the app icon into both asset catalogs
 
 ## What works today (2026-10-04)
 
-- **The engine is real and tested.** `RefKit` holds the clock (wall-clock
-  anchored, halves, added time as a separate field, count-up/countdown,
-  cumulative display), the incident log, the score, sin bins, the match
-  report, the JSON store and the versioned sync payloads — and 38 tests run
-  on this box:
+- **The whole app compiles and its shape is asserted, in CI.** Watch UI and
+  phone UI (Swift 6 strict concurrency), the watch↔phone link, and the
+  HealthKit workout all build; the `build` job asserts what makes Ref's
+  companion watch app different from Rowing's and Swim's watch-only ones —
+  the watch app inside `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier`
+  pointing home, no `WKWatchOnly`, matching `CFBundleVersion`s.
+- **The engine is real and tested** — 41 tests, run on this box on every
+  push and by the `kit` job:
 
       swift test --package-path RefKit
 
-- **The companion shape is proven by CI**, not by hope. The `build` job
-  asserts what makes Ref different from Rowing's and Swim's watch-only apps:
-  the watch app inside `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier`
-  pointing home, no `WKWatchOnly`, and `CFBundleVersion`s that match (ITMS
-  refuses a mismatch). Green on the first run, 2026-10-04.
-- **The watch UI exists**: the live face (score, clock, added time, running
-  sin-bin chips), the two-tap record flows (goal, cards, substitutions, sin
-  bins), half time and the summary. The phone UI is next (P3).
+- **Everything is wired end to end**: the phone's match setup travels to the
+  watch, the watch runs the match (clock, score, cards, subs, sin bins) with
+  no phone and no signal, the match is saved to Health as a workout, and the
+  finished record — score, timeline, distance, heart rate — comes back to the
+  phone's shelf.
 - **The `render` job screenshots both apps** in simulators, so the screens
-  can be reviewed from a phone.
+  can be reviewed from a phone (the artifacts of a `render` run).
 - **Signing and upload exist but have not run** — the `ship` job needs the
-  three App Store Connect secrets, which need Kevin's errands (SCOPE.md). No
-  build has been signed or sent to TestFlight yet.
+  three App Store Connect secrets, which need Kevin's errands (SCOPE.md).
+  Nothing has been signed or uploaded, and no match has been refereed with
+  it yet: the first real match is P5's acceptance test.
 
 ## What is next
 
-P3–P5 in `SCOPE.md`: the phone screens (P3), sync + HealthKit (P4), and the
-first TestFlight build (P5 — gated only on the website errands, which can
-happen any time).
+P0.5–P5 in `SCOPE.md`: the three website errands (the only gate), the first
+TestFlight build, then the first real match — after which P6 is whatever
+that match teaches.

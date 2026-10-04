@@ -93,13 +93,13 @@ methods, only Sendable values crossing the hop.
 
 | # | What | Verified by |
 |---|---|---|
-| **P0** ✅ | Repo + CI; RefKit clock with tests; hello screens both apps; delegate skeletons for WCSession/HealthKit/CLLocation (Swift 6 strict concurrency proven early) | kit/build/render jobs green — the build job asserts the companion shape |
-| **P0.5** | Bundle ids registered (ASC API); Kevin's errands; the first signed upload of the hello build | Apple accepts the pairing — the one thing no local build can prove |
-| **P1** | The full engine: events, score derivation, sin-bin expiry, report, JSON store, stats, resume | `swift test` on Linux |
-| **P2** | Watch UI: Start → Live → record flows → HalfTime → Summary; haptics; dim mode | renders, reviewed on the phone |
-| **P3** | Phone UI: Matches, MatchSetup, Teams, MatchDetail + share, Stats, Settings | renders + install |
-| **P4** | Sync + HealthKit: WCSession both ways, workout session, GPS | first on-wrist test |
-| **P5** | Ship v1: icon, listing notes, `ship` → TestFlight | a real match refereed with it |
+| **P0** ✅ | Repo + CI; RefKit clock with tests; hello screens both apps; delegate skeletons for WCSession/HealthKit/CLLocation | kit/build/render jobs green — the build job asserts the companion shape |
+| **P1** ✅ | The engine: events, score derivation, sin-bin expiry, report, JSON store, stats, sync payloads | 41 tests, `swift test` on Linux, on every push |
+| **P2** ✅ | Watch UI: Start → Live → record flows → HalfTime → Summary; haptics; dim mode | the render job's screenshots |
+| **P3** ✅ | Phone UI: Matches, MatchSetup, Teams, MatchDetail + share, Stats, Settings | the render job's screenshots |
+| **P4** ✅ | Sync + HealthKit: WCSession both ways, workout session, GPS distance | compiles and asserts in CI; the *device* proof is the first real match (P5) |
+| **P0.5** | Bundle ids registered (ASC API); Kevin's errands; the first signed upload | Apple accepts the pairing — the one thing no local build can prove |
+| **P5** | Ship v1: icon, listing notes, `ship` → TestFlight; install on Kevin's iPhone + watch | a real match refereed with it |
 | **P6** | Whatever that match teaches | his feedback |
 
 ## Kevin's errands (any time after P0 — all website, one morning)

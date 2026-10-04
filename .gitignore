@@ -6,3 +6,6 @@ xcuserdata/
 *.xcuserstate
 *.ipa
 *.dSYM.zip
+
+# Render-job screenshots, downloaded here for review — never committed.
+.renders/
