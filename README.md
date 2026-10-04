@@ -5,8 +5,9 @@ A soccer referee app for iPhone and Apple Watch: **the watch runs the match**
 **the phone sets up before and reports after**. Built the `~/dev` way — no Mac
 in the house.
 
-**`SCOPE.md` is the plan** — read that first. This file is the layout and the
-current state of the machine.
+**`SCOPE.md` is the plan**, and **`HANDOFF.md` is the way in for a fresh
+session** — where this stands, the next action, the loop and the traps. Read
+those two first; this file is the layout and the current state of the machine.
 
 ## Layout
 
