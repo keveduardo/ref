@@ -44,6 +44,9 @@ struct MatchesScreen: View {
     let store: PhoneStore
     @State private var settingUp = false
     @State private var importResult: String?
+    /// The match just deleted by a swipe, kept for a few seconds so a full
+    /// swipe by accident can be taken back.
+    @State private var recentlyDeleted: Match?
 
     var body: some View {
         NavigationStack {
@@ -57,6 +60,7 @@ struct MatchesScreen: View {
                     Section("Upcoming") {
                         ForEach(store.upcoming) { match in
                             NavigationLink(value: match.id) { MatchRow(match: match) }
+                                .modifier(SwipeToDelete { delete(match) })
                         }
                     }
                 }
@@ -64,6 +68,7 @@ struct MatchesScreen: View {
                     Section("Played") {
                         ForEach(store.played) { match in
                             NavigationLink(value: match.id) { MatchRow(match: match) }
+                                .modifier(SwipeToDelete { delete(match) })
                         }
                     }
                 }
@@ -95,6 +100,25 @@ struct MatchesScreen: View {
             .sheet(isPresented: $settingUp) {
                 MatchSetupScreen(store: store)
             }
+            .safeAreaInset(edge: .bottom) {
+                if let match = recentlyDeleted {
+                    HStack {
+                        Text("Deleted \(match.setup.home.abbreviation) vs \(match.setup.away.abbreviation)")
+                            .font(.subheadline)
+                        Spacer()
+                        Button("Undo") {
+                            store.save(match)
+                            recentlyDeleted = nil
+                        }
+                        .bold()
+                    }
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.default, value: recentlyDeleted?.id)
             .alert(importResult ?? "", isPresented: Binding(
                 get: { importResult != nil }, set: { if !$0 { importResult = nil } })) {
                 Button("OK") { importResult = nil }
@@ -123,6 +147,35 @@ extension MatchesScreen {
         case (let n, _):
             importResult = "\(n) matches added."
         }
+    }
+}
+
+extension MatchesScreen {
+    fileprivate func delete(_ match: Match) {
+        store.delete(match)
+        recentlyDeleted = match
+        let id = match.id
+        Task {
+            try? await Task.sleep(for: .seconds(5))
+            if recentlyDeleted?.id == id { recentlyDeleted = nil }
+        }
+    }
+}
+
+/// Delete from either side: a swipe right (Kevin's habit) or left (iOS's).
+/// A long swipe deletes at once; the Matches screen offers Undo for a few
+/// seconds after.
+struct SwipeToDelete: ViewModifier {
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button("Delete", systemImage: "trash", role: .destructive, action: action)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Button("Delete", systemImage: "trash", role: .destructive, action: action)
+            }
     }
 }
 
