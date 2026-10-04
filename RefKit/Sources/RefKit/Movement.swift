@@ -222,13 +222,14 @@ public struct MovementReport: Codable, Sendable, Equatable {
 extension MatchFormat {
     /// The middle of AYSO's recommended field size for the division (AYSO
     /// wiki, "Size of Ball and Field by Age Division"): 10U 55–65 × 35–45 yd,
-    /// 12U 70–80 × 45–55 yd, 14U 100–130 × 50–100 yd.
+    /// 12U 70–80 × 45–55 yd, 14U and up 100–130 × 50–100 yd. Region 34 plays
+    /// 7U and 8U at 7 v 7, so they get the small-sided 10U field rather than
+    /// the national 4 v 4 one.
     public var pitch: PitchSize {
         switch playersPerSide {
-        case 7: .yards(60, 40, penalty: 12, 24)
+        case ..<9: .yards(60, 40, penalty: 12, 24)
         case 9: .yards(75, 50, penalty: 14, 36)
-        case 11 where halfMinutes < 45: .yards(110, 70, penalty: 18, 44)
-        default: .adult
+        default: halfMinutes < 40 ? .yards(110, 70, penalty: 18, 44) : .adult
         }
     }
 }

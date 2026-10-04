@@ -104,7 +104,10 @@ import RefKit
             formatID: format?.id,
             halfTimeMinutes: format?.halfTimeMinutes.lowerBound ?? defaults.halfTimeMinutes,
             addedTimeButton: defaults.addedTimeButton,
-            quarterBreak: defaults.quarterBreak)))
+            // A division decides quarter breaks; Other takes the phone's default.
+            quarterBreak: format.map { $0.quarterSubstitutions
+                ? QuarterBreak(breakMinutes: defaults.quarterBreak?.breakMinutes ?? 2) : nil }
+                ?? defaults.quarterBreak)))
     }
 
     /// Take on a match — the phone's assignment, or quick start.

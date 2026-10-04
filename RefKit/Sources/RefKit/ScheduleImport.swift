@@ -66,7 +66,8 @@ public struct ScheduledGame: Sendable, Equatable {
             kickOff: kickOff,
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
             formatID: format?.id,
-            halfTimeMinutes: halfTimeMinutes)
+            halfTimeMinutes: halfTimeMinutes,
+            quarterBreak: format?.quarterSubstitutions == true ? QuarterBreak() : nil)
     }
 
     // MARK: - Reading the email

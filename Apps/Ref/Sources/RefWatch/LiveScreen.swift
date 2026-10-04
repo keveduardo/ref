@@ -78,9 +78,14 @@ struct LiveScreen: View {
             if let setup = session.match?.setup {
                 Text(setup.home.abbreviation)
                     .foregroundStyle(setup.home.color.watchColor)
-                Text(session.score.text)
-                    .font(.title3.bold())
-                    .monospacedDigit()
+                // 7U and 8U keep no score (Region 34), so the face shows none.
+                if setup.format?.keepsScore == false {
+                    Text("vs").foregroundStyle(.secondary)
+                } else {
+                    Text(session.score.text)
+                        .font(.title3.bold())
+                        .monospacedDigit()
+                }
                 Text(setup.away.abbreviation)
                     .foregroundStyle(setup.away.color.watchColor)
             }
@@ -114,6 +119,12 @@ struct LiveScreen: View {
     private func controls(_ clock: MatchClock, at now: Date) -> some View {
         switch clock.phase(at: now) {
         case .notStarted:
+            if let format = session.match?.setup.format {
+                Text(format.watchReminder)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
             Button("Kick off") {
                 Haptics.play(.start)
                 session.kickOff()

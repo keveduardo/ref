@@ -46,8 +46,9 @@ RefTime puts the match on your wrist and the paperwork on your phone.
   every recording without looking.
 - The wrist buzzes when the half's time is up, when added time runs out,
   and when half-time is over (5 minutes by default, set per match).
-- AYSO 10U, 12U and 14U presets fill in the half length and remind you of
-  the rules that differ — players a side, ball size, heading, punts.
+- AYSO presets from 7U to 19U, girls and boys, fill in the half length,
+  quarter breaks, and whether cards and the score are kept — and remind
+  you of the rules that differ: players a side, ball size, heading, offside.
 - Half time and full time are one button each; full time asks first.
 - The screen stays readable with your wrist down, and the app keeps running
   through the whole match.

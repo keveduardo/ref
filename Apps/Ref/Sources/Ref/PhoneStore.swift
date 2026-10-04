@@ -134,7 +134,12 @@ enum RouteFiles {
             var setup = game.matchSetup(halfTimeMinutes: defaults == 0
                                         ? MatchDefaults.standard.halfTimeMinutes : defaults)
             setup.addedTimeButton = UserDefaults.standard.bool(forKey: "ref.addedTimeButton")
-            setup.quarterBreak = QuarterBreakDefaults.value
+            // The division decides quarter breaks; without one, Settings does.
+            if setup.format == nil {
+                setup.quarterBreak = QuarterBreakDefaults.value
+            } else if setup.quarterBreak != nil {
+                setup.quarterBreak?.breakMinutes = QuarterBreakDefaults.breakMinutes
+            }
             guard !all.contains(where: { $0.id == setup.id }) else { continue }
             try? matches.save(Match(setup: setup))
             new += 1

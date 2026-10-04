@@ -66,8 +66,9 @@ struct ScheduleImportTests {
         #expect(preset("U14 Boys") == "ayso-14u-boys")
         #expect(preset("10UG") == "ayso-10u-girls")
         #expect(preset("BC Girls 14U") == "ayso-14u-girls")
+        #expect(preset("Boys 16U") == "ayso-16u-boys")
         // An age RefTime has no preset for, or no gender: no preset, no guess.
-        #expect(preset("Boys 16U") == nil)
+        #expect(preset("Boys 15U") == nil)
         #expect(preset("Coed 10U") == nil)
     }
 

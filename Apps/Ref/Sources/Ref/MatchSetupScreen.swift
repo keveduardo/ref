@@ -52,7 +52,7 @@ struct MatchSetupScreen: View {
                     Text("Match type")
                 } footer: {
                     if let format = MatchFormat.preset(id: formatID) {
-                        Text("\(format.reminder). Defaults from the AYSO National Rules & Regulations — change anything below for this match.")
+                        Text("\(format.reminder). From AYSO Region 34's local rules (2024 Fall) — change anything below for this match.")
                     }
                 }
                 .onChange(of: formatID) { old, new in apply(from: old, to: new) }
@@ -152,6 +152,9 @@ struct MatchSetupScreen: View {
         halfMinutes = format.halfMinutes
         // The rules allow a range; the shortest is the referee's usual call.
         halfTimeMinutes = format.halfTimeMinutes.lowerBound
+        // Subs at quarters means a quarter break; free subs means none.
+        quarterBreak = format.quarterSubstitutions
+            ? QuarterBreak(breakMinutes: QuarterBreakDefaults.breakMinutes) : nil
         let typed = competition.trimmingCharacters(in: .whitespaces)
         if typed.isEmpty || typed == MatchFormat.preset(id: old)?.title {
             competition = format.title

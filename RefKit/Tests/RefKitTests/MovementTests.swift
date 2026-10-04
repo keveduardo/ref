@@ -105,6 +105,8 @@ struct MovementTests {
     @Test func theDivisionsDrawTheirOwnFields() throws {
         let u10 = try #require(MatchFormat.preset(id: "ayso-10u-girls")).pitch
         let u14 = try #require(MatchFormat.preset(id: "ayso-14u-boys")).pitch
+        let u19 = try #require(MatchFormat.preset(id: "ayso-19u-boys")).pitch
+        #expect(u19 == .adult)
         #expect(abs(u10.length - 54.86) < 0.1)
         #expect(abs(u10.width - 36.58) < 0.1)
         #expect(abs(u14.length - 100.58) < 0.1)

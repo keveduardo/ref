@@ -4,12 +4,15 @@ import Foundation
 /// the referee picks one. Every value is only a starting point: the phone
 /// lets each of them be changed for the match in hand.
 ///
-/// The AYSO values are from the AYSO National Rules & Regulations
-/// (01/2020), Article I: B.1 (maximum duration of a half), B.2 (half-time
-/// five to ten minutes), H.1 (team sizes), the ball-size table, I.1
-/// (heading), K.1 (no punts in 9U–10U) and L (build-out line, 9U–10U). The
-/// rules are the same for girls and boys; the division names both because
-/// the match report should say which it was.
+/// The AYSO presets follow **AYSO Region 34's Local Rules and Guidelines,
+/// 2024 Fall Season** (Kevin's region), which take precedence over the
+/// national rules where they differ — notably 10U plays 8 v 8 there, not
+/// the national 7 v 7. What that sheet does not cover comes from the AYSO
+/// National Rules & Regulations (01/2020), Article I: half-time of five to
+/// ten minutes (B.2), heading banned in 12U and below for two-year
+/// divisions (I.1), no punts in 10U and below (K.1). The rules are the same
+/// for girls and boys; the division names both because the report should
+/// say which it was.
 public struct MatchFormat: Codable, Sendable, Equatable, Identifiable {
     public enum Gender: String, Codable, Sendable, Equatable, CaseIterable {
         case girls, boys
@@ -25,61 +28,111 @@ public struct MatchFormat: Codable, Sendable, Equatable, Identifiable {
     /// Half-time, as the rules bound it; the referee designates within it.
     public var halfTimeMinutes: ClosedRange<Int>
     public var playersPerSide: Int
+    /// Fewest players a team may start with.
+    public var minimumPlayers: Int
     public var ballSize: Int
+    public var goalkeepers: Bool
+    /// Whether the score is kept. When not, the watch shows no score.
+    public var keepsScore: Bool
+    /// Every foul restarts with an indirect free kick (7U and 8U).
+    public var allFoulsIndirect: Bool
     /// Whether a player may deliberately head the ball in a match. When not,
     /// a header is an indirect free kick.
     public var headingAllowed: Bool
     /// Whether the goalkeeper may punt or drop-kick.
     public var keeperMayPunt: Bool
-    /// Whether the field has a build-out line (offside not called between it
-    /// and the halfway line).
+    /// Whether the field has a build-out line.
     public var buildOutLine: Bool
+    /// Where offside starts being called: "Halfway line", or nil when
+    /// offside is not called at all.
+    public var offsideLine: String?
+    /// Substitutions at the quarters — the preset turns quarter breaks on.
+    /// Otherwise free substitution.
+    public var quarterSubstitutions: Bool
+    /// Whether cards are shown. When not, the watch offers no cards.
+    public var showsCards: Bool
 
     public init(id: String, title: String, halfMinutes: Int, halfTimeMinutes: ClosedRange<Int>,
-                playersPerSide: Int, ballSize: Int, headingAllowed: Bool,
-                keeperMayPunt: Bool, buildOutLine: Bool) {
+                playersPerSide: Int, minimumPlayers: Int, ballSize: Int, goalkeepers: Bool,
+                keepsScore: Bool, allFoulsIndirect: Bool, headingAllowed: Bool,
+                keeperMayPunt: Bool, buildOutLine: Bool, offsideLine: String?,
+                quarterSubstitutions: Bool, showsCards: Bool) {
         self.id = id
         self.title = title
         self.halfMinutes = halfMinutes
         self.halfTimeMinutes = halfTimeMinutes
         self.playersPerSide = playersPerSide
+        self.minimumPlayers = minimumPlayers
         self.ballSize = ballSize
+        self.goalkeepers = goalkeepers
+        self.keepsScore = keepsScore
+        self.allFoulsIndirect = allFoulsIndirect
         self.headingAllowed = headingAllowed
         self.keeperMayPunt = keeperMayPunt
         self.buildOutLine = buildOutLine
+        self.offsideLine = offsideLine
+        self.quarterSubstitutions = quarterSubstitutions
+        self.showsCards = showsCards
     }
 
-    /// The rules worth a glance before kick-off, one line:
-    /// "7 a side · size 4 ball · no heading · no punts · build-out line".
+    /// The rules worth a glance before kick-off, one line — the phone's
+    /// match-type footer.
     public var reminder: String {
-        var bits = ["\(playersPerSide) a side", "size \(ballSize) ball"]
+        var bits = ["\(playersPerSide) v \(playersPerSide) (min \(minimumPlayers))", "size \(ballSize) ball"]
+        if !goalkeepers { bits.append("no keepers") }
+        if !keepsScore { bits.append("no score kept") }
+        if allFoulsIndirect { bits.append("all fouls IFK") }
         if !headingAllowed { bits.append("no heading") }
-        if !keeperMayPunt { bits.append("no punts") }
+        if goalkeepers && !keeperMayPunt { bits.append("no punts") }
         if buildOutLine { bits.append("build-out line") }
+        bits.append(offsideLine.map { "offside from the \($0.lowercased())" } ?? "no offside")
+        bits.append(quarterSubstitutions ? "subs at quarters" : "free subs")
+        bits.append(showsCards ? "cards" : "no cards")
         bits.append("half-time \(halfTimeMinutes.lowerBound)–\(halfTimeMinutes.upperBound) min")
         return bits.joined(separator: " · ")
     }
 
+    /// The short version for the watch before kick-off.
+    public var watchReminder: String {
+        var bits: [String] = []
+        if !showsCards { bits.append("No cards") }
+        if !headingAllowed { bits.append("no heading") }
+        if allFoulsIndirect { bits.append("all IFK") }
+        if offsideLine == nil { bits.append("no offside") }
+        if buildOutLine { bits.append("build-out") }
+        return bits.isEmpty ? "\(playersPerSide) v \(playersPerSide)" : bits.joined(separator: " · ")
+    }
+
     // MARK: - The presets
 
-    /// One AYSO division, girls or boys — the same rules either way.
+    /// One row of Region 34's table, girls or boys.
     static func ayso(_ age: Int, _ gender: Gender) -> MatchFormat {
-        let (half, players, ball, heading, punts, buildOut): (Int, Int, Int, Bool, Bool, Bool)
+        // (half, players, min, ball, keepers, score, allIFK, buildOut, offside, qtrSubs, cards)
+        let row: (Int, Int, Int, Int, Bool, Bool, Bool, Bool, String?, Bool, Bool)
         switch age {
-        case 10: (half, players, ball, heading, punts, buildOut) = (25, 7, 4, false, false, true)
-        case 12: (half, players, ball, heading, punts, buildOut) = (30, 9, 4, false, true, false)
-        default: (half, players, ball, heading, punts, buildOut) = (35, 11, 5, true, true, false)
+        case 7:  row = (20, 7, 5, 3, false, false, true, true, nil, true, false)
+        case 8:  row = (20, 7, 5, 3, true, false, true, true, nil, true, false)
+        case 10: row = (25, 8, 6, 4, true, true, false, true, "Halfway line", true, false)
+        case 12: row = (30, 9, 7, 4, true, true, false, false, "Halfway line", true, true)
+        case 14: row = (35, 11, 7, 5, true, true, false, false, "Halfway line", true, true)
+        case 16: row = (40, 11, 7, 5, true, true, false, false, "Halfway line", false, true)
+        default: row = (45, 11, 7, 5, true, true, false, false, "Halfway line", false, true)
         }
         return MatchFormat(id: "ayso-\(age)u-\(gender.rawValue)",
                            title: "AYSO \(age)U \(gender.title)",
-                           halfMinutes: half, halfTimeMinutes: 5...10,
-                           playersPerSide: players, ballSize: ball,
-                           headingAllowed: heading, keeperMayPunt: punts,
-                           buildOutLine: buildOut)
+                           halfMinutes: row.0, halfTimeMinutes: 5...10,
+                           playersPerSide: row.1, minimumPlayers: row.2, ballSize: row.3,
+                           goalkeepers: row.4, keepsScore: row.5, allFoulsIndirect: row.6,
+                           headingAllowed: age >= 14, keeperMayPunt: age > 10,
+                           buildOutLine: row.7, offsideLine: row.8,
+                           quarterSubstitutions: row.9, showsCards: row.10)
     }
 
+    /// The divisions in Region 34's table, youngest first.
+    public static let ages = [7, 8, 10, 12, 14, 16, 19]
+
     /// What the phone's match-type picker offers, in its order.
-    public static let presets: [MatchFormat] = [10, 12, 14].flatMap { age in
+    public static let presets: [MatchFormat] = ages.flatMap { age in
         Gender.allCases.map { ayso(age, $0) }
     }
 

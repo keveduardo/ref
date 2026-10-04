@@ -90,7 +90,7 @@ struct RecordFlow: View {
             pageHeader
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
                       spacing: 6) {
-                ForEach(RecordKind.allCases, id: \.self) { kind in
+                ForEach(kinds, id: \.self) { kind in
                     Button {
                         if let side {
                             step = kind == .substitution ? .off(side) : .player(kind, side)
@@ -139,6 +139,13 @@ struct RecordFlow: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
+    }
+
+    /// What can be recorded: everything, less the cards in a division that
+    /// shows none (Region 34: 7U, 8U and 10U).
+    private var kinds: [RecordKind] {
+        guard session.match?.setup.format?.showsCards == false else { return RecordKind.allCases }
+        return RecordKind.allCases.filter { $0 != .yellow && $0 != .red }
     }
 
     private func finish() {
