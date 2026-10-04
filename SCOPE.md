@@ -113,15 +113,16 @@ upcoming matches (names, short names, colours, swap sides, clock).
 
 Still to build, in this order:
 
-1. **Pitch-diagram heatmap** (Kevin chose the fullest option). The watch
-   keeps the route (it already records it, for distance) and saves it to
-   Health as an `HKWorkoutRoute`, so Fitness shows the map. The referee marks
-   the field once, by tapping at the centre spot facing one goal before
-   kick-off, which gives the origin and the axis. RefKit projects the route onto
-   a normalised 100 × 64 pitch, pure and tested, and computes time per third,
-   diagonal coverage, distance per half, top speed and sprint count. The
-   route goes to the phone by `transferFile`, since it is too big for user
-   info, and the phone draws the heatmap on a pitch.
+1. ✅ **Pitch-diagram heatmap** (build 35). Optional "Mark field" on the
+   watch before kick-off; otherwise the frame is inferred from the route.
+   The route goes into Health (Fitness shows the map) and to the phone by
+   `transferFile`. RefKit's `PitchFrame` and `MovementReport` produce the
+   heat grid, distance per half, top speed, sprints (20+ km/h), thirds and
+   time on the diagonal, with 17 tests. **Unproven on a device**: how good
+   the compass and GPS are at a real field, and whether the route arrives
+   on the phone.
+   Same build: swipe right for home, left for away, and the face's buttons
+   say "+1 min" and "End half".
 2. **Optional sign-in: Sign in with Apple or Google, for backup and sync.**
    The app stays fully usable signed out. It needs a small Worker with D1
    for the backup (read `~/dev/brisaloca-home/API-TOKENS.md` before any
