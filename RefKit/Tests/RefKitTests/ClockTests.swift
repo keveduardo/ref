@@ -9,9 +9,11 @@ import Testing
 @Suite("match clock")
 struct MatchClockTests {
     let t0 = Date(timeIntervalSince1970: 1_800_000_000)
-    func at(_ s: TimeInterval) -> Date { t0.addingTimeInterval(s) }
+    /// Whole seconds, so `45 * 60` can never be inferred as an Int by an older
+    /// type-checker (the runner's Swift 6.0 did exactly that in a tuple).
+    func at(_ seconds: Int) -> Date { t0.addingTimeInterval(TimeInterval(seconds)) }
 
-    func clock(_ events: [(TimeInterval, MatchEvent.Kind)],
+    func clock(_ events: [(Int, MatchEvent.Kind)],
                config: ClockConfig = .adult) -> MatchClock {
         MatchClock.replay(config: config,
                           events: events.map { MatchEvent(at: at($0.0), kind: $0.1) })
@@ -121,7 +123,7 @@ struct MatchClockTests {
         // The replay contract: asking at `now` uses the anchors up to `now`,
         // so an event that arrived early, or a log replayed after the match
         // ended, reads exactly as the live clock did.
-        let events: [(TimeInterval, MatchEvent.Kind)] = [
+        let events: [(Int, MatchEvent.Kind)] = [
             (0, .kickOff(half: 1)),
             (40 * 60, .clockPaused),
             (42 * 60, .clockResumed),
@@ -129,7 +131,7 @@ struct MatchClockTests {
             (60 * 60, .kickOff(half: 2)),
         ]
         let full = clock(events)
-        let probes: [TimeInterval] = [30, 41 * 60, 50 * 60, 60 * 60 + 42]
+        let probes: [Int] = [30, 41 * 60, 50 * 60, 60 * 60 + 42]
         for probe in probes {
             let now = at(probe)
             let prefix = MatchClock.replay(

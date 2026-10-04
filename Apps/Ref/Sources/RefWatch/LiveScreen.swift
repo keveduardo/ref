@@ -13,7 +13,7 @@ struct LiveScreen: View {
     init() {
         // Kick-off a plausible 12:34 ago, so a render screenshot shows a face
         // that looks like a match rather than 0:00.
-        let start = Date().addingTimeInterval(-(12 * 60 + 34))
+        let start = Date().addingTimeInterval(TimeInterval(-(12 * 60 + 34)))
         clock = MatchClock.replay(config: .adult,
                                   events: [MatchEvent(at: start, kind: .kickOff(half: 1))])
     }
