@@ -75,10 +75,15 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     /// because the watch cannot read the phone's settings — the two devices
     /// have separate `UserDefaults`.
     public var sinBinMinutes: Int
+    /// The preset this match was set up from (`MatchFormat.id`), if any —
+    /// the report names the division and the watch can show its reminders.
+    /// Optional, so a setup saved before formats existed still decodes.
+    public var formatID: String?
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
                 kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
-                sinBinMinutes: Int = MatchDefaults.standard.sinBinMinutes) {
+                sinBinMinutes: Int = MatchDefaults.standard.sinBinMinutes,
+                formatID: String? = nil) {
         self.id = id
         self.home = home
         self.away = away
@@ -87,7 +92,10 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.clock = clock
         self.squads = squads
         self.sinBinMinutes = sinBinMinutes
+        self.formatID = formatID
     }
+
+    public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
 
     public func team(_ side: TeamSide) -> Team { side == .home ? home : away }
 

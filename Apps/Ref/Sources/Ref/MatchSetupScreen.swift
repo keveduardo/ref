@@ -1,14 +1,18 @@
 import RefKit
 import SwiftUI
 
-/// Set a match up: the teams, the clock, the kick-off, the sin bin. Saving it
-/// puts it on the shelf, and from there it travels to the watch.
+/// Set a match up: the match type, the teams, the clock, the kick-off, the
+/// sin bin. Saving it puts it on the shelf, and from there it travels to the
+/// watch.
 struct MatchSetupScreen: View {
     let store: PhoneStore
 
     @Environment(\.dismiss) private var dismiss
 
     @State private var competition = ""
+    /// The preset picked, if any. Picking one fills in its defaults; every
+    /// field stays editable afterwards.
+    @State private var formatID: String?
     @State private var homeID: UUID?
     @State private var awayID: UUID?
     @State private var newHome = ""
@@ -33,6 +37,21 @@ struct MatchSetupScreen: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Match type", selection: $formatID) {
+                        Text("Custom").tag(String?.none)
+                        ForEach(MatchFormat.presets) { format in
+                            Text(format.title).tag(Optional(format.id))
+                        }
+                    }
+                } header: {
+                    Text("Match type")
+                } footer: {
+                    if let format = MatchFormat.preset(id: formatID) {
+                        Text("\(format.reminder). Defaults from the AYSO National Rules & Regulations — change anything below for this match.")
+                    }
+                }
+                .onChange(of: formatID) { old, new in apply(from: old, to: new) }
                 Section("Competition") {
                     TextField("Friendly, League…", text: $competition)
                 }
@@ -112,7 +131,20 @@ struct MatchSetupScreen: View {
             competition: competition.trimmingCharacters(in: .whitespaces).isEmpty ? nil : competition,
             kickOff: hasKickOff ? kickOff : nil,
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
-            sinBinMinutes: sinBinMinutes)
+            sinBinMinutes: sinBinMinutes,
+            formatID: formatID)
         dismiss()
+    }
+
+    /// A preset's defaults, filled in. The competition line takes the
+    /// division's name only when the referee has not typed their own (it is
+    /// empty, or still the previous preset's name).
+    private func apply(from old: String?, to new: String?) {
+        guard let format = MatchFormat.preset(id: new) else { return }
+        halfMinutes = format.halfMinutes
+        let typed = competition.trimmingCharacters(in: .whitespaces)
+        if typed.isEmpty || typed == MatchFormat.preset(id: old)?.title {
+            competition = format.title
+        }
     }
 }
