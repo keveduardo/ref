@@ -9,7 +9,7 @@ decisions behind it — including the phase table this file mirrors).
 | | State |
 |---|---|
 | Repo | `~/dev/ref` = `keveduardo/ref`, private. Commits go straight to `main`; push after committing. |
-| The engine | `RefKit` — 41 tests, green on this box: `swift test --package-path RefKit` |
+| The engine | `RefKit` — 54 tests, green on this box: `swift test --package-path RefKit` |
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |
 | Signed / uploaded | **Nothing.** No TestFlight build exists and no match has been refereed with it. |
@@ -47,6 +47,31 @@ decisions behind it — including the phase table this file mirrors).
 The `ship` job archives the iOS app (the watch app rides inside it), refuses to
 upload an archive that carries no watch app, and sends the build to TestFlight.
 Build numbers come from the run number; both bundles share it (ITMS demands it).
+
+## What the second session (2026-10-04) changed
+
+A read of both apps end to end, for what would go wrong on the first
+Saturday — all fixed, in RefKit with tests where it could be:
+
+- **Undo** is a `.voided(id)` event. `EventLog.recorded` is everything (what
+  is stored and sent, still under the `"events"` key); `EventLog.events` is
+  the match as it happened, less voids and their targets. Everything
+  downstream reads `events`. Nothing is ever deleted, so sync still merges
+  by id.
+- **Alarms**: `Match.upcomingAlerts(after:)` projects the next buzz from
+  now; `MatchSession.replanAlarms()` sleeps until it and re-plans after
+  every event. With the wrist down they fire only because the workout
+  session keeps the app alive. **Unproven on a device**: that is the first
+  thing to check at P5's match.
+- **Settings across devices**: the watch cannot read the phone's
+  `UserDefaults`. The sin bin length lives in `MatchSetup.sinBinMinutes`,
+  and `SyncPayload.Assignment.defaults` carries the quick-start defaults.
+- **The phone's `onFinished` is wired in `RefApp.init`**, because a
+  background wake can deliver a finished match before any view exists.
+- **Crash recovery**: `MatchSession.init` recovers (or restarts) the workout
+  for a match in progress, and finishes the save for one already at full
+  time. `WorkoutRecorder.recover()` uses `recoverActiveWorkoutSession`. It
+  compiles in CI but has never run.
 
 ## The loop this repo runs on
 

@@ -42,9 +42,12 @@ Identifiers (renameable until registered): bundle ids `com.brisaloca.ref` and
 - **Live**: big wall-clock-anchored timer, score, period, added time as
   `45:00 +2:10`; readable in always-on/dim mode; every incident in ≤3 taps
   with a haptic
-- **Record**: Goal (scorer number), Yellow, Red, Substitution, Sin bin
-  (countdown + notification when the player may return), added time (+1' per
-  tap), note
+- **Record**: Goal (scorer number), Yellow (a second one is recorded as a
+  second yellow), Red, Substitution, Sin bin (countdown + a buzz when the
+  player may return), added time (+1' per tap), note; **Undo** for any of
+  them, and **Resume** for a half ended by mistake
+- **Alarms** on the wrist, each its own rhythm: the half's length reached,
+  the announced added time used up, a sin bin over
 - Half-time timer, End match, summary. No phone, no network needed; a
   mid-match crash or reboot resumes (state is flushed on every event)
 
@@ -96,6 +99,7 @@ methods, only Sendable values crossing the hop.
 | **P3** ✅ | Phone UI: Matches, MatchSetup, Teams, MatchDetail + share, Stats, Settings | the render job's screenshots |
 | **P4** ✅ | Sync + HealthKit: WCSession both ways, workout session, GPS distance | compiles and asserts in CI; the *device* proof is the first real match (P5) |
 | **P0.5** | Bundle ids registered (ASC API); Kevin's errands; the first signed upload | Apple accepts the pairing — the one thing no local build can prove |
+| **P4.5** ✅ | From a full read of both apps: undo (`.voided` events — the log stays append-only), resume a half ended by mistake, alarms (half length, added time, sin bin over), the sin bin length and quick-start defaults actually reaching the watch, the phone's finished-match handler wired before any view, workout recovery after a crash | 54 tests; CI build; render. Alarms with the wrist down: P5 |
 | **P5** | Ship v1: icon, listing notes, `ship` → TestFlight; install on Kevin's iPhone + watch | a real match refereed with it |
 | **P6** | Whatever that match teaches | his feedback |
 

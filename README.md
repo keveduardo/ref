@@ -31,7 +31,7 @@ tools/make-icon.py   draws the app icon into both asset catalogs
   companion watch app different from Rowing's and Swim's watch-only ones —
   the watch app inside `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier`
   pointing home, no `WKWatchOnly`, matching `CFBundleVersion`s.
-- **The engine is real and tested** — 41 tests, run on this box on every
+- **The engine is real and tested** — 54 tests, run on this box on every
   push and by the `kit` job:
 
       swift test --package-path RefKit
@@ -41,6 +41,12 @@ tools/make-icon.py   draws the app icon into both asset catalogs
   no phone and no signal, the match is saved to Health as a workout, and the
   finished record — score, timeline, distance, heart rate — comes back to the
   phone's shelf.
+- **Mistakes can be taken back, and the wrist buzzes on time** (added
+  2026-10-04, second session): undo for any incident (Record → Undo →
+  confirm), "Resume 1st half" for a half ended by mistake, and haptic alarms
+  at the half's length, at the end of announced added time, and when a sin
+  bin runs out. The logic is tested here; the haptics firing with the wrist
+  down is a device question, answered at the first real match.
 - **The `render` job screenshots both apps** in simulators, so the screens
   can be reviewed from a phone (the artifacts of a `render` run).
 - **Signing and upload exist but have not run** — the `ship` job needs the
