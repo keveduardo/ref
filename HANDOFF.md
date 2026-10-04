@@ -27,7 +27,7 @@ or off.
 
 1. **Mint an App Store Connect API key** — appstoreconnect.apple.com → Users
    and Access → Integrations → **Team Keys → +**, name "GitHub Actions -
-   RefTime", role **App Manager**, then download the `.p8` **once**.
+   RefTime", role **Admin** (trap 7), then download the `.p8` **once**.
    ! Mobile Safari's download silently does nothing; it wants a desktop
    browser (learned the hard way on 2026-09-22). Hand back: the **Key ID**
    and where the `.p8` lives. The Issuer ID is
@@ -119,7 +119,13 @@ Saturday — all fixed, in RefKit with tests where it could be:
    pattern copied from brisaloca-ios) swallows them and costs a round trip.
 6. The companion watch app **does install and launch standalone on a watch
    simulator** — proven 2026-10-04 by the render job. No pairing dance needed.
-7. `xcodegen` regenerates everything under `Generated/`; the entitlements file
+7. **The CI key must be Admin, not App Manager.** The first `ship` run
+   (2026-10-04, run 37230402141) archived and signed fine, then failed at
+   export: `Cloud signing permission error` / `No profiles for
+   'com.brisaloca.ref' were found`. Exporting for the App Store uses the
+   cloud-managed distribution certificate, which an App Manager key may not
+   touch. Rowing's CI key is Admin, which is why Rowing ships.
+8. `xcodegen` regenerates everything under `Generated/`; the entitlements file
    is committed (`Entitlements/RefWatch.entitlements`) and referenced by
    `CODE_SIGN_ENTITLEMENTS`, not generated.
 

@@ -107,7 +107,8 @@ methods, only Sendable values crossing the hop.
 ## Kevin's errands (any time after P0 — all website, one morning)
 
 1. **Mint an App Store Connect API key** — developer.apple.com → Users and
-   Access → Integrations → Team Keys → **+**, role **App Manager**, download
+   Access → Integrations → Team Keys → **+**, role **Admin** (App Manager cannot
+   use cloud signing — HANDOFF trap 7), download
    the `.p8` **once**. ⚠️ Mobile Safari's download does not work — a desktop
    browser does (the lesson already in brisaloca-ios `APPLE-ACCOUNT.md`). Then
    hand over Key ID + Issuer ID; the three repo secrets follow
