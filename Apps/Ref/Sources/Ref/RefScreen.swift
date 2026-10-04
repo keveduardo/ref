@@ -64,7 +64,7 @@ struct MatchesScreen: View {
                     }
                 }
             }
-            .navigationTitle("Ref")
+            .navigationTitle("RefTime")
             .navigationDestination(for: UUID.self) { id in
                 if let match = store.all.first(where: { $0.id == id }) {
                     MatchDetailScreen(store: store, match: match)

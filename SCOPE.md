@@ -31,8 +31,9 @@ shape, plus a real iPhone app instead of a stub container.
 | Sport | Soccer only; the engine stays period-shaped for later sports |
 
 Identifiers (renameable until registered): bundle ids `com.brisaloca.ref` and
-`com.brisaloca.ref.watchkitapp`, App Store name "Brisaloca Ref", device name
-"Ref".
+`com.brisaloca.ref.watchkitapp`, App Store name **"RefTime"** (Kevin, 2026-10-04 —
+first drafted as "Brisaloca Ref"), device name "RefTime". The repo, targets
+and RefKit keep the short internal name Ref.
 
 ## What v1 is
 
@@ -112,7 +113,7 @@ methods, only Sendable values crossing the hop.
    hand over Key ID + Issuer ID; the three repo secrets follow
    (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`).
 2. **Create the app record** — App Store Connect → Apps → **+** → iOS → bundle
-   `com.brisaloca.ref`, name "Brisaloca Ref", SKU `REF-1`, English (U.S.).
+   `com.brisaloca.ref`, name "RefTime", SKU `REF-1`, English (U.S.).
    The API cannot create records; this one is always the website.
 3. **HealthKit capability** on the watch bundle id is switched on by automatic
    signing at the first signed build (how Swim's Shallow Depth was). If it

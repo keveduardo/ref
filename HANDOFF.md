@@ -27,12 +27,13 @@ secret-store write) and opening New App. They are Kevin's clicks.
    nothing; it wants a desktop browser (learned the hard way on 2026-09-22).
    Hand back: the **Key ID**, the **Issuer ID**, and where the `.p8` lives.
 2. **Create the app record** — App Store Connect → **Apps → + → New App** →
-   iOS → bundle `com.brisaloca.ref`, name "Brisaloca Ref", SKU `REF-1`,
+   iOS → bundle `com.brisaloca.ref`, name "RefTime", SKU `REF-1`,
    English (U.S.). The API cannot create records; this one is always the
    website. ! The Bundle ID menu lists only *registered* ids, and nothing
    has registered this one yet. If it is missing, first:
    developer.apple.com → Certificates, IDs & Profiles → **Identifiers → +**
-   → App IDs → App → Explicit, `com.brisaloca.ref`, description "Ref". (The
+   → App IDs → App → Explicit, `com.brisaloca.ref`, description "Brisaloca Ref". ✅ Registered
+   2026-10-04 by Claude in Chrome. (The
    watch id is registered by automatic signing at the first archive.)
 3. **HealthKit capability** on `com.brisaloca.ref.watchkitapp` — automatic
    signing usually switches it on at the first signed build. If it does not,

@@ -1,4 +1,4 @@
-# Ref — App Store Connect listing
+# RefTime — App Store Connect listing
 
 Drafted 2026-10-04, in the shape of `Apps/Swim/APPSTORE.md` in brisaloca-ios.
 **Nothing here has been written into App Store Connect yet** — the app record
@@ -15,8 +15,8 @@ through the same review.
 
 | Field | Value |
 |---|---|
-| Name (record) | Brisaloca Ref |
-| Name (on device) | Ref |
+| Name (record) | RefTime |
+| Name (on device) | RefTime |
 | Bundle id | `com.brisaloca.ref` |
 | Watch app | `com.brisaloca.ref.watchkitapp` (companion) |
 | SKU | `REF-1` |
@@ -34,7 +34,7 @@ devices.
 
 ## Description (4000)
 
-Ref puts the match on your wrist and the paperwork on your phone.
+RefTime puts the match on your wrist and the paperwork on your phone.
 
 **On the watch** — where the match happens:
 - The clock: 45-minute halves by default (20–45 configurable on the phone),
@@ -102,7 +102,7 @@ is shipped.
 - **The app record does not exist yet** (Kevin, website — the API cannot
   create one).
 - **A privacy policy URL** is required for submission. There is no public page
-  for Ref yet; `brisaloca.com` is the obvious host (the other apps' precedent
+  for RefTime yet; `brisaloca.com` is the obvious host (the other apps' precedent
   to check before inventing one).
 - **Unlisted request** after approval.
 - **Soccer only** in 1.0; the description deliberately says "the match", not
