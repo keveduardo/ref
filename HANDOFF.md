@@ -13,29 +13,26 @@ decisions behind it — including the phase table this file mirrors).
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |
 | Signed / uploaded | **Nothing.** No TestFlight build exists and no match has been refereed with it. |
-| The gate | Kevin's three website errands (below). Nothing else blocks the first build. |
+| The gate | One API key, Kevin's click (below). The bundle id and the app record are done. |
 
 ## The next action, exactly
 
-**Kevin — one morning, all on the website.** Claude cannot do these through
-Claude in Chrome: on 2026-10-04 auto mode refused both minting the key (as a
-secret-store write) and opening New App. They are Kevin's clicks.
+**Done 2026-10-04:** `com.brisaloca.ref` registered as an App ID, and the
+App Store Connect record created as **"Brisaloca RefTime"** (SKU `REF-1`;
+"RefTime" alone was taken). The name under the icon is RefTime.
 
-1. **Mint an App Store Connect API key** — developer.apple.com → Users and
-   Access → Integrations → **Team Keys → +**, role **App Manager**, then
-   download the `.p8` **once**. ! Mobile Safari's download silently does
-   nothing; it wants a desktop browser (learned the hard way on 2026-09-22).
-   Hand back: the **Key ID**, the **Issuer ID**, and where the `.p8` lives.
-2. **Create the app record** — App Store Connect → **Apps → + → New App** →
-   iOS → bundle `com.brisaloca.ref`, name "RefTime", SKU `REF-1`,
-   English (U.S.). The API cannot create records; this one is always the
-   website. ! The Bundle ID menu lists only *registered* ids, and nothing
-   has registered this one yet. If it is missing, first:
-   developer.apple.com → Certificates, IDs & Profiles → **Identifiers → +**
-   → App IDs → App → Explicit, `com.brisaloca.ref`, description "Brisaloca Ref". ✅ Registered
-   2026-10-04 by Claude in Chrome. (The
-   watch id is registered by automatic signing at the first archive.)
-3. **HealthKit capability** on `com.brisaloca.ref.watchkitapp` — automatic
+**Kevin — the one step left, on the website.** Claude cannot make it: Claude
+in Chrome is refused key creation as a secret-store write, with auto mode on
+or off.
+
+1. **Mint an App Store Connect API key** — appstoreconnect.apple.com → Users
+   and Access → Integrations → **Team Keys → +**, name "GitHub Actions -
+   RefTime", role **App Manager**, then download the `.p8` **once**.
+   ! Mobile Safari's download silently does nothing; it wants a desktop
+   browser (learned the hard way on 2026-09-22). Hand back: the **Key ID**
+   and where the `.p8` lives. The Issuer ID is
+   `4860996f-6b7c-4f9a-8985-3f3a5cbb6d09`.
+2. **HealthKit capability** on `com.brisaloca.ref.watchkitapp` — automatic
    signing usually switches it on at the first signed build. If it does not,
    one command from here (it also retires the stale profile):
 

@@ -1,9 +1,9 @@
 # RefTime — App Store Connect listing
 
 Drafted 2026-10-04, in the shape of `Apps/Swim/APPSTORE.md` in brisaloca-ios.
-**Nothing here has been written into App Store Connect yet** — the app record
-does not exist (SCOPE.md, "Kevin's errands"), and nothing has been signed or
-uploaded. This file is the draft and the place to edit it before sending.
+**The app record exists** (created 2026-10-04 as "Brisaloca RefTime"), but
+none of this listing text has been written into it yet, and nothing has been
+signed or uploaded. This file is the draft and the place to edit it before sending.
 
 Distribution: **Unlisted**, like Swim, Soccer and Español — request at
 developer.apple.com/contact/request/unlisted-app once it is submitted; it goes
@@ -15,7 +15,7 @@ through the same review.
 
 | Field | Value |
 |---|---|
-| Name (record) | RefTime |
+| Name (record) | Brisaloca RefTime — "RefTime" alone was taken (2026-10-04) |
 | Name (on device) | RefTime |
 | Bundle id | `com.brisaloca.ref` |
 | Watch app | `com.brisaloca.ref.watchkitapp` (companion) |
