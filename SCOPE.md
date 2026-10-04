@@ -104,6 +104,44 @@ methods, only Sendable values crossing the hop.
 | **P5** | Ship v1: icon, listing notes, `ship` → TestFlight; install on Kevin's iPhone + watch | a real match refereed with it |
 | **P6** | Whatever that match teaches | his feedback |
 
+## Next, as Kevin asked for it (2026-10-04, after installing build 22)
+
+Done the same day: AYSO 10U/12U/14U girls/boys presets; half-time buzz
+(default 5 min); sin bins removed from the UI; steps and HealthKit distance;
+quick create (blank teams are Home/Away placeholders) and an Edit screen for
+upcoming matches (names, short names, colours, swap sides, clock).
+
+Still to build, in this order:
+
+1. **Pitch-diagram heatmap** (Kevin chose the fullest option). The watch
+   keeps the route (it already records it, for distance) and saves it to
+   Health as an `HKWorkoutRoute`, so Fitness shows the map. The referee marks
+   the field once, by tapping at the centre spot facing one goal before
+   kick-off, which gives the origin and the axis. RefKit projects the route onto
+   a normalised 100 × 64 pitch, pure and tested, and computes time per third,
+   diagonal coverage, distance per half, top speed and sprint count. The
+   route goes to the phone by `transferFile`, since it is too big for user
+   info, and the phone draws the heatmap on a pitch.
+2. **Optional sign-in: Sign in with Apple or Google, for backup and sync.**
+   The app stays fully usable signed out. It needs a small Worker with D1
+   for the backup (read `~/dev/brisaloca-home/API-TOKENS.md` before any
+   token), a Google OAuth client (Kevin, Google Cloud console), and the Sign
+   in with Apple capability on `com.brisaloca.ref`. Apple requires Sign in
+   with Apple whenever Google sign-in is offered (guideline 4.8), and a
+   delete-account button when accounts exist (5.1.1(v)).
+3. **Schedule sync from AYSO Region 34's CGI Sports scheduler**
+   (cgisports.com/ref/5524). It is behind a login. If it offers a per-referee
+   calendar link (iCal), the app subscribes to it and turns assignments into
+   upcoming matches, with the division parsed into the AYSO preset. If not,
+   it would mean storing the referee's password and scraping the site,
+   which is fragile and needs the region's permission.
+4. **App Store submission readiness**: a privacy manifest
+   (`PrivacyInfo.xcprivacy`, UserDefaults reason CA92.1), a privacy policy
+   page (required for HealthKit), a support URL, the privacy "nutrition
+   label" (Data Not Collected while everything is on-device; it changes with
+   sign-in), 6.9" iPhone and watch screenshots from the render job, and
+   review notes.
+
 ## Kevin's errands (any time after P0 — all website, one morning)
 
 1. **Mint an App Store Connect API key** — developer.apple.com → Users and
