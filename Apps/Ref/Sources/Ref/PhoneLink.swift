@@ -47,9 +47,10 @@ import WatchConnectivity
 
     // MARK: - Receiving
 
-    private func ingest(userInfo: [String: Any]) {
-        guard let data = userInfo["finishedMatch"] as? Data,
-              let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self, from: data) else {
+    private func ingest(matchData: Data?) {
+        guard let matchData,
+              let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self,
+                                                    from: matchData) else {
             return
         }
         onFinished?(payload.match)
@@ -76,6 +77,8 @@ extension PhoneLink: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession,
                              didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        Task { @MainActor in self.ingest(userInfo: userInfo) }
+        // Only the Sendable piece crosses the hop — a `[String: Any]` cannot.
+        let data = userInfo["finishedMatch"] as? Data
+        Task { @MainActor in self.ingest(matchData: data) }
     }
 }

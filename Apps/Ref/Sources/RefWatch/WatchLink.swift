@@ -41,9 +41,10 @@ import WatchConnectivity
 
     // MARK: - Receiving
 
-    private func ingest(applicationContext: [String: Any]) {
-        guard let data = applicationContext["assignment"] as? Data,
-              let assignment = try? SyncPayload.decode(SyncPayload.Assignment.self, from: data) else {
+    private func ingest(assignmentData: Data?) {
+        guard let assignmentData,
+              let assignment = try? SyncPayload.decode(SyncPayload.Assignment.self,
+                                                       from: assignmentData) else {
             return
         }
         assignments = assignment.setups
@@ -80,14 +81,17 @@ extension WatchLink: WCSessionDelegate {
         Task { @MainActor in
             self.activated = activated
             // A context that arrived before activation is still waiting here.
-            self.ingest(applicationContext: WCSession.default.receivedApplicationContext)
+            // Read on the main actor — a `[String: Any]` cannot cross.
+            self.ingest(assignmentData: WCSession.default.receivedApplicationContext["assignment"] as? Data)
         }
     }
 
     nonisolated func session(_ session: WCSession,
                              didReceiveApplicationContext applicationContext: [String: Any]) {
+        // Only the Sendable piece crosses the hop.
+        let data = applicationContext["assignment"] as? Data
         Task { @MainActor in
-            self.ingest(applicationContext: applicationContext)
+            self.ingest(assignmentData: data)
         }
     }
 

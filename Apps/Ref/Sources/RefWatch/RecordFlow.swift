@@ -165,7 +165,10 @@ struct RecordFlow: View {
 
     // MARK: - Bits
 
-    private func teamButtons(_ pick: (TeamSide) -> Void) -> some View {
+    /// ! `@escaping` because the Buttons store it, and `@MainActor` because
+    /// the call sites form it in a main-actor context — a non-Sendable
+    /// closure keeps that isolation, and Swift 6 makes both halves explicit.
+    private func teamButtons(_ pick: @escaping @MainActor (TeamSide) -> Void) -> some View {
         VStack(spacing: 6) {
             ForEach(TeamSide.allCases, id: \.self) { side in
                 if let team = session.match?.setup.team(side) {
