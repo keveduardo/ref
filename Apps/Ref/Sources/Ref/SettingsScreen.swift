@@ -39,6 +39,10 @@ struct SettingsScreen: View {
                 accountSection
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)
+                    // TestFlight updates the watch app separately — this shows
+                    // whether it has caught up.
+                    LabeledContent("Builds", value: "iPhone \(PhoneLink.build) · Watch \(link.watchBuild ?? "not reported yet")")
+                        .foregroundStyle(link.watchBuild.map { $0 == PhoneLink.build } == false ? .orange : .primary)
                     if let error = link.lastSendError {
                         LabeledContent("Last send", value: error)
                             .foregroundStyle(.orange)

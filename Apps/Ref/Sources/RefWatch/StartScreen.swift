@@ -59,6 +59,9 @@ struct StartScreen: View {
                         .foregroundStyle(.secondary)
                 }
                 Text("Quick start asks the age group. Matches set up on the phone appear here.")
+                Text("Build \(WatchLink.build)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

@@ -74,6 +74,11 @@ import WatchConnectivity
         WCSession.default.transferUserInfo(["startedMatch": data])
     }
 
+    /// This app's build number — the run number CI stamps on both apps.
+    static var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+    }
+
     /// Ask the phone for its current list — on launch, on coming back in
     /// reach, and whenever the start screen shows. The phone answers at once
     /// from its newest assignment, so a list never stays stale while the two
@@ -95,7 +100,10 @@ import WatchConnectivity
     func reportCurrent(_ id: UUID?) {
         currentMatchID = id
         guard activated else { return }
-        try? WCSession.default.updateApplicationContext(["currentMatch": id?.uuidString ?? ""])
+        // The build rides along, so the phone can say whether the watch app
+        // has updated too (TestFlight updates it separately).
+        try? WCSession.default.updateApplicationContext(["currentMatch": id?.uuidString ?? "",
+                                                         "build": Self.build])
     }
 
     /// A match put back before kick-off: the phone stops listing it as on

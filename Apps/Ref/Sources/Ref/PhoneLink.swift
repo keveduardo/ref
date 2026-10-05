@@ -25,6 +25,12 @@ import WatchConnectivity
     private let onCancelled: (@MainActor (UUID) -> Void)?
     /// The match the watch says it is running (nil: none).
     var onWatchCurrent: (@MainActor (UUID?) -> Void)?
+    /// The watch app's build, as it last reported it.
+    private(set) var watchBuild: String?
+
+    static var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+    }
 
     var status: String {
         if !activated { return "Not activated" }
@@ -118,17 +124,22 @@ extension PhoneLink: WCSessionDelegate {
         Task { @MainActor in
             self.activated = activated
             // What the watch last said it was running, from before launch.
-            if let current = WCSession.default.receivedApplicationContext["currentMatch"] as? String {
+            let context = WCSession.default.receivedApplicationContext
+            if let current = context["currentMatch"] as? String {
                 self.onWatchCurrent?(UUID(uuidString: current))
             }
+            if let build = context["build"] as? String { self.watchBuild = build }
         }
     }
 
     nonisolated func session(_ session: WCSession,
                              didReceiveApplicationContext applicationContext: [String: Any]) {
-        guard let current = applicationContext["currentMatch"] as? String else { return }
-        let id = UUID(uuidString: current)
-        Task { @MainActor in self.onWatchCurrent?(id) }
+        let current = applicationContext["currentMatch"] as? String
+        let build = applicationContext["build"] as? String
+        Task { @MainActor in
+            if let current { self.onWatchCurrent?(UUID(uuidString: current)) }
+            if let build { self.watchBuild = build }
+        }
     }
 
     /// The watch asking for the latest assignment as its app opens. Answered
