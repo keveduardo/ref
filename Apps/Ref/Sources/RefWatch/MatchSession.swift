@@ -26,12 +26,15 @@ import RefKit
     private(set) var playedIDs: Set<UUID> = []
 
     private var alarm: Task<Void, Never>?
+    /// False for the render job's fixed screens: no notifications from them.
+    private let recovers: Bool
 
     /// `recovers` is false only for the render job's fixed screens, which
     /// must never start a workout in the simulator.
     init(store: MatchStore = MatchStore(directory: MatchSession.containerDirectory),
          recovers: Bool = true) {
         self.store = store
+        self.recovers = recovers
         // A match left in progress by a crash or a flat battery is still here.
         match = try? store.current()
         playedIDs = Set(((try? store.all()) ?? []).map(\.id))
@@ -139,6 +142,7 @@ import RefKit
     func requestHealthAccess() async {
         await workout.requestAccess()
         location.requestAccess()
+        await AlarmNotifications.requestAccess()
     }
 
     func discard() {
@@ -310,7 +314,11 @@ import RefKit
     private func replanAlarms() {
         alarm?.cancel()
         alarm = nil
-        guard let match, let next = match.upcomingAlerts(after: Date()).first else { return }
+        // The backup: the same alerts as watch notifications, which ring even
+        // when the app is asleep. Replaced on every event, like the Task.
+        let upcoming = match?.upcomingAlerts(after: Date()) ?? []
+        if recovers { AlarmNotifications.schedule(upcoming) }
+        guard let match, let next = upcoming.first else { return }
         alarm = Task { [weak self] in
             let wait = next.at.timeIntervalSinceNow
             if wait > 0 {

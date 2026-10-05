@@ -14,16 +14,18 @@ struct HalfTimeScreen: View {
                 VStack(spacing: 3) {
                     Text("Half time")
                         .font(.headline)
+                    // Counting down to the end of the break (Kevin: counting up
+                    // read as a stopwatch), then the overrun in orange.
                     if let elapsed = session.clock.halfTimeElapsed(at: context.date) {
-                        Text(ClockFormat.mmss(elapsed))
+                        let length = TimeInterval((session.match?.setup.halfTimeMinutes ?? 5) * 60)
+                        let over = elapsed >= length
+                        Text(over ? "+\(ClockFormat.mmss(elapsed - length))" : ClockFormat.mmss(length - elapsed))
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                        // The break's length — the wrist buzzes when it is up.
-                        if let minutes = session.match?.setup.halfTimeMinutes {
-                            Text("of \(minutes):00")
-                                .font(.footnote)
-                                .foregroundStyle(elapsed >= TimeInterval(minutes * 60) ? .orange : .secondary)
-                        }
+                            .foregroundStyle(over ? .orange : .primary)
+                        Text(over ? "half-time over" : "half-time left")
+                            .font(.footnote)
+                            .foregroundStyle(over ? .orange : .secondary)
                     }
                     scoreLine
                     Button("Start 2nd half") {

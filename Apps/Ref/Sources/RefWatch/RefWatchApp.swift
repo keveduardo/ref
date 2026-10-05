@@ -1,9 +1,15 @@
 import SwiftUI
+import UserNotifications
 
 /// Ref on the wrist: the clock, the score, the cards — recorded here, with the
 /// phone in the bag. See SCOPE.md.
 @main
 struct RefWatchApp: App {
+    init() {
+        // A due alarm stays quiet while the app is in front — it buzzes its own.
+        UNUserNotificationCenter.current().delegate = AlarmNotificationDelegate.shared
+    }
+
     var body: some Scene {
         WindowGroup {
             #if DEBUG
