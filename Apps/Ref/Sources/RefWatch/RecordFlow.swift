@@ -195,7 +195,7 @@ struct RecordFlow: View {
         PlayerPicker(
             squad: session.match?.setup.squad(for: side),
             allowNone: kind == .goal,
-            title: "\(kind.title) — \(abbreviation(side)) number"
+            title: "\(kind.title) · \(abbreviation(side))"
         ) { ref in
             switch kind {
             case .goal:
@@ -217,7 +217,7 @@ struct RecordFlow: View {
         PlayerPicker(
             squad: session.match?.setup.squad(for: side),
             allowNone: false,
-            title: "Sub — \(abbreviation(side)) number coming off"
+            title: "Off · \(abbreviation(side))"
         ) { off in
             step = .on(side, off: off)
         }
@@ -227,7 +227,7 @@ struct RecordFlow: View {
         PlayerPicker(
             squad: session.match?.setup.squad(for: side),
             allowNone: false,
-            title: "Sub — number coming on"
+            title: "On · \(abbreviation(side))"
         ) { on in
             session.substitution(side: side, off: off, on: on)
             Haptics.recorded()
@@ -267,8 +267,10 @@ struct RecordFlow: View {
     }
 }
 
-/// The number grid. A squad's own numbers when there is one, 1–18 when there
-/// is not — every number a referee normally needs, in two taps.
+/// The shirt number, on a keypad that fits one screen (Kevin, 2026-10-04:
+/// the old grid of 1–18 scrolled): 1–9, ⌫ 0 ✓, the number big at the top,
+/// and the player's name under it when a team sheet knows the number. Two
+/// digits at most. For a goal, ✓ with nothing typed records no scorer.
 struct PlayerPicker: View {
     let squad: Squad?
     let allowNone: Bool
@@ -279,41 +281,92 @@ struct PlayerPicker: View {
     /// non-isolated parameter is an error, not a warning.
     let pick: @MainActor (PlayerRef) -> Void
 
-    private var numbers: [Int] {
-        if let squad, !squad.players.isEmpty {
-            return squad.players.map(\.number).filter { $0 > 0 }.sorted()
-        }
-        return Array(1...18)
+    @State private var digits = ""
+
+    private var number: Int { Int(digits) ?? 0 }
+
+    /// The team sheet's player for the number typed, if there is one.
+    private var player: Player? {
+        guard number > 0 else { return nil }
+        return squad?.players.first { $0.number == number }
     }
 
+    private var canSave: Bool { number > 0 || allowNone }
+
     var body: some View {
-        ScrollView {
-            Text(title)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 4)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4),
-                      spacing: 4) {
-                if allowNone {
-                    Button("—") {
-                        Haptics.play(.click)
-                        pick(PlayerRef())
+        VStack(spacing: 3) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 4)
+                Text(number > 0 ? "#\(number)" : (allowNone ? "—" : "#"))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+            }
+            if let player {
+                Text(player.name)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.green)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            Grid(horizontalSpacing: 4, verticalSpacing: 4) {
+                ForEach(0..<3) { row in
+                    GridRow {
+                        ForEach(1...3, id: \.self) { column in
+                            digitKey(row * 3 + column)
+                        }
                     }
                 }
-                ForEach(numbers, id: \.self) { number in
-                    Button("\(number)") {
-                        Haptics.play(.click)
-                        pick(ref(for: number))
+                GridRow {
+                    key {
+                        Image(systemName: "delete.left")
+                    } action: {
+                        if !digits.isEmpty { digits.removeLast() }
                     }
+                    .disabled(digits.isEmpty)
+                    digitKey(0)
+                    key {
+                        Image(systemName: "checkmark").fontWeight(.bold)
+                    } action: {
+                        pick(ref())
+                    }
+                    .tint(.green)
+                    .disabled(!canSave)
                 }
             }
         }
+        .padding(.horizontal, 2)
     }
 
-    private func ref(for number: Int) -> PlayerRef {
-        if let player = squad?.players.first(where: { $0.number == number }) {
-            return PlayerRef(player)
+    private func digitKey(_ digit: Int) -> some View {
+        key {
+            Text("\(digit)").font(.system(size: 20, weight: .semibold, design: .rounded))
+        } action: {
+            if digits.count < 2 { digits.append(String(digit)) }
         }
+    }
+
+    /// A key that grows to fill its share of the screen, so the pad never
+    /// needs a scroll on any watch size.
+    private func key<Label: View>(@ViewBuilder label: () -> Label,
+                                  action: @escaping @MainActor () -> Void) -> some View {
+        Button {
+            Haptics.play(.click)
+            action()
+        } label: {
+            label().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.roundedRectangle(radius: 10))
+    }
+
+    private func ref() -> PlayerRef {
+        guard number > 0 else { return PlayerRef() }
+        if let player { return PlayerRef(player) }
         return PlayerRef(number: number)
     }
 }

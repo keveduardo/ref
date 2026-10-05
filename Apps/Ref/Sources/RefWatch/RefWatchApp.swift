@@ -42,7 +42,7 @@ struct RootScreen: View {
 /// launched as `-renderDemo <page>` by the `render` job of ref.yml. Debug
 /// builds only.
 struct RenderDemo: View {
-    enum Page: String { case start, live, home, record, halftime, summary }
+    enum Page: String { case start, live, home, record, number, halftime, summary }
 
     static var page: Page? {
         let args = ProcessInfo.processInfo.arguments
@@ -63,6 +63,9 @@ struct RenderDemo: View {
             RecordFlow(session: .showing("live"), side: .home, onDone: {})
         case .record:
             RecordFlow(session: .showing("live"))
+        case .number:
+            // The keypad must fit one screen on every watch — this shows it.
+            PlayerPicker(squad: nil, allowNone: true, title: "Goal · ARS", pick: { _ in })
         case .halftime:
             HalfTimeScreen(session: .showing("halftime"))
         case .summary:
