@@ -8,7 +8,7 @@ decisions behind it — including the phase table this file mirrors).
 
 | | State |
 |---|---|
-| Repo | `~/dev/ref` = `keveduardo/ref`, private. Commits go straight to `main`; push after committing. |
+| Repo | `~/dev/ref` = `keveduardo/ref`, **public** since 2026-10-04 (Kevin's call, so Actions are free; Mac minutes had billed 10× while it was private). Nothing secret is in it: keys live in repo secrets and `~/.config/appstoreconnect`. Keep it so, and keep real people's names out of the test fixtures. The workflow has no `pull_request` trigger, so a fork can never reach the secrets. Commits go straight to `main`; push after committing. |
 | The engine | `RefKit` — 54 tests, green on this box: `swift test --package-path RefKit` |
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |

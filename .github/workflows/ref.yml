@@ -101,10 +101,12 @@ jobs:
     needs: [kit, due]
     # The compile check for a push (and a plain hand run). Not when shipping,
     # rendering or checking expiry: the archive in `ship` compiles everything
-    # itself, and Mac minutes bill ten-fold on a private repo — running both
-    # spent ~10 billed minutes per upload for nothing (2026-10-04, when the
-    # month's 2,000 ran low). `!cancelled()` because a job whose dependency was
-    # skipped is otherwise skipped too.
+    # itself — running both was a wasted Mac runner per upload (it billed
+    # ten-fold while the repo was private; it is public, and free, since
+    # 2026-10-04). `!cancelled()` because a job whose dependency was skipped is
+    # otherwise skipped too.
+    # ! No `pull_request` trigger, ever: the repo is public, and a fork's PR
+    # must never run a job that can see the App Store Connect secrets.
     if: >-
       ${{ !cancelled() && needs.kit.result == 'success' && (
           github.event_name == 'push' ||

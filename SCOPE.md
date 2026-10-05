@@ -24,7 +24,7 @@ shape, plus a real iPhone app instead of a stub container.
 
 | Decision | Answer |
 |---|---|
-| Repo home | **Standalone `~/dev/ref`** — its own private GitHub repo, its own CI |
+| Repo home | **Standalone `~/dev/ref`** — its own GitHub repo (**public** since 2026-10-04, so Actions, Mac included, cost nothing), its own CI |
 | Phone app | **Full companion** — teams/squads, match setup, history, report, share |
 | Distribution | **TestFlight, unlisted** — like Swim/Soccer/Glosa |
 | Fitness data | **In v1** — HealthKit workout: heart rate, energy, GPS distance |
@@ -194,5 +194,5 @@ Still to build, in this order:
    standalone watch simulator) are source-verified but only CI can prove them —
    P0's assertions and render job do exactly that.
 6. TestFlight builds live 90 days; the weekly `due` job rebuilds before they
-   lapse. GitHub macOS minutes bill 10× on private repos — the loop is
-   "push → CI renders", never a local build.
+   lapse. The repo is public, so Actions (Mac included) are free; the loop
+   is "push → CI renders", never a local build.
