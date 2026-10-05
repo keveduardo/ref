@@ -72,3 +72,28 @@ struct AssistantRefereeTests {
         #expect(setup.ar2 == nil)
     }
 }
+
+@Suite("season activity")
+struct SeasonActivityTests {
+    @Test func theSeasonAddsUpOnlyWhatEachMatchRecorded() {
+        var a = Fixture.playedMatch()   // 8,540 m, HR 132 avg / 178 max, 720 kcal
+        a.metrics?.steps = 10_000
+        var b = Fixture.playedMatch()
+        b.id = UUID()
+        b.metrics = MatchMetrics(distanceMeters: 6_460, averageHeartRate: 140, maxHeartRate: 185,
+                                 activeCalories: 500, steps: nil)
+        var c = Fixture.playedMatch()   // no Health access: no metrics at all
+        c.id = UUID()
+        c.metrics = nil
+
+        let activity = SeasonStats.make(from: [a, b, c]).activity
+        #expect(activity.distanceMeters == 15_000)
+        #expect(activity.distancePerMatch == 7_500)
+        #expect(activity.steps == 10_000)
+        #expect(activity.stepsPerMatch == 10_000)
+        #expect(activity.averageHeartRate == 136)
+        #expect(activity.maxHeartRate == 185)
+        #expect(activity.activeCalories == 1_220)
+        #expect(SeasonStats.make(from: [c]).activity.isEmpty)
+    }
+}
