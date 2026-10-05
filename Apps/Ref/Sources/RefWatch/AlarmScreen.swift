@@ -50,11 +50,11 @@ struct AlarmScreen: View {
             return half >= session.clock.config.halves
                 ? ("End match", { session.fullTime() })
                 : ("End half", { session.endHalf() })
-        case .halfTimeOver:
-            return ("Start 2nd half", { session.startNextHalf() })
         case .quarterMark:
             return ("Start quarter break", { session.startQuarterBreak() })
-        case .quarterBreakOver, .binOver:
+        case .halfTimeOver, .quarterBreakOver, .binOver:
+            // Half-time over only silences: kicking off the second half stays
+            // its own deliberate tap on the break screen (Kevin, 2026-10-05).
             return nil
         }
     }
