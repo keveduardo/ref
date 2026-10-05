@@ -17,22 +17,52 @@ enum AlarmNotifications {
             .requestAuthorization(options: [.alert, .sound])
     }
 
-    /// Replaces whatever was scheduled with these alerts (the next few).
-    static func schedule(_ alerts: [MatchAlert]) {
+    /// How many times, and how often, each alarm's notification repeats —
+    /// "until I deactivate", within watchOS's 64 pending notifications:
+    /// the ringing alarm and the next three, twelve each.
+    private static let repeats = 12
+    private static let every: TimeInterval = 20
+    static let category = "ref.alarm"
+    static let stopAction = "ref.alarm.stop"
+
+    /// The Stop button on the notification itself.
+    static func registerCategory() {
+        let stop = UNNotificationAction(identifier: stopAction, title: "Stop", options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([
+            UNNotificationCategory(identifier: category, actions: [stop], intentIdentifiers: [])])
+    }
+
+    /// Replaces whatever was scheduled: the alarm ringing now (its remaining
+    /// repeats) and the next three, each repeating until stopped.
+    static func schedule(_ upcoming: [MatchAlert], ringing: MatchAlert? = nil) {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: (0..<6).map { prefix + "\($0)" })
-        for (index, alert) in alerts.prefix(6).enumerated() {
-            let wait = alert.at.timeIntervalSinceNow
-            guard wait > 1 else { continue }
-            let content = UNMutableNotificationContent()
-            content.title = title(alert.kind)
-            content.sound = .default
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: wait, repeats: false)
-            center.add(UNNotificationRequest(identifier: prefix + "\(index)", content: content, trigger: trigger))
+        center.removePendingNotificationRequests(withIdentifiers: allIdentifiers)
+        var slots: [(slot: Int, alert: MatchAlert)] = []
+        if let ringing { slots.append((0, ringing)) }
+        for (i, alert) in upcoming.prefix(3).enumerated() { slots.append((i + 1, alert)) }
+        for (slot, alert) in slots {
+            for r in 0..<repeats {
+                let wait = alert.at.timeIntervalSinceNow + Double(r) * every
+                guard wait > 1 else { continue }
+                let content = UNMutableNotificationContent()
+                content.title = title(alert.kind)
+                content.body = "Tap Stop to silence it."
+                content.sound = .default
+                content.categoryIdentifier = category
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: wait, repeats: false)
+                center.add(UNNotificationRequest(identifier: "\(prefix)\(slot).\(r)", content: content, trigger: trigger))
+            }
         }
     }
 
-    static func cancelAll() { schedule([]) }
+    private static var allIdentifiers: [String] {
+        (0...3).flatMap { slot in (0..<repeats).map { "\(prefix)\(slot).\($0)" } }
+    }
+
+    static func cancelAll() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: allIdentifiers)
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+    }
 
     static func title(_ kind: MatchAlert.Kind) -> String {
         switch kind {
@@ -52,6 +82,16 @@ enum AlarmNotifications {
 /// safe from any thread — Swift 6 asks for it on a `static let`.
 final class AlarmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
     static let shared = AlarmNotificationDelegate()
+    /// Set by the root screen: what Stop does.
+    var onStop: (@MainActor @Sendable () -> Void)?
+
+    /// The notification's Stop button.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == AlarmNotifications.stopAction else { return }
+        let stop = onStop
+        await MainActor.run { stop?() }
+    }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             willPresent notification: UNNotification) async

@@ -146,6 +146,9 @@ import RefKit
     }
 
     func discard() {
+        ringTask?.cancel()
+        ringTask = nil
+        ringing = nil
         // Put back before kick-off (Choose another match): the phone should
         // stop listing it as on the watch. After full time it is a record.
         if let current = match, current.clock.phase(at: Date()) == .notStarted {
@@ -294,6 +297,7 @@ import RefKit
         guard var current = match else { return }
         current.events.append(MatchEvent(at: Date(), kind: kind))
         match = current
+        resolveAlarm(after: kind)
         persist()
     }
 
@@ -305,31 +309,78 @@ import RefKit
 
     // MARK: - Alarms
 
-    /// Sleep until the next moment the referee must feel — the half's length,
-    /// the added time used up, the break over — buzz, and plan again. Planned
-    /// afresh after every event, because every event can move them (RefKit's
-    /// `upcomingAlerts` is a projection from now). With the wrist down this
-    /// only runs because the workout session keeps the app alive; without
-    /// Health access the app is suspended and the face is the only alarm.
+    /// The alarm going off, until the referee stops it — or takes the step it
+    /// calls for (Kevin, 2026-10-05: "persistent, not go away until I
+    /// deactivate"). The face shows it full screen.
+    private(set) var ringing: MatchAlert?
+    private var ringTask: Task<Void, Never>?
+
+    /// Stop the alarm going off.
+    func stopAlarm() {
+        ringTask?.cancel()
+        ringTask = nil
+        ringing = nil
+        replanAlarms()
+    }
+
+    /// Sleep until the next moment the referee must feel, then ring it until
+    /// stopped. Planned afresh after every event, because every event can
+    /// move the alerts (RefKit's `upcomingAlerts` is a projection from now).
+    /// The in-app alarm only rings while watchOS keeps the app running;
+    /// scheduled notifications, repeating every 20 s, are the backup.
     private func replanAlarms() {
         alarm?.cancel()
         alarm = nil
-        // The backup: the same alerts as watch notifications, which ring even
-        // when the app is asleep. Replaced on every event, like the Task.
         let upcoming = match?.upcomingAlerts(after: Date()) ?? []
-        if recovers { AlarmNotifications.schedule(upcoming) }
-        guard let match, let next = upcoming.first else { return }
+        if recovers { AlarmNotifications.schedule(upcoming, ringing: ringing) }
+        guard match != nil, let next = upcoming.first else { return }
         alarm = Task { [weak self] in
             let wait = next.at.timeIntervalSinceNow
             if wait > 0 {
                 try? await Task.sleep(for: .seconds(wait))
             }
             guard !Task.isCancelled, let self else { return }
-            await Haptics.alert(next.kind)
-            guard !Task.isCancelled else { return }
-            self.replanAlarms()
+            self.ring(next)
         }
     }
+
+    /// Ring: the alarm on screen, its rhythm every few seconds, until stopped
+    /// (ten minutes at most, should the watch be left on a bench).
+    private func ring(_ alert: MatchAlert) {
+        ringTask?.cancel()
+        ringing = alert
+        ringTask = Task { [weak self] in
+            for _ in 0..<150 {
+                guard !Task.isCancelled else { return }
+                await Haptics.alert(alert.kind)
+                try? await Task.sleep(for: .seconds(4))
+            }
+            self?.ringing = nil
+        }
+        // Plan the next alarm; this one's repeat notifications stay until
+        // it is stopped.
+        replanAlarms()
+    }
+
+    /// Taking the step an alarm calls for stops it: ending the half, kicking
+    /// off after the break, starting the quarter break.
+    private func resolveAlarm(after kind: MatchEvent.Kind) {
+        guard let ringing else { return }
+        let resolved: Bool
+        switch (ringing.kind, kind) {
+        case (.halfLength, .halfEnd), (.halfLength, .fullTime),
+             (.addedTimeUp, .halfEnd), (.addedTimeUp, .fullTime),
+             (.halfTimeOver, .kickOff), (.quarterMark, .quarterBreak):
+            resolved = true
+        default:
+            resolved = false
+        }
+        guard resolved else { return }
+        ringTask?.cancel()
+        ringTask = nil
+        self.ringing = nil
+    }
+
 }
 
 #if DEBUG

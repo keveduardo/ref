@@ -8,6 +8,7 @@ struct RefWatchApp: App {
     init() {
         // A due alarm stays quiet while the app is in front — it buzzes its own.
         UNUserNotificationCenter.current().delegate = AlarmNotificationDelegate.shared
+        AlarmNotifications.registerCategory()
     }
 
     var body: some Scene {
@@ -30,6 +31,21 @@ struct RootScreen: View {
     @State private var session = MatchSession()
 
     var body: some View {
+        stageScreen
+            // The alarm, full screen, until stopped (or its step is taken).
+            .fullScreenCover(isPresented: Binding(
+                get: { session.ringing != nil },
+                set: { if !$0 { session.stopAlarm() } })) {
+                AlarmScreen(session: session)
+            }
+            .onAppear {
+                let session = session
+                AlarmNotificationDelegate.shared.onStop = { session.stopAlarm() }
+            }
+    }
+
+    @ViewBuilder
+    private var stageScreen: some View {
         switch session.stage {
         case .home:
             StartScreen(session: session)
