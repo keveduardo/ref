@@ -43,6 +43,7 @@ struct SettingsScreen: View {
                     // whether it has caught up.
                     LabeledContent("Builds", value: "iPhone \(PhoneLink.build) · Watch \(link.watchBuild ?? "not reported yet")")
                         .foregroundStyle(link.watchBuild.map { $0 == PhoneLink.build } == false ? .orange : .primary)
+                    Button("Send to watch now") { link.resend() }
                     if let error = link.lastSendError {
                         LabeledContent("Last send", value: error)
                             .foregroundStyle(.orange)

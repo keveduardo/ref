@@ -88,9 +88,9 @@ import WatchConnectivity
         }
     }
 
-    /// The newest assignment, again — when the watch comes back in reach or
-    /// its app is reinstalled.
-    fileprivate func resend() {
+    /// The newest assignment, again — when the watch comes back in reach, its
+    /// app is reinstalled, or the referee taps "Send to watch now".
+    func resend() {
         guard let data = Self.latest.get(),
               let assignment = try? SyncPayload.decode(SyncPayload.Assignment.self, from: data) else { return }
         deliver(data, count: assignment.setups.count)

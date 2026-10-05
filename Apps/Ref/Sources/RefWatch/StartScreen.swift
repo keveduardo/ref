@@ -53,11 +53,22 @@ struct StartScreen: View {
                     .buttonStyle(.bordered)
                 }
 
+                // What the phone last sent, and how many — compare with the
+                // phone's Settings › Watch › Last sent.
                 if let updated = session.link.lastUpdated {
-                    Text("Updated from the phone \(updated.formatted(date: .omitted, time: .shortened))")
+                    let n = session.link.assignments.count
+                    Text("Updated from the phone \(updated.formatted(date: .omitted, time: .shortened)) · \(n) match\(n == 1 ? "" : "es")")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
+                Button {
+                    Haptics.play(.click)
+                    session.link.requestAssignment()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .font(.footnote)
                 Text("Quick start asks the age group. Matches set up on the phone appear here.")
                 Text("Build \(WatchLink.build)")
                     .font(.system(size: 10))
