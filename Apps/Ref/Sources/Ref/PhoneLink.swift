@@ -22,6 +22,7 @@ import WatchConnectivity
     private let onFinished: (@MainActor (Match) -> Void)?
     private let onRoute: (@MainActor () -> Void)?
     private let onStarted: (@MainActor (MatchSetup) -> Void)?
+    private let onCancelled: (@MainActor (UUID) -> Void)?
 
     var status: String {
         if !activated { return "Not activated" }
@@ -30,7 +31,9 @@ import WatchConnectivity
 
     init(onFinished: (@MainActor (Match) -> Void)? = nil,
          onRoute: (@MainActor () -> Void)? = nil,
-         onStarted: (@MainActor (MatchSetup) -> Void)? = nil) {
+         onStarted: (@MainActor (MatchSetup) -> Void)? = nil,
+         onCancelled: (@MainActor (UUID) -> Void)? = nil) {
+        self.onCancelled = onCancelled
         self.onFinished = onFinished
         self.onRoute = onRoute
         self.onStarted = onStarted
@@ -96,7 +99,9 @@ extension PhoneLink: WCSessionDelegate {
         // Only the Sendable pieces cross the hop — a `[String: Any]` cannot.
         let finished = userInfo["finishedMatch"] as? Data
         let started = userInfo["startedMatch"] as? Data
+        let cancelled = (userInfo["cancelledMatch"] as? String).flatMap(UUID.init)
         Task { @MainActor in
+            if let cancelled { self.onCancelled?(cancelled) }
             if let finished { self.ingest(matchData: finished) }
             if let started,
                let payload = try? SyncPayload.decode(SyncPayload.StartedMatch.self, from: started) {

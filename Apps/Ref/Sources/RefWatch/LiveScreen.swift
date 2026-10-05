@@ -23,6 +23,7 @@ struct LiveScreen: View {
     @State private var showingRecord = false
     @State private var confirmingFullTime = false
     @State private var markingField = false
+    @State private var confirmingChange = false
     @Environment(\.isLuminanceReduced) private var dimmed
 
     var body: some View {
@@ -47,6 +48,9 @@ struct LiveScreen: View {
         .sheet(isPresented: $markingField) { MarkFieldScreen(session: session) }
         .confirmationDialog("Full time?", isPresented: $confirmingFullTime) {
             Button("End the match", role: .destructive) { session.fullTime() }
+        }
+        .confirmationDialog("Choose another match?", isPresented: $confirmingChange) {
+            Button("Back to the list") { session.discard() }
         }
     }
 
@@ -138,6 +142,11 @@ struct LiveScreen: View {
                       systemImage: session.match?.pitch == nil ? "scope" : "checkmark.circle")
             }
             .font(.footnote)
+            // Before kick-off only: back to the list — quick start, or the
+            // phone's matches (Kevin couldn't find them once one was picked).
+            Button("Choose another match") { confirmingChange = true }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         case .running(let half):
             // The quarter break: its button from the mark until it is taken,
             // then its own timer while it runs. The match clock never stops.

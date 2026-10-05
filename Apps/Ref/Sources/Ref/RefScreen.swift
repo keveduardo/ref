@@ -64,10 +64,22 @@ struct MatchesScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                if store.upcoming.isEmpty && store.played.isEmpty {
+                if store.upcoming.isEmpty && store.played.isEmpty && store.onWatch.isEmpty {
                     ContentUnavailableView(
                         "No matches yet", systemImage: "soccerball",
                         description: Text("Set one up and it goes to the watch."))
+                }
+                if !store.onWatch.isEmpty {
+                    Section {
+                        ForEach(store.onWatch) { match in
+                            NavigationLink(value: match.id) { MatchRow(match: match) }
+                                .modifier(SwipeToDelete { delete(match) })
+                        }
+                    } header: {
+                        Text("On the watch")
+                    } footer: {
+                        Text("Started on the watch. Tap to name the teams and pick colours; the watch picks the changes up.")
+                    }
                 }
                 if !store.upcoming.isEmpty {
                     Section("Upcoming") {

@@ -69,6 +69,13 @@ import WatchConnectivity
         WCSession.default.transferUserInfo(["startedMatch": data])
     }
 
+    /// A match put back before kick-off: the phone stops listing it as on
+    /// the watch. Best effort — a phone that misses it can swipe it away.
+    func sendCancelled(_ id: UUID) {
+        guard activated else { return }
+        WCSession.default.transferUserInfo(["cancelledMatch": id.uuidString])
+    }
+
     /// The route behind the pitch diagram, as a file — too big for user
     /// info. The system owns the delivery once it is queued.
     func send(_ route: SyncPayload.Route) {

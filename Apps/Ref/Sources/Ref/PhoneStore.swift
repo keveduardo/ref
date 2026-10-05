@@ -65,8 +65,19 @@ enum RouteFiles {
         squads = (try? library.all()) ?? []
     }
 
+    /// Matches the watch took on itself (a quick start, usually), until they
+    /// come back finished. Kept apart from Upcoming, because on the watch
+    /// they are not waiting to be picked — they are the match in hand.
+    var onWatch: [Match] {
+        all.filter { !$0.isFinished && startedOnWatch.contains($0.id) }
+    }
+
+    /// The ids of those, remembered across launches.
+    private(set) var startedOnWatch: Set<UUID> = Set(
+        (UserDefaults.standard.stringArray(forKey: "ref.startedOnWatch") ?? []).compactMap(UUID.init))
+
     var upcoming: [Match] {
-        all.filter { !$0.isFinished }
+        all.filter { !$0.isFinished && !startedOnWatch.contains($0.id) }
             .sorted { ($0.setup.kickOff ?? $0.createdAt) < ($1.setup.kickOff ?? $1.createdAt) }
     }
 
@@ -174,8 +185,19 @@ enum RouteFiles {
     /// Upcoming so it can be edited here. One already here is left alone —
     /// the phone's copy is where edits are made.
     func addStartedOnWatch(_ setup: MatchSetup) {
-        guard !all.contains(where: { $0.id == setup.id }) else { return }
+        startedOnWatch.insert(setup.id)
+        UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
+        guard !all.contains(where: { $0.id == setup.id }) else { reload(); return }
         save(Match(setup: setup))
+    }
+
+    /// Put back on the watch before kick-off: it was never played, so it goes.
+    func cancelledOnWatch(_ id: UUID) {
+        guard startedOnWatch.contains(id), let match = all.first(where: { $0.id == id }),
+              !match.isFinished else { return }
+        startedOnWatch.remove(id)
+        UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
+        delete(match)
     }
 
     // MARK: - From the backup

@@ -140,6 +140,11 @@ import RefKit
     }
 
     func discard() {
+        // Put back before kick-off (Choose another match): the phone should
+        // stop listing it as on the watch. After full time it is a record.
+        if let current = match, current.clock.phase(at: Date()) == .notStarted {
+            link.sendCancelled(current.id)
+        }
         match = nil
         try? store.clearCurrent()
         replanAlarms()
