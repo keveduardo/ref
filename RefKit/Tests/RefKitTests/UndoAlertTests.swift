@@ -291,3 +291,23 @@ struct QuarterBreakTests {
         #expect(!m.upcomingAlerts(after: Fixture.at(60)).contains { $0.kind == .quarterMark(half: 1) })
     }
 }
+
+@Suite("ending a quarter break early")
+struct QuarterBreakEndTests {
+    @Test func endingItEarlyCancelsItsAlarmAndIsNotAnUndoableIncident() {
+        var setup = Fixture.setup
+        setup.clock = ClockConfig(halfMinutes: 25)
+        setup.quarterBreak = QuarterBreak(breakMinutes: 2)
+        var m = Match(setup: setup, events: EventLog(events: [
+            Fixture.event(0, .kickOff(half: 1)),
+            Fixture.event(12 * 60, .quarterBreak(half: 1))]))
+        #expect(m.upcomingAlerts(after: Fixture.at(12 * 60 + 30)).first?.kind == .quarterBreakOver(half: 1))
+
+        let end = Fixture.event(13 * 60, .quarterBreakEnd(half: 1))
+        m.events.append(end)
+        #expect(!m.upcomingAlerts(after: Fixture.at(13 * 60 + 5)).contains { $0.kind == .quarterBreakOver(half: 1) })
+        #expect(m.events.quarterBreakEnded(inHalf: 1))
+        #expect(m.events.lastUndoable?.id != end.id)
+        #expect(m.report.timeline.filter { $0.text == "Quarter break" }.count == 1)
+    }
+}

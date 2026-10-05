@@ -177,6 +177,9 @@ import RefKit
     /// running clock); this starts the break's own timer and its buzz.
     func startQuarterBreak() { append(.quarterBreak(half: halfAtNow)) }
 
+    /// End the quarter break early: its timer goes, its alarm is cancelled.
+    func endQuarterBreak() { append(.quarterBreakEnd(half: halfAtNow)) }
+
     func fullTime() {
         append(.fullTime)
         Task { await finishMatch() }

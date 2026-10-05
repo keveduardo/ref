@@ -152,13 +152,24 @@ struct LiveScreen: View {
             // then its own timer while it runs. The match clock never stops.
             if let quarter = session.match?.setup.quarterBreak, let match = session.match {
                 if let taken = match.events.quarterBreak(inHalf: half) {
-                    let length = TimeInterval(quarter.breakMinutes * 60)
-                    let into = now.timeIntervalSince(taken.at)
-                    if into < length + 60 {
-                        Text("Break \(ClockFormat.mmss(into)) of \(quarter.breakMinutes):00")
+                    // Counting down, and gone at zero — the alarm takes over
+                    // then, and once it is stopped nothing keeps counting
+                    // (Kevin, 2026-10-05). End finishes it early.
+                    let left = TimeInterval(quarter.breakMinutes * 60) - now.timeIntervalSince(taken.at)
+                    if left > 0, !match.events.quarterBreakEnded(inHalf: half) {
+                        HStack(spacing: 6) {
+                            Text("Break \(ClockFormat.mmss(left))")
+                                .font(.footnote.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.orange)
+                            Button("End") {
+                                Haptics.play(.click)
+                                session.endQuarterBreak()
+                            }
                             .font(.footnote)
-                            .monospacedDigit()
-                            .foregroundStyle(into >= length ? .orange : .secondary)
+                            .buttonStyle(.bordered)
+                            .fixedSize()
+                        }
                     }
                 } else if clock.elapsed(inHalf: half, at: now) >= quarter.mark(halfLength: clock.config.halfLength),
                           clock.elapsed(inHalf: half, at: now) < clock.config.halfLength {

@@ -75,6 +75,9 @@ public struct MatchEvent: Codable, Sendable, Identifiable, Equatable {
         /// incident, not a clock anchor: it starts the break timer and the
         /// buzz at its end, and it goes in the report.
         case quarterBreak(half: Int)
+        /// The quarter break ended early from the watch: its timer goes and
+        /// its end-of-break alarm is cancelled. Bookkeeping, not an incident.
+        case quarterBreakEnd(half: Int)
 
         /// Takes back the event with this id — a mis-tap undone on the pitch.
         /// The log stays append-only (so a re-delivered sync still merges by
@@ -101,7 +104,7 @@ extension MatchEvent.Kind {
     /// and kick-off and full time each have their own deliberate tap.
     public var isUndoable: Bool {
         switch self {
-        case .kickOff, .halfEnd, .clockPaused, .clockResumed, .fullTime, .voided:
+        case .kickOff, .halfEnd, .clockPaused, .clockResumed, .fullTime, .voided, .quarterBreakEnd:
             return false
         default:
             return true

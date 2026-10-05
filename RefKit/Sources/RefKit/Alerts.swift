@@ -58,7 +58,8 @@ extension Match {
         if let quarter = setup.quarterBreak, case .running(let half) = clock.phase(at: now) {
             if let taken = events.quarterBreak(inHalf: half) {
                 let end = taken.at.addingTimeInterval(TimeInterval(quarter.breakMinutes * 60))
-                if now < end {
+                // Ended early: no end-of-break alarm.
+                if now < end, !events.quarterBreakEnded(inHalf: half) {
                     alerts.append(MatchAlert(at: end, kind: .quarterBreakOver(half: half)))
                 }
             } else {
