@@ -99,10 +99,16 @@ jobs:
 
   build:
     needs: [kit, due]
-    # Runs whenever `due` was skipped (a push or a hand run), and on a
-    # scheduled run only when a build is due. `!cancelled()` because a job
-    # whose dependency was skipped is otherwise skipped too.
-    if: ${{ !cancelled() && needs.kit.result == 'success' && ((github.event_name != 'schedule' && !inputs.expiry_check) || needs.due.outputs.due == 'true') }}
+    # The compile check for a push (and a plain hand run). Not when shipping,
+    # rendering or checking expiry: the archive in `ship` compiles everything
+    # itself, and Mac minutes bill ten-fold on a private repo — running both
+    # spent ~10 billed minutes per upload for nothing (2026-10-04, when the
+    # month's 2,000 ran low). `!cancelled()` because a job whose dependency was
+    # skipped is otherwise skipped too.
+    if: >-
+      ${{ !cancelled() && needs.kit.result == 'success' && (
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && !inputs.upload && !inputs.render && !inputs.expiry_check)) }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -179,9 +185,11 @@ jobs:
           echo "companion shape ok"
 
   ship:
-    needs: [due, build]
+    # Gated on the kit's tests, not on `build`: the archive below is the
+    # compile, and the watch-app check after it guards the one silent failure.
+    needs: [kit, due]
     if: >-
-      ${{ !cancelled() && needs.build.result == 'success' && (
+      ${{ !cancelled() && needs.kit.result == 'success' && (
           (github.event_name == 'workflow_dispatch' && inputs.upload) ||
           needs.due.outputs.due == 'true') }}
     runs-on: macos-15
