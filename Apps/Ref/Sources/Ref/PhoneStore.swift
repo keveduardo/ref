@@ -125,14 +125,16 @@ enum RouteFiles {
                      halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
                      addedTimeButton: Bool = false,
                      formatID: String? = nil,
-                     quarterBreak: QuarterBreak? = nil) -> Match {
+                     quarterBreak: QuarterBreak? = nil,
+                     ar1: String? = nil, ar2: String? = nil) -> Match {
         // Team sheets ride along when both teams are known — the watch offers
         // their numbers instead of 1–18.
         let sheets = [home, away].compactMap { squad(for: $0) }
         let setup = MatchSetup(home: home, away: away, competition: competition,
                                kickOff: kickOff, clock: clock, squads: sheets,
                                formatID: formatID, halfTimeMinutes: halfTimeMinutes,
-                               addedTimeButton: addedTimeButton, quarterBreak: quarterBreak)
+                               addedTimeButton: addedTimeButton, quarterBreak: quarterBreak,
+                               ar1: ar1, ar2: ar2)
         let match = Match(setup: setup)
         try? matches.save(match)
         reload()
@@ -189,6 +191,17 @@ enum RouteFiles {
         UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
         guard !all.contains(where: { $0.id == setup.id }) else { reload(); return }
         save(Match(setup: setup))
+    }
+
+    /// The watch's report of its match in hand. Any other watch-started match
+    /// it no longer has goes back to Upcoming — on the watch's list again,
+    /// to be picked — rather than claiming to be on the watch.
+    func watchIsRunning(_ id: UUID?) {
+        let stale = startedOnWatch.filter { $0 != id }
+        guard !stale.isEmpty else { return }
+        startedOnWatch.subtract(stale)
+        UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
+        reload()
     }
 
     /// Put back on the watch before kick-off: it was never played, so it goes.

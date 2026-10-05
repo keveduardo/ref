@@ -34,6 +34,10 @@ struct MatchEditScreen: View {
                         Label("Swap home and away", systemImage: "arrow.up.arrow.down")
                     }
                 }
+                Section("Assistant referees") {
+                    TextField("AR1 name", text: optionalText($setup.ar1))
+                    TextField("AR2 name", text: optionalText($setup.ar2))
+                }
                 Section("Competition") {
                     TextField("Friendly, League…", text: Binding(
                         get: { setup.competition ?? "" },
@@ -75,6 +79,12 @@ struct MatchEditScreen: View {
                 }
             }
         }
+    }
+
+    /// An optional name as a text field: empty means none.
+    private func optionalText(_ value: Binding<String?>) -> Binding<String> {
+        Binding(get: { value.wrappedValue ?? "" },
+                set: { value.wrappedValue = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 })
     }
 
     /// The clock stores seconds; the picker works in minutes.

@@ -23,6 +23,8 @@ import WatchConnectivity
     private let onRoute: (@MainActor () -> Void)?
     private let onStarted: (@MainActor (MatchSetup) -> Void)?
     private let onCancelled: (@MainActor (UUID) -> Void)?
+    /// The match the watch says it is running (nil: none).
+    var onWatchCurrent: (@MainActor (UUID?) -> Void)?
 
     var status: String {
         if !activated { return "Not activated" }
@@ -74,7 +76,20 @@ extension PhoneLink: WCSessionDelegate {
                              activationDidCompleteWith activationState: WCSessionActivationState,
                              error: (any Error)?) {
         let activated = activationState == .activated
-        Task { @MainActor in self.activated = activated }
+        Task { @MainActor in
+            self.activated = activated
+            // What the watch last said it was running, from before launch.
+            if let current = WCSession.default.receivedApplicationContext["currentMatch"] as? String {
+                self.onWatchCurrent?(UUID(uuidString: current))
+            }
+        }
+    }
+
+    nonisolated func session(_ session: WCSession,
+                             didReceiveApplicationContext applicationContext: [String: Any]) {
+        guard let current = applicationContext["currentMatch"] as? String else { return }
+        let id = UUID(uuidString: current)
+        Task { @MainActor in self.onWatchCurrent?(id) }
     }
 
     #if os(iOS)

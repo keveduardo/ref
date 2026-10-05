@@ -15,6 +15,9 @@ struct MatchDetailScreen: View {
         List {
             Section {
                 header
+                if let crew = MatchReport.assistants(match.setup) {
+                    LabeledContent("Assistant referees", value: crew)
+                }
             }
 
             if match.isFinished {
@@ -46,10 +49,17 @@ struct MatchDetailScreen: View {
                 }
             } else {
                 Section("Watch") {
-                    Label("Sent to watch", systemImage: "applewatch")
-                    Text("An upcoming match travels to the watch automatically while the two are near each other.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    if store.onWatch.contains(where: { $0.id == match.id }) {
+                        Label("Running on the watch", systemImage: "applewatch.radiowaves.left.and.right")
+                        Text("Edit names, colours and assistant referees here; the watch picks them up, mid-match too.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Label("On the watch's list", systemImage: "applewatch")
+                        Text("Open RefTime on the watch: it is under From the phone, while the two are near each other.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 

@@ -34,6 +34,8 @@ struct MatchSetupScreen: View {
     @State private var halfTimeMinutes: Int
     @State private var addedTimeButton: Bool
     @State private var quarterBreak: QuarterBreak? = QuarterBreakDefaults.value
+    @State private var ar1 = ""
+    @State private var ar2 = ""
 
     init(store: PhoneStore) {
         self.store = store
@@ -98,6 +100,10 @@ struct MatchSetupScreen: View {
                     Text("The watch buzzes when half-time is up. The added time button puts \u{201C}+1 min\u{201D} on the watch for announcing stoppage time.")
                 }
                 QuarterBreakSection(quarterBreak: $quarterBreak, halfMinutes: halfMinutes)
+                Section("Assistant referees") {
+                    TextField("AR1 name", text: $ar1).textContentType(.name)
+                    TextField("AR2 name", text: $ar2).textContentType(.name)
+                }
             }
             .navigationTitle("New match")
             .toolbar {
@@ -155,7 +161,9 @@ struct MatchSetupScreen: View {
             halfTimeMinutes: halfTimeMinutes,
             addedTimeButton: addedTimeButton,
             formatID: formatID,
-            quarterBreak: quarterBreak)
+            quarterBreak: quarterBreak,
+            ar1: ar1.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ar1.trimmingCharacters(in: .whitespaces),
+            ar2: ar2.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ar2.trimmingCharacters(in: .whitespaces))
         dismiss()
     }
 

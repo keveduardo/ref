@@ -176,6 +176,7 @@ public struct MatchReport: Codable, Sendable, Equatable {
         if let competition = match.setup.competition, !competition.isEmpty {
             lines.append(competition)
         }
+        if let crew = Self.assistants(match.setup) { lines.append(crew) }
         lines.append("")
         for entry in timeline {
             lines.append(entry.line)
@@ -194,6 +195,15 @@ public struct MatchReport: Codable, Sendable, Equatable {
             lines.append("\(steps.formatted()) steps.")
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// "AR1 Sam Lee · AR2 Kim Park", or nil with neither name.
+    public static func assistants(_ setup: MatchSetup) -> String? {
+        let named = [("AR1", setup.ar1), ("AR2", setup.ar2)].compactMap { label, name -> String? in
+            guard let name = name?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
+            return "\(label) \(name)"
+        }
+        return named.isEmpty ? nil : named.joined(separator: " · ")
     }
 
     // MARK: - Stamps

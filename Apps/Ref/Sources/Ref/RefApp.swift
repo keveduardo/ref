@@ -16,10 +16,13 @@ struct RefApp: App {
         // gone for good.
         let store = PhoneStore()
         _store = State(initialValue: store)
-        _link = State(initialValue: PhoneLink(onFinished: { match in store.save(match) },
-                                              onRoute: { store.routesChanged() },
-                                              onStarted: { setup in store.addStartedOnWatch(setup) },
-                                              onCancelled: { id in store.cancelledOnWatch(id) }))
+        let link = PhoneLink(onFinished: { match in store.save(match) },
+                             onRoute: { store.routesChanged() },
+                             onStarted: { setup in store.addStartedOnWatch(setup) },
+                             onCancelled: { id in store.cancelledOnWatch(id) })
+        // The watch's match in hand: "On the watch" shows only that one.
+        link.onWatchCurrent = { id in store.watchIsRunning(id) }
+        _link = State(initialValue: link)
         // The optional backup: told of every change, signed out by default.
         let account = AccountStore()
         account.attach(store)

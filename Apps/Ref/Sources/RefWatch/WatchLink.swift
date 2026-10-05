@@ -29,6 +29,8 @@ import WatchConnectivity
     private var pending: [Match] = []
     private var pendingRoutes: [SyncPayload.Route] = []
     private var pendingStarts: [MatchSetup] = []
+    /// The match in hand, as last reported — resent on activation.
+    private var currentMatchID: UUID?
     /// Told of every assignment from the phone — the session takes the
     /// phone's edits to the match it is running from it.
     @ObservationIgnored var onAssignment: (@MainActor ([MatchSetup]) -> Void)?
@@ -69,6 +71,15 @@ import WatchConnectivity
         WCSession.default.transferUserInfo(["startedMatch": data])
     }
 
+    /// Which match the watch is running, if any — latest-wins application
+    /// context, so the phone's "On the watch" never shows a match the watch
+    /// no longer has (Kevin, 2026-10-04: it did).
+    func reportCurrent(_ id: UUID?) {
+        currentMatchID = id
+        guard activated else { return }
+        try? WCSession.default.updateApplicationContext(["currentMatch": id?.uuidString ?? ""])
+    }
+
     /// A match put back before kick-off: the phone stops listing it as on
     /// the watch. Best effort — a phone that misses it can swipe it away.
     func sendCancelled(_ id: UUID) {
@@ -100,6 +111,7 @@ import WatchConnectivity
         let starts = pendingStarts
         pendingStarts = []
         for setup in starts { sendStarted(setup) }
+        reportCurrent(currentMatchID)
     }
 
     // MARK: - Receiving

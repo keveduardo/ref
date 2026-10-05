@@ -53,3 +53,22 @@ struct ReportTests {
         #expect(text.contains("Distance 8.5 km."))
     }
 }
+
+@Suite("assistant referees")
+struct AssistantRefereeTests {
+    @Test func theirNamesAreOnTheReportAndOldSetupsHaveNone() throws {
+        var match = Fixture.playedMatch()
+        match.setup.ar1 = "Sam Lee"
+        match.setup.ar2 = "  "
+        #expect(MatchReport.assistants(match.setup) == "AR1 Sam Lee")
+        #expect(match.report.shareText(match: match).contains("AR1 Sam Lee"))
+        #expect(MatchReport.assistants(Fixture.setup) == nil)
+    }
+
+    @Test func aRemindersCrewFillsTheARs() throws {
+        let game = try #require(ScheduledGame.parse(ScheduleImportTests.reminder).first)
+        let setup = game.matchSetup()
+        #expect(setup.ar1 == "Sam Assistant")
+        #expect(setup.ar2 == nil)
+    }
+}

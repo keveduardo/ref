@@ -38,6 +38,7 @@ import RefKit
         // The phone's edits to the match in hand — names and colours any
         // time, the clock only before kick-off.
         link.onAssignment = { [weak self] setups in self?.applyPhoneEdits(setups) }
+        link.reportCurrent(match?.isFinished == false ? match?.id : nil)
         guard recovers, let match else { return }
         switch match.clock.phase(at: Date()) {
         case .notStarted:
@@ -119,6 +120,7 @@ import RefKit
         self.match = match
         persist()
         link.sendStarted(match.setup)
+        link.reportCurrent(match.id)
     }
 
     private func applyPhoneEdits(_ setups: [MatchSetup]) {
@@ -148,6 +150,7 @@ import RefKit
         match = nil
         try? store.clearCurrent()
         replanAlarms()
+        link.reportCurrent(nil)
     }
 
     // MARK: - The clock
@@ -199,6 +202,7 @@ import RefKit
         try? store.save(current)
         try? store.clearCurrent()
         link.send(current)
+        link.reportCurrent(nil)
         if !route.isEmpty {
             link.send(SyncPayload.Route(matchID: current.id, points: route))
         }

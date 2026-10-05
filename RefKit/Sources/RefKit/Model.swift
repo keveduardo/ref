@@ -85,9 +85,11 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     /// asked for (Kevin, 2026-10-04): youth matches rarely announce any, and
     /// the clock shows the overrun either way.
     public var addedTimeButton: Bool
-    /// A break partway through each half, with the clock stopped — nil when
-    /// the match has none.
+    /// A break partway through each half — nil when the match has none.
     public var quarterBreak: QuarterBreak?
+    /// The assistant referees' names, for the report — nil when not given.
+    public var ar1: String?
+    public var ar2: String?
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
                 kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
@@ -95,7 +97,8 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
                 formatID: String? = nil,
                 halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
                 addedTimeButton: Bool = MatchDefaults.standard.addedTimeButton,
-                quarterBreak: QuarterBreak? = nil) {
+                quarterBreak: QuarterBreak? = nil,
+                ar1: String? = nil, ar2: String? = nil) {
         self.id = id
         self.home = home
         self.away = away
@@ -108,11 +111,13 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.halfTimeMinutes = halfTimeMinutes
         self.addedTimeButton = addedTimeButton
         self.quarterBreak = quarterBreak
+        self.ar1 = ar1
+        self.ar2 = ar2
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, home, away, competition, kickOff, clock, squads, sinBinMinutes, formatID, halfTimeMinutes
-        case addedTimeButton, quarterBreak
+        case addedTimeButton, quarterBreak, ar1, ar2
     }
 
     /// ! Written out for one reason: a setup saved by build 22 or 25 has no
@@ -134,6 +139,8 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
             ?? MatchDefaults.standard.halfTimeMinutes
         addedTimeButton = try c.decodeIfPresent(Bool.self, forKey: .addedTimeButton) ?? false
         quarterBreak = try c.decodeIfPresent(QuarterBreak.self, forKey: .quarterBreak)
+        ar1 = try c.decodeIfPresent(String.self, forKey: .ar1)
+        ar2 = try c.decodeIfPresent(String.self, forKey: .ar2)
     }
 
     public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
@@ -246,6 +253,8 @@ extension MatchSetup {
         merged.competition = edited.competition
         merged.squads = edited.squads
         merged.kickOff = edited.kickOff
+        merged.ar1 = edited.ar1
+        merged.ar2 = edited.ar2
         if !kickedOff {
             merged.clock = edited.clock
             merged.halfTimeMinutes = edited.halfTimeMinutes
