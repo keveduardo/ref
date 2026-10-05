@@ -350,10 +350,10 @@ import RefKit
         ringTask?.cancel()
         ringing = alert
         ringTask = Task { [weak self] in
-            for _ in 0..<150 {
+            for _ in 0..<120 {
                 guard !Task.isCancelled else { return }
                 await Haptics.alert(alert.kind)
-                try? await Task.sleep(for: .seconds(4))
+                try? await Task.sleep(for: .seconds(2.5))
             }
             self?.ringing = nil
         }

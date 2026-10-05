@@ -222,23 +222,16 @@ enum Haptics {
         play(.notification)
     }
 
-    /// The alarms, each with its own rhythm so the referee knows which one
-    /// it is without looking: the half's length is three long buzzes, the
-    /// added time used up is two, the break over is three rising taps, and a
-    /// sin bin over is a rising pair.
+    /// The alarm burst: the strongest patterns watchOS has (`.failure` and
+    /// `.retry`), six back to back — Kevin found the gentle rhythms too weak
+    /// to feel on the pitch (2026-10-05). Watch apps cannot set intensity;
+    /// Settings › Sounds & Haptics › Prominent Haptic is the other lever.
+    /// The alarm screen says which alarm it is.
     @MainActor
     static func alert(_ kind: MatchAlert.Kind) async {
-        let (type, count): (WKHapticType, Int)
-        switch kind {
-        case .halfLength: (type, count) = (.notification, 3)
-        case .addedTimeUp: (type, count) = (.notification, 2)
-        case .halfTimeOver: (type, count) = (.directionUp, 3)
-        case .quarterMark: (type, count) = (.directionUp, 2)
-        case .quarterBreakOver: (type, count) = (.directionUp, 3)
-        case .binOver: (type, count) = (.directionUp, 2)
-        }
-        for index in 0..<count {
-            if index > 0 { try? await Task.sleep(for: .milliseconds(700)) }
+        let pattern: [WKHapticType] = [.failure, .retry, .failure, .retry, .failure, .retry]
+        for (index, type) in pattern.enumerated() {
+            if index > 0 { try? await Task.sleep(for: .milliseconds(450)) }
             play(type)
         }
     }
