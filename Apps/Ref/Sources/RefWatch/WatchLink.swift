@@ -84,7 +84,12 @@ import WatchConnectivity
     /// from its newest assignment, so a list never stays stale while the two
     /// are near each other.
     func requestAssignment() {
-        guard activated, WCSession.default.isReachable else { return }
+        guard activated else { return }
+        // First, whatever context the system already holds — delivered to
+        // the watch even when the app was never told (Kevin's watch sat ten
+        // minutes on a 6:15 list with the phone's newer one waiting).
+        ingest(assignmentData: WCSession.default.receivedApplicationContext["assignment"] as? Data)
+        guard WCSession.default.isReachable else { return }
         // ! `@Sendable`: WatchConnectivity calls this on its own queue. A
         // closure formed here would otherwise keep the main actor's isolation
         // and trap when called off it.
@@ -150,7 +155,9 @@ import WatchConnectivity
         }
         assignments = assignment.setups
         defaults = assignment.defaults
-        lastUpdated = Date()
+        // The phone's own time for the list, not ours: re-reading an old list
+        // must not make it look fresh.
+        lastUpdated = assignment.sentAt ?? Date()
         Self.saveAssignment(assignment)
         onAssignment?(assignment.setups)
     }

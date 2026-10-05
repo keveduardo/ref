@@ -18,11 +18,15 @@ public enum SyncPayload {
         public var setups: [MatchSetup]
         /// The phone's defaults, for a quick start on the watch.
         public var defaults: MatchDefaults
+        /// When the phone made this list — what the watch shows as "updated",
+        /// so a stale list reads as stale. Optional: older phones sent none.
+        public var sentAt: Date?
 
-        public init(setups: [MatchSetup], defaults: MatchDefaults = .standard) {
+        public init(setups: [MatchSetup], defaults: MatchDefaults = .standard, sentAt: Date? = Date()) {
             self.version = SyncPayload.version
             self.setups = setups
             self.defaults = defaults
+            self.sentAt = sentAt
         }
     }
 

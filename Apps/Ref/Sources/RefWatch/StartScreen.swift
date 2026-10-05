@@ -69,7 +69,6 @@ struct StartScreen: View {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .font(.footnote)
-                Text("Quick start asks the age group. Matches set up on the phone appear here.")
                 Text("Build \(WatchLink.build)")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)

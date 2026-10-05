@@ -14,7 +14,8 @@ struct SyncPayloadTests {
     }
 
     @Test func anAssignmentSurvivesTheWire() throws {
-        let payload = SyncPayload.Assignment(setups: [Fixture.setup])
+        // Whole seconds: the wire format keeps no fraction of a second.
+        let payload = SyncPayload.Assignment(setups: [Fixture.setup], sentAt: Fixture.at(0))
         let data = try SyncPayload.encode(payload)
         let back = try SyncPayload.decode(SyncPayload.Assignment.self, from: data)
         #expect(back == payload)
