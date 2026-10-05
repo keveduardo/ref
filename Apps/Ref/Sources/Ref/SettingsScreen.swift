@@ -56,6 +56,7 @@ struct SettingsScreen: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .themedBackground()
             .navigationTitle("Settings")
         }
     }

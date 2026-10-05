@@ -97,3 +97,12 @@ struct SeasonActivityTests {
         #expect(SeasonStats.make(from: [c]).activity.isEmpty)
     }
 }
+
+@Suite("scorers by side")
+struct ScorersTests {
+    @Test func eachSidesGoalsWithTheirMinutes() {
+        let match = Fixture.playedMatch()   // home #9 at 11:30; away #11 at 45+2:10
+        #expect(MatchReport.goals(for: .home, in: match) == ["#9 12'"])
+        #expect(MatchReport.goals(for: .away, in: match) == ["#11 45+2'"])
+    }
+}

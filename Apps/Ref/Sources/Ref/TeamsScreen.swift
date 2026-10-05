@@ -25,6 +25,7 @@ struct TeamsScreen: View {
                     .buttonStyle(.plain)
                 }
             }
+            .themedBackground()
             .navigationTitle("Teams")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -127,6 +128,7 @@ struct TeamEditorScreen: View {
                     }
                 }
             }
+            .themedBackground()
             .navigationTitle(existing == nil ? "New team" : (name.isEmpty ? "Team" : name))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

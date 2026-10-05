@@ -197,6 +197,26 @@ public struct MatchReport: Codable, Sendable, Equatable {
         return lines.joined(separator: "\n")
     }
 
+    /// One side's goals as a referee would list them: "#9 12'", "OG 45+2'".
+    /// An own goal is listed under the side it counted for.
+    public static func goals(for side: TeamSide, in match: Match) -> [String] {
+        let clock = match.clock
+        return match.events.events.compactMap { event in
+            let stamp = { stampFor(event.at, clock: clock, config: match.setup.clock) }
+            switch event.kind {
+            case .goal(let s, let scorer) where s == side:
+                let who = scorer.map { $0.number > 0 ? "#\($0.number)" : "Goal" } ?? "Goal"
+                let st = stamp()
+                return "\(who) \(TimelineEntry(half: st.half, minute: st.minute, added: st.added, text: "").stamp)"
+            case .ownGoal(let s, _) where s.other == side:
+                let st = stamp()
+                return "OG \(TimelineEntry(half: st.half, minute: st.minute, added: st.added, text: "").stamp)"
+            default:
+                return nil
+            }
+        }
+    }
+
     /// "AR1 Sam Lee · AR2 Kim Park", or nil with neither name.
     public static func assistants(_ setup: MatchSetup) -> String? {
         let named = [("AR1", setup.ar1), ("AR2", setup.ar2)].compactMap { label, name -> String? in

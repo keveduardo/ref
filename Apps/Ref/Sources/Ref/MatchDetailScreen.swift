@@ -67,6 +67,7 @@ struct MatchDetailScreen: View {
                 Button("Delete match", role: .destructive) { confirmingDelete = true }
             }
         }
+        .themedBackground()
         .navigationTitle("Match")
         .toolbar {
             // Only before it is played: a finished match is a record.

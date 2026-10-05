@@ -27,6 +27,12 @@ struct RefScreen: View {
             SettingsScreen(link: link, account: account)
                 .tabItem { Label("Settings", systemImage: "gear") }
         }
+        // The look (Theme.swift): always dark, gold for what is selected,
+        // a navy tab bar.
+        .tint(Theme.gold)
+        .preferredColorScheme(.dark)
+        .toolbarBackground(Theme.navy, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         // Activation completes after launch, so the first push goes then;
         // after that, whenever the matches or the defaults change.
         .onChange(of: link.activated, initial: true) { _, _ in pushAssignment() }
@@ -64,41 +70,54 @@ struct MatchesScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                ScreenHeader(title: "Matches")
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 if store.upcoming.isEmpty && store.played.isEmpty && store.onWatch.isEmpty {
                     ContentUnavailableView(
                         "No matches yet", systemImage: "soccerball",
-                        description: Text("Set one up and it goes to the watch."))
+                        description: Text("Tap + to set one up, or quick start on the watch."))
+                        .listRowBackground(Color.clear)
                 }
                 if !store.onWatch.isEmpty {
                     Section {
+                        SectionTitle(symbol: "applewatch", title: "On the watch")
                         ForEach(store.onWatch) { match in
-                            NavigationLink(value: match.id) { MatchRow(match: match) }
+                            NavigationLink(value: match.id) { FixtureRow(match: match) }
                                 .modifier(SwipeToDelete { delete(match) })
                         }
-                    } header: {
-                        Text("On the watch")
                     } footer: {
-                        Text("Started on the watch. Tap to name the teams and pick colours; the watch picks the changes up.")
+                        Text("Started on the watch. Tap to name the teams and pick colours.")
+                            .foregroundStyle(Theme.muted)
                     }
+                    .listRowBackground(Theme.card)
+                    .listRowSeparatorTint(Theme.goldEdge)
                 }
                 if !store.upcoming.isEmpty {
-                    Section("Upcoming") {
+                    Section {
+                        SectionTitle(symbol: "megaphone.fill", title: "Upcoming fixtures")
                         ForEach(store.upcoming) { match in
-                            NavigationLink(value: match.id) { MatchRow(match: match) }
+                            NavigationLink(value: match.id) { FixtureRow(match: match) }
                                 .modifier(SwipeToDelete { delete(match) })
                         }
                     }
+                    .listRowBackground(Theme.card)
+                    .listRowSeparatorTint(Theme.goldEdge)
                 }
                 if !store.played.isEmpty {
-                    Section("Played") {
+                    Section {
+                        SectionTitle(symbol: "trophy.fill", title: "Recent results")
                         ForEach(store.played) { match in
-                            NavigationLink(value: match.id) { MatchRow(match: match) }
+                            NavigationLink(value: match.id) { ResultRow(match: match) }
                                 .modifier(SwipeToDelete { delete(match) })
                         }
                     }
+                    .listRowBackground(Theme.card)
+                    .listRowSeparatorTint(Theme.goldEdge)
                 }
             }
-            .navigationTitle("RefTime")
+            .themedBackground()
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: UUID.self) { id in
                 if let match = store.all.first(where: { $0.id == id }) {
                     MatchDetailScreen(store: store, match: match)
@@ -200,37 +219,89 @@ struct SwipeToDelete: ViewModifier {
     }
 }
 
-struct MatchRow: View {
+/// An upcoming fixture: shield, name, "vs", name, shield — and where and
+/// when beneath.
+struct FixtureRow: View {
     let match: Match
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                if match.isFinished {
-                    Text(match.setup.home.abbreviation)
-                        .foregroundStyle(match.setup.home.color.phoneColorInk)
-                    Text(match.score.text)
-                        .font(.body.bold())
-                        .monospacedDigit()
-                    Text(match.setup.away.abbreviation)
-                        .foregroundStyle(match.setup.away.color.phoneColorInk)
-                } else {
-                    Text("\(match.setup.home.abbreviation) vs \(match.setup.away.abbreviation)")
-                        .font(.body.bold())
-                }
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Crest(color: match.setup.home.color)
+                Text(match.setup.home.name)
+                    .font(.headline)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                Text("vs").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.gold)
+                Text(match.setup.away.name)
+                    .font(.headline)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Crest(color: match.setup.away.color)
             }
-            Text(subtitle)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.ink)
+            HStack(spacing: 14) {
+                if let competition = match.setup.competition, !competition.isEmpty {
+                    Label(competition, systemImage: "mappin.and.ellipse")
+                }
+                Label((match.setup.kickOff ?? match.createdAt).formatted(date: .abbreviated, time: .shortened),
+                      systemImage: "calendar")
+            }
+            .font(.caption)
+            .foregroundStyle(Theme.muted)
+            .lineLimit(1).minimumScaleFactor(0.8)
         }
+        .padding(.vertical, 4)
+    }
+}
+
+/// A played match: names either side of a big gold score, the competition
+/// and date under it, and each side's scorers beneath its name.
+struct ResultRow: View {
+    let match: Match
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(alignment: .center, spacing: 8) {
+                Text(match.setup.home.name)
+                    .font(.headline)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                Text(scoreText)
+                    .font(.system(size: 34, weight: .bold, design: .serif))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.gold)
+                    .fixedSize()
+                Text(match.setup.away.name)
+                    .font(.headline)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .foregroundStyle(Theme.ink)
+            if let competition = match.setup.competition, !competition.isEmpty {
+                Text(competition).font(.subheadline).foregroundStyle(Theme.ink.opacity(0.85))
+            }
+            Text((match.setup.kickOff ?? match.createdAt).formatted(date: .abbreviated, time: .omitted))
+                .font(.caption)
+                .foregroundStyle(Theme.muted)
+            let home = MatchReport.goals(for: .home, in: match)
+            let away = MatchReport.goals(for: .away, in: match)
+            if !home.isEmpty || !away.isEmpty {
+                HStack(alignment: .top) {
+                    Text(home.joined(separator: ", "))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(away.joined(separator: ", "))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .font(.caption)
+                .foregroundStyle(Theme.muted)
+            }
+        }
+        .padding(.vertical, 4)
     }
 
-    private var subtitle: String {
-        let when = (match.setup.kickOff ?? match.createdAt)
-        let date = when.formatted(date: .abbreviated, time: .shortened)
-        if let competition = match.setup.competition, !competition.isEmpty {
-            return "\(competition) · \(date)"
-        }
-        return date
+    /// No score where the division keeps none (8U).
+    private var scoreText: String {
+        match.setup.format?.keepsScore == false ? "vs" : "\(match.score.home) - \(match.score.away)"
     }
 }

@@ -67,6 +67,7 @@ struct MatchEditScreen: View {
                 QuarterBreakSection(quarterBreak: $setup.quarterBreak,
                                     halfMinutes: Int(setup.clock.halfLength / 60))
             }
+            .themedBackground()
             .navigationTitle("Edit match")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

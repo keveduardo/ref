@@ -105,6 +105,7 @@ struct MatchSetupScreen: View {
                     TextField("AR2 name", text: $ar2).textContentType(.name)
                 }
             }
+            .themedBackground()
             .navigationTitle("New match")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
