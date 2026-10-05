@@ -50,14 +50,53 @@ import WatchConnectivity
     /// The upcoming matches, as the watch will offer them, and the defaults
     /// its quick start uses. Silent when there is nobody to say it to — the
     /// app sends again when activation completes, and on every change.
+    ///
+    /// ! Three ways, because one was not enough (Kevin, 2026-10-04: a match
+    /// deleted on the phone stayed on the watch). The application context is
+    /// the durable copy; a message goes too while the watch is reachable, for
+    /// an instant update; and the watch asks for the latest whenever its app
+    /// opens (`didReceiveMessage` below answers from `latest`). The outcome is
+    /// recorded, not swallowed, and shown in Settings › Watch.
     func sendAssignment(_ setups: [MatchSetup], defaults: MatchDefaults) {
-        guard activated, WCSession.default.isPaired,
-              let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups,
-                                                                        defaults: defaults)) else {
-            return
-        }
-        try? WCSession.default.updateApplicationContext(["assignment": data])
+        guard let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups,
+                                                                        defaults: defaults)) else { return }
+        Self.latest.set(data)
+        deliver(data, count: setups.count)
     }
+
+    private func deliver(_ data: Data, count: Int) {
+        let session = WCSession.default
+        guard activated else { lastSendError = "Waiting for the watch link to start"; return }
+        guard session.isPaired else { lastSendError = "No watch paired"; return }
+        guard session.isWatchAppInstalled else { lastSendError = "RefTime is not installed on the watch"; return }
+        do {
+            try session.updateApplicationContext(["assignment": data])
+            lastSent = Date()
+            lastSentCount = count
+            lastSendError = nil
+        } catch {
+            lastSendError = error.localizedDescription
+        }
+        if session.isReachable {
+            session.sendMessage(["assignment": data], replyHandler: nil, errorHandler: nil)
+        }
+    }
+
+    /// The newest assignment, again — when the watch comes back in reach or
+    /// its app is reinstalled.
+    fileprivate func resend() {
+        guard let data = Self.latest.get(),
+              let assignment = try? SyncPayload.decode(SyncPayload.Assignment.self, from: data) else { return }
+        deliver(data, count: assignment.setups.count)
+    }
+
+    private(set) var lastSent: Date?
+    private(set) var lastSentCount = 0
+    private(set) var lastSendError: String?
+
+    /// The newest assignment, readable from the WatchConnectivity callbacks
+    /// (which are not on the main actor) to answer the watch's request.
+    nonisolated static let latest = DataBox()
 
     // MARK: - Receiving
 
@@ -92,7 +131,28 @@ extension PhoneLink: WCSessionDelegate {
         Task { @MainActor in self.onWatchCurrent?(id) }
     }
 
+    /// The watch asking for the latest assignment as its app opens. Answered
+    /// at once from the box — the reply handler cannot wait for the main actor.
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any],
+                             replyHandler: @escaping ([String: Any]) -> Void) {
+        if message["want"] as? String == "assignment", let data = Self.latest.get() {
+            replyHandler(["assignment": data])
+        } else {
+            replyHandler([:])
+        }
+    }
+
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        guard session.isReachable else { return }
+        Task { @MainActor in self.resend() }
+    }
+
     #if os(iOS)
+    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
+        // Installed, reinstalled or updated on the watch: give it the list.
+        Task { @MainActor in self.resend() }
+    }
+
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
@@ -124,4 +184,14 @@ extension PhoneLink: WCSessionDelegate {
             }
         }
     }
+}
+
+/// A Data slot safe to read from any thread — the newest assignment, for the
+/// watch's request, which arrives on WatchConnectivity's own queue.
+final class DataBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var data: Data?
+
+    func set(_ value: Data) { lock.withLock { data = value } }
+    func get() -> Data? { lock.withLock { data } }
 }

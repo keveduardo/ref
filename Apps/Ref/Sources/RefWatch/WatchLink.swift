@@ -22,6 +22,9 @@ import WatchConnectivity
     /// The phone's defaults, for quick start. They arrive with every
     /// assignment, and are kept on disk with it.
     private(set) var defaults: MatchDefaults = .standard
+    /// When the phone's list last arrived — shown under it, so a stale list
+    /// is visible rather than silent.
+    private(set) var lastUpdated: Date?
     /// Finished matches waiting for the session to activate. Once handed to
     /// `transferUserInfo`, the system owns the delivery (and keeps it across
     /// a relaunch); before that, a match sent at the wrong moment was simply
@@ -69,6 +72,21 @@ import WatchConnectivity
         }
         guard let data = try? SyncPayload.encode(SyncPayload.StartedMatch(setup: setup)) else { return }
         WCSession.default.transferUserInfo(["startedMatch": data])
+    }
+
+    /// Ask the phone for its current list — on launch, on coming back in
+    /// reach, and whenever the start screen shows. The phone answers at once
+    /// from its newest assignment, so a list never stays stale while the two
+    /// are near each other.
+    func requestAssignment() {
+        guard activated, WCSession.default.isReachable else { return }
+        // ! `@Sendable`: WatchConnectivity calls this on its own queue. A
+        // closure formed here would otherwise keep the main actor's isolation
+        // and trap when called off it.
+        WCSession.default.sendMessage(["want": "assignment"], replyHandler: { @Sendable reply in
+            let data = reply["assignment"] as? Data
+            Task { @MainActor in self.ingest(assignmentData: data) }
+        }, errorHandler: nil)
     }
 
     /// Which match the watch is running, if any — latest-wins application
@@ -124,6 +142,7 @@ import WatchConnectivity
         }
         assignments = assignment.setups
         defaults = assignment.defaults
+        lastUpdated = Date()
         Self.saveAssignment(assignment)
         onAssignment?(assignment.setups)
     }
@@ -154,7 +173,10 @@ extension WatchLink: WCSessionDelegate {
         let activated = activationState == .activated
         Task { @MainActor in
             self.activated = activated
-            if activated { self.flushPending() }
+            if activated {
+                self.flushPending()
+                self.requestAssignment()
+            }
             // A context that arrived before activation is still waiting here.
             // Read on the main actor — a `[String: Any]` cannot cross.
             self.ingest(assignmentData: WCSession.default.receivedApplicationContext["assignment"] as? Data)
@@ -168,6 +190,17 @@ extension WatchLink: WCSessionDelegate {
         Task { @MainActor in
             self.ingest(assignmentData: data)
         }
+    }
+
+    /// The phone's instant copy of an assignment, while the two are in reach.
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        let data = message["assignment"] as? Data
+        Task { @MainActor in self.ingest(assignmentData: data) }
+    }
+
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        guard session.isReachable else { return }
+        Task { @MainActor in self.requestAssignment() }
     }
 
     nonisolated func session(_ session: WCSession,

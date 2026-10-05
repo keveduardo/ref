@@ -39,6 +39,13 @@ struct SettingsScreen: View {
                 accountSection
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)
+                    if let error = link.lastSendError {
+                        LabeledContent("Last send", value: error)
+                            .foregroundStyle(.orange)
+                    } else if let sent = link.lastSent {
+                        LabeledContent("Last sent",
+                                       value: "\(sent.formatted(date: .omitted, time: .shortened)) · \(link.lastSentCount) match\(link.lastSentCount == 1 ? "" : "es")")
+                    }
                     Text("Upcoming matches and these defaults travel to the watch; finished matches come back here.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)

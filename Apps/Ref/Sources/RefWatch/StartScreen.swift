@@ -53,6 +53,11 @@ struct StartScreen: View {
                     .buttonStyle(.bordered)
                 }
 
+                if let updated = session.link.lastUpdated {
+                    Text("Updated from the phone \(updated.formatted(date: .omitted, time: .shortened))")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
                 Text("Quick start asks the age group. Matches set up on the phone appear here.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -63,6 +68,7 @@ struct StartScreen: View {
         .sheet(isPresented: $choosingDivision) {
             QuickStartList(session: session)
         }
+        .onAppear { session.link.requestAssignment() }
         .task {
             // One system sheet, now — never at kick-off.
             if requestsAccess {
