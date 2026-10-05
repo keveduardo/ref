@@ -99,3 +99,58 @@ extension TeamColor {
         }
     }
 }
+
+/// One row's slice of a card, for lists — where swipe-to-delete needs real
+/// list rows, so a section cannot simply be wrapped in `.card()`. Each row
+/// draws the card shape stretched past its own edges and clipped to itself:
+/// the first row shows the rounded top and gold top edge, middle rows the
+/// gold sides, the last the rounded bottom. A hairline gold rule divides
+/// rows. Pair with `cardRow(_:)`.
+struct RowCard: View {
+    enum Position { case only, first, middle, last }
+    let position: Position
+
+    var body: some View {
+        GeometryReader { geometry in
+            let stretchTop: CGFloat = (position == .middle || position == .last) ? 40 : 0
+            let stretchBottom: CGFloat = (position == .middle || position == .first) ? 40 : 0
+            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            ZStack {
+                shape.fill(Theme.card)
+                shape.strokeBorder(Theme.goldEdge, lineWidth: 1)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height + stretchTop + stretchBottom)
+            .offset(y: -stretchTop)
+        }
+        .clipped()
+        .overlay(alignment: .top) {
+            if position == .middle || position == .last {
+                Rectangle().fill(Theme.goldEdge.opacity(0.6)).frame(height: 0.5).padding(.horizontal, 16)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    /// Where row `index` of `count` sits in its card.
+    static func position(_ index: Int, of count: Int) -> Position {
+        if count <= 1 { return .only }
+        if index == 0 { return .first }
+        return index == count - 1 ? .last : .middle
+    }
+}
+
+extension View {
+    /// A list row drawn as its slice of a card (plain list style).
+    func cardRow(_ position: RowCard.Position) -> some View {
+        listRowBackground(RowCard(position: position))
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 10, leading: 32, bottom: 10, trailing: 32))
+    }
+
+    /// A list row with nothing behind it: headers, gaps, notes.
+    func bareRow() -> some View {
+        listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+    }
+}

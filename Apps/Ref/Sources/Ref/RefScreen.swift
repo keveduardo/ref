@@ -71,51 +71,25 @@ struct MatchesScreen: View {
         NavigationStack {
             List {
                 ScreenHeader(title: "Matches")
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .bareRow()
                 if store.upcoming.isEmpty && store.played.isEmpty && store.onWatch.isEmpty {
                     ContentUnavailableView(
                         "No matches yet", systemImage: "soccerball",
                         description: Text("Tap + to set one up, or quick start on the watch."))
-                        .listRowBackground(Color.clear)
+                        .bareRow()
                 }
-                if !store.onWatch.isEmpty {
-                    Section {
-                        SectionTitle(symbol: "applewatch", title: "On the watch")
-                        ForEach(store.onWatch) { match in
-                            NavigationLink(value: match.id) { FixtureRow(match: match) }
-                                .modifier(SwipeToDelete { delete(match) })
-                        }
-                    } footer: {
-                        Text("Started on the watch. Tap to name the teams and pick colours.")
-                            .foregroundStyle(Theme.muted)
-                    }
-                    .listRowBackground(Theme.card)
-                    .listRowSeparatorTint(Theme.goldEdge)
+                matchCard(symbol: "applewatch", title: "On the watch", matches: store.onWatch,
+                          note: "Started on the watch. Tap to name the teams and pick colours.") {
+                    FixtureRow(match: $0)
                 }
-                if !store.upcoming.isEmpty {
-                    Section {
-                        SectionTitle(symbol: "megaphone.fill", title: "Upcoming fixtures")
-                        ForEach(store.upcoming) { match in
-                            NavigationLink(value: match.id) { FixtureRow(match: match) }
-                                .modifier(SwipeToDelete { delete(match) })
-                        }
-                    }
-                    .listRowBackground(Theme.card)
-                    .listRowSeparatorTint(Theme.goldEdge)
+                matchCard(symbol: "megaphone.fill", title: "Upcoming fixtures", matches: store.upcoming) {
+                    FixtureRow(match: $0)
                 }
-                if !store.played.isEmpty {
-                    Section {
-                        SectionTitle(symbol: "trophy.fill", title: "Recent results")
-                        ForEach(store.played) { match in
-                            NavigationLink(value: match.id) { ResultRow(match: match) }
-                                .modifier(SwipeToDelete { delete(match) })
-                        }
-                    }
-                    .listRowBackground(Theme.card)
-                    .listRowSeparatorTint(Theme.goldEdge)
+                matchCard(symbol: "trophy.fill", title: "Recent results", matches: store.played) {
+                    ResultRow(match: $0)
                 }
             }
+            .listStyle(.plain)
             .themedBackground()
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: UUID.self) { id in
@@ -195,6 +169,30 @@ extension MatchesScreen {
 }
 
 extension MatchesScreen {
+    /// A titled card of matches: the title is the card's first row, each
+    /// match a row after it — real list rows, so swipe-to-delete still works.
+    @ViewBuilder
+    fileprivate func matchCard<Row: View>(symbol: String, title: String, matches: [Match],
+                                          note: String? = nil,
+                                          @ViewBuilder row: @escaping (Match) -> Row) -> some View {
+        if !matches.isEmpty {
+            let count = matches.count + 1
+            Color.clear.frame(height: 6).bareRow()
+            SectionTitle(symbol: symbol, title: title)
+                .cardRow(RowCard.position(0, of: count))
+            ForEach(Array(matches.enumerated()), id: \.element.id) { index, match in
+                NavigationLink(value: match.id) { row(match) }
+                    .modifier(SwipeToDelete { delete(match) })
+                    .cardRow(RowCard.position(index + 1, of: count))
+            }
+            if let note {
+                Text(note).font(.footnote).foregroundStyle(Theme.muted).bareRow()
+            }
+        }
+    }
+}
+
+extension MatchesScreen {
     fileprivate func delete(_ match: Match) {
         store.delete(match)
         recentlyDeleted = match
@@ -240,18 +238,30 @@ struct FixtureRow: View {
                 Crest(color: match.setup.away.color)
             }
             .foregroundStyle(Theme.ink)
-            HStack(spacing: 14) {
-                if let competition = match.setup.competition, !competition.isEmpty {
-                    Label(competition, systemImage: "mappin.and.ellipse")
-                }
-                Label((match.setup.kickOff ?? match.createdAt).formatted(date: .abbreviated, time: .shortened),
-                      systemImage: "calendar")
+            // Side by side when they fit, one above the other when not — a
+            // long competition no longer cuts the date off.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) { competitionLabel; dateLabel }
+                VStack(spacing: 4) { competitionLabel; dateLabel }
             }
             .font(.caption)
             .foregroundStyle(Theme.muted)
-            .lineLimit(1).minimumScaleFactor(0.8)
+            .lineLimit(1)
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder private var competitionLabel: some View {
+        if let competition = match.setup.competition, !competition.isEmpty {
+            Label(competition, systemImage: "mappin.and.ellipse")
+        }
+    }
+
+    /// "Oct 7 · 2:13 PM" — short enough to stay whole.
+    private var dateLabel: some View {
+        let when = match.setup.kickOff ?? match.createdAt
+        return Label("\(when.formatted(.dateTime.month(.abbreviated).day())) · \(when.formatted(date: .omitted, time: .shortened))",
+                     systemImage: "calendar")
     }
 }
 
