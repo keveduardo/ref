@@ -340,6 +340,8 @@ struct PlayerPicker: View {
             }
         }
         .padding(.horizontal, 2)
+        // Clear of the screen's rounded corners at the bottom.
+        .padding(.bottom, 6)
     }
 
     private func digitKey(_ digit: Int) -> some View {
