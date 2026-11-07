@@ -89,8 +89,13 @@ struct RenderDemo: View {
             // The keypad must fit one screen on every watch — this shows it.
             // Inside a navigation stack, as RecordFlow presents it — so the
             // header sits below the clock, as on the wrist.
-            NavigationStack {
-                PlayerPicker(squad: nil, allowNone: true, title: "Goal · ARS", pick: { _ in })
+            // In a sheet, as Record opens it: the sheet's X and the clock
+            // share the top (2026-11-06, Kevin's photo: the pad ran into the
+            // corners under them, unseen here without the sheet).
+            Color.clear.sheet(isPresented: .constant(true)) {
+                NavigationStack {
+                    PlayerPicker(squad: nil, allowNone: true, title: "Goal · ARS", pick: { _ in })
+                }
             }
         case .halftime:
             HalfTimeScreen(session: .showing("halftime"))

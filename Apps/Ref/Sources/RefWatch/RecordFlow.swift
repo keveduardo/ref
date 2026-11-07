@@ -303,23 +303,19 @@ struct PlayerPicker: View {
 
     var body: some View {
         VStack(spacing: 3) {
+            // The number typed, and the team sheet's name for it.
             HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                if let player {
+                    Text(player.name)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.green)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
                 Spacer(minLength: 4)
                 Text(number > 0 ? "#\(number)" : (allowNone ? "—" : "#"))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .monospacedDigit()
-            }
-            if let player {
-                Text(player.name)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.green)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
             Grid(horizontalSpacing: 4, verticalSpacing: 4) {
                 ForEach(0..<3) { row in
@@ -347,14 +343,19 @@ struct PlayerPicker: View {
                 }
             }
         }
-        .padding(.horizontal, 2)
-        // Clear of the screen's rounded corners at the bottom.
-        .padding(.bottom, 6)
+        // ! Clear of the screen's rounded corners (Kevin, 2026-11-06: the
+        // check mark was cut off in the corner on an Ultra). The title went
+        // up beside the X, in the bar the system keeps for it, where it
+        // used to crowd the clock.
+        .padding(.horizontal, 8)
+        .padding(.bottom, 12)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func digitKey(_ digit: Int) -> some View {
         key {
-            Text("\(digit)").font(.system(size: 20, weight: .semibold, design: .rounded))
+            Text("\(digit)").font(.system(size: 18, weight: .semibold, design: .rounded))
         } action: {
             if digits.count < 2 { digits.append(String(digit)) }
         }
