@@ -13,13 +13,28 @@ public struct Team: Codable, Sendable, Identifiable, Equatable {
     /// Up to three letters, for the watch's small screens.
     public var abbreviation: String
     public var color: TeamColor
+    /// The league's team number ("A1 02") and the coach, for the report and
+    /// the check-in (Kevin, 2026-11-06). Optional, so a team saved before
+    /// them still decodes.
+    public var number: String?
+    public var coach: String?
 
     public init(id: UUID = UUID(), name: String, abbreviation: String? = nil,
-                color: TeamColor = .blue) {
+                color: TeamColor = .blue, number: String? = nil, coach: String? = nil) {
         self.id = id
         self.name = name
         self.abbreviation = abbreviation ?? Team.defaultAbbreviation(name)
         self.color = color
+        self.number = number
+        self.coach = coach
+    }
+
+    /// "Team A1 02 · Coach Smith", or nil with neither.
+    public var details: String? {
+        let parts = [number.map { "Team \($0)" }, coach.map { "Coach \($0)" }]
+            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && $0 != "Team" && $0 != "Coach" }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     /// "Real Madrid Club" → "RMC", "Arsenal" → "ARS", "FC Barcelona" → "FB".

@@ -150,3 +150,21 @@ struct LateGoalTests {
         #expect(Fixture.playedMatch().events.whistle(endingHalf: 3) == nil)
     }
 }
+
+@Suite("team number and coach")
+struct TeamDetailsTests {
+    @Test func theyAreOnTheReportAndOldTeamsHaveNone() throws {
+        var match = Fixture.playedMatch()
+        #expect(match.setup.home.details == nil)
+        match.setup.home.number = "A1 02"
+        match.setup.home.coach = "Smith"
+        match.setup.away.coach = "  "
+        #expect(match.setup.home.details == "Team A1 02 · Coach Smith")
+        #expect(match.setup.away.details == nil)
+        #expect(match.report.shareText(match: match).contains("Real Madrid Club: Team A1 02 · Coach Smith"))
+
+        let old = #"{"id":"00000000-0000-0000-0000-000000000001","name":"Old","abbreviation":"OLD","color":"red"}"#
+        let team = try JSONDecoder().decode(Team.self, from: Data(old.utf8))
+        #expect(team.number == nil && team.coach == nil)
+    }
+}

@@ -24,6 +24,12 @@ struct MatchDetailScreen: View {
         List {
             Section {
                 header
+                ForEach(TeamSide.allCases, id: \.self) { side in
+                    let team = match.setup.team(side)
+                    if let details = team.details {
+                        LabeledContent(team.name, value: details)
+                    }
+                }
                 if let crew = MatchReport.referees(match.setup) {
                     LabeledContent("Referees", value: crew)
                 }

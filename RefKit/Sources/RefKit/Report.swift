@@ -176,6 +176,10 @@ public struct MatchReport: Codable, Sendable, Equatable {
         if let competition = match.setup.competition, !competition.isEmpty {
             lines.append(competition)
         }
+        for side in TeamSide.allCases {
+            let team = match.setup.team(side)
+            if let details = team.details { lines.append("\(team.name): \(details)") }
+        }
         if let crew = Self.referees(match.setup) { lines.append(crew) }
         lines.append("")
         for entry in timeline {

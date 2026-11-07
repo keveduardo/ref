@@ -24,6 +24,18 @@ struct MatchSetupScreen: View {
     @State private var awayID: UUID?
     @State private var newHome = ""
     @State private var newAway = ""
+    /// Each side's number, coach and colour (Kevin, 2026-11-06: "the team
+    /// section should have an area for team number, coach name, and color").
+    /// Filled from a saved team when one is picked; changes here are this
+    /// match's.
+    @State private var home = TeamDraft(color: Team.placeholder(.home).color)
+    @State private var away = TeamDraft(color: Team.placeholder(.away).color)
+
+    struct TeamDraft {
+        var number = ""
+        var coach = ""
+        var color: TeamColor
+    }
     @State private var hasKickOff = true
     @State private var kickOff = Date()
     // Count down by default (Kevin, 2026-10-04); one switch to turn off.
@@ -75,9 +87,11 @@ struct MatchSetupScreen: View {
                 Section("Competition") {
                     TextField("Friendly, League…", text: $competition)
                 }
-                Section("Teams") {
-                    teamPicker("Home", selection: $homeID, newName: $newHome)
-                    teamPicker("Away", selection: $awayID, newName: $newAway)
+                Section("Home team") {
+                    teamPicker("Home", selection: $homeID, newName: $newHome, draft: $home)
+                }
+                Section("Away team") {
+                    teamPicker("Away", selection: $awayID, newName: $newAway, draft: $away)
                 }
                 Section("Kick-off") {
                     Toggle("Set a time", isOn: $hasKickOff)
@@ -128,31 +142,47 @@ struct MatchSetupScreen: View {
 
     // MARK: - Team resolution
 
-    private var homeTeam: Team { resolve(homeID, newHome, .home) }
-    private var awayTeam: Team { resolve(awayID, newAway, .away) }
+    private var homeTeam: Team { resolve(homeID, newHome, home, .home) }
+    private var awayTeam: Team { resolve(awayID, newAway, away, .away) }
 
     /// A team left blank is a placeholder ("Home", blue / "Away", red) — a
     /// match can be made in two taps and named on the Edit screen later.
-    private func resolve(_ id: UUID?, _ typed: String, _ side: TeamSide) -> Team {
+    private func resolve(_ id: UUID?, _ typed: String, _ draft: TeamDraft, _ side: TeamSide) -> Team {
+        var team: Team
         if let id, let squad = store.squads.first(where: { $0.team.id == id }) {
-            return squad.team
+            team = squad.team
+        } else {
+            let name = typed.trimmingCharacters(in: .whitespaces)
+            team = name.isEmpty ? .placeholder(side) : Team(name: name)
         }
-        let name = typed.trimmingCharacters(in: .whitespaces)
-        return name.isEmpty ? .placeholder(side) : Team(name: name, color: Team.placeholder(side).color)
+        let number = draft.number.trimmingCharacters(in: .whitespaces)
+        let coach = draft.coach.trimmingCharacters(in: .whitespaces)
+        team.number = number.isEmpty ? nil : number
+        team.coach = coach.isEmpty ? nil : coach
+        team.color = draft.color
+        return team
     }
 
     @ViewBuilder
     private func teamPicker(_ label: String, selection: Binding<UUID?>,
-                            newName: Binding<String>) -> some View {
-        Picker(label, selection: selection) {
+                            newName: Binding<String>, draft: Binding<TeamDraft>) -> some View {
+        Picker("Team", selection: selection) {
             Text("New team…").tag(UUID?.none)
             ForEach(store.squads, id: \.team.id) { squad in
                 Text(squad.team.name).tag(Optional(squad.team.id))
             }
         }
+        .onChange(of: selection.wrappedValue) { _, id in
+            // A saved team brings its own number, coach and colour.
+            guard let id, let team = store.squads.first(where: { $0.team.id == id })?.team else { return }
+            draft.wrappedValue = TeamDraft(number: team.number ?? "", coach: team.coach ?? "", color: team.color)
+        }
         if selection.wrappedValue == nil {
             TextField("\(label) team name (optional)", text: newName)
         }
+        TextField("Team number", text: draft.number)
+        TextField("Coach", text: draft.coach).textContentType(.name)
+        TeamColorPicker(color: draft.color)
     }
 
     private func save() {

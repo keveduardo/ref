@@ -34,6 +34,9 @@ struct ScheduleImportTests {
         #expect(games.count == 1)
         #expect(game.gameID == "120107")
         #expect(game.home == "A1 02 Smith")
+        let setup = game.matchSetup()
+        #expect(setup.home.number == "A1 02" && setup.home.coach == "Smith")
+        #expect(setup.away.number == "A2 07" && setup.away.coach == "Jones")
         #expect(game.visitor == "A2 07 Jones")
         #expect(game.venue == "Alta Vista · AVP")
         #expect(game.crew == ["CR": "Pat Referee", "AR1": "Sam Assistant"])
@@ -87,5 +90,12 @@ struct ScheduleImportTests {
         let games = ScheduledGame.parse(Self.reminder + second + broken, timeZone: Self.pacific)
         #expect(games.map(\.gameID) == ["120107", "120200"])
         #expect(ScheduledGame.parse("just some text").isEmpty)
+    }
+
+    @Test func numberAndCoachSplitAtTheLastCode() {
+        #expect(ScheduledGame.numberAndCoach("A1 02 Smith") == ("A1 02", "Smith"))
+        #expect(ScheduledGame.numberAndCoach("B12-05 Van Dyke") == ("B12-05", "Van Dyke"))
+        #expect(ScheduledGame.numberAndCoach("Smith") == (nil, "Smith"))
+        #expect(ScheduledGame.numberAndCoach("A1 02") == ("A1 02", nil))
     }
 }

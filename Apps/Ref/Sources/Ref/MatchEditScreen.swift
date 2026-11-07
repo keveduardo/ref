@@ -101,17 +101,9 @@ struct MatchEditScreen: View {
             TextField("Short (3 letters)", text: Binding(
                 get: { team.wrappedValue.abbreviation },
                 set: { team.wrappedValue.abbreviation = String($0.uppercased().prefix(3)) }))
-            Picker("Colour", selection: team.color) {
-                ForEach(TeamColor.allCases, id: \.self) { token in
-                    Label {
-                        Text(token.rawValue.capitalized)
-                    } icon: {
-                        Image(systemName: "circle.fill")
-                            .foregroundStyle(token.phoneColor)
-                    }
-                    .tag(token)
-                }
-            }
+            TextField("Team number", text: optionalText(team.number))
+            TextField("Coach", text: optionalText(team.coach))
+            TeamColorPicker(color: team.color)
         }
     }
 
@@ -129,5 +121,25 @@ struct MatchEditScreen: View {
         }
         store.save(updated)
         dismiss()
+    }
+}
+
+/// A team's colour, each choice with its swatch — on the new match, edit
+/// match and team screens alike.
+struct TeamColorPicker: View {
+    @Binding var color: TeamColor
+
+    var body: some View {
+        Picker("Colour", selection: $color) {
+            ForEach(TeamColor.allCases, id: \.self) { token in
+                Label {
+                    Text(token.rawValue.capitalized)
+                } icon: {
+                    Image(systemName: "circle.fill")
+                        .foregroundStyle(token.phoneColor)
+                }
+                .tag(token)
+            }
+        }
     }
 }

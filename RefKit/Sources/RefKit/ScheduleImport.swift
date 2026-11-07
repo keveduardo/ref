@@ -59,9 +59,11 @@ public struct ScheduledGame: Sendable, Equatable {
         return MatchSetup(
             id: Self.matchID(gameID),
             home: Team(name: home, abbreviation: Self.shortName(home),
-                       color: Team.placeholder(.home).color),
+                       color: Team.placeholder(.home).color,
+                       number: Self.numberAndCoach(home).number, coach: Self.numberAndCoach(home).coach),
             away: Team(name: visitor, abbreviation: Self.shortName(visitor),
-                       color: Team.placeholder(.away).color),
+                       color: Team.placeholder(.away).color,
+                       number: Self.numberAndCoach(visitor).number, coach: Self.numberAndCoach(visitor).coach),
             competition: [title, venue].compactMap { $0 }.joined(separator: " — "),
             kickOff: kickOff,
             clock: ClockConfig(halfMinutes: halfMinutes, countsDown: countsDown),
@@ -142,6 +144,19 @@ public struct ScheduledGame: Sendable, Equatable {
     static func shortName(_ team: String) -> String {
         let last = team.split(whereSeparator: \.isWhitespace).last { $0.contains(where: \.isLetter) }
         return String((last ?? Substring(team)).filter(\.isLetter).prefix(3)).uppercased()
+    }
+
+    /// "A1 02 Smith" → ("A1 02", "Smith"): the code up to its last token with
+    /// a digit is the team number, the words after it the coach. A name with
+    /// no code is all coach; one with no words after the code, all number.
+    static func numberAndCoach(_ team: String) -> (number: String?, coach: String?) {
+        let words = team.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard let lastCode = words.lastIndex(where: { $0.contains(where: \.isNumber) }) else {
+            return (nil, words.isEmpty ? nil : words.joined(separator: " "))
+        }
+        let number = words[...lastCode].joined(separator: " ")
+        let coach = words[(lastCode + 1)...].joined(separator: " ")
+        return (number, coach.isEmpty ? nil : coach)
     }
 
     /// A stable match id for a scheduler game id: the digits, zero-padded

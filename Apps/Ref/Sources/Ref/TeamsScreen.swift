@@ -77,6 +77,8 @@ struct TeamEditorScreen: View {
     @State private var name: String
     @State private var abbreviation: String
     @State private var color: TeamColor
+    @State private var number: String
+    @State private var coach: String
     @State private var players: [Player]
     @State private var newNumber = ""
     @State private var newName = ""
@@ -88,6 +90,8 @@ struct TeamEditorScreen: View {
         _name = State(initialValue: existing?.team.name ?? "")
         _abbreviation = State(initialValue: existing?.team.abbreviation ?? "")
         _color = State(initialValue: existing?.team.color ?? .blue)
+        _number = State(initialValue: existing?.team.number ?? "")
+        _coach = State(initialValue: existing?.team.coach ?? "")
         _players = State(initialValue: existing?.players ?? [])
     }
 
@@ -97,11 +101,9 @@ struct TeamEditorScreen: View {
                 Section("Team") {
                     TextField("Name", text: $name)
                     TextField("Short (3 letters)", text: $abbreviation)
-                    Picker("Colour", selection: $color) {
-                        ForEach(TeamColor.allCases, id: \.self) { token in
-                            Text(token.rawValue.capitalized).tag(token)
-                        }
-                    }
+                    TextField("Team number", text: $number)
+                    TextField("Coach", text: $coach).textContentType(.name)
+                    TeamColorPicker(color: $color)
                 }
                 Section("Players") {
                     ForEach(players) { player in
@@ -166,7 +168,9 @@ struct TeamEditorScreen: View {
         let team = Team(id: existing?.team.id ?? UUID(),
                         name: trimmed,
                         abbreviation: short.isEmpty ? nil : short,
-                        color: color)
+                        color: color,
+                        number: number.trimmingCharacters(in: .whitespaces).isEmpty ? nil : number.trimmingCharacters(in: .whitespaces),
+                        coach: coach.trimmingCharacters(in: .whitespaces).isEmpty ? nil : coach.trimmingCharacters(in: .whitespaces))
         store.saveTeam(Squad(team: team, players: players))
         dismiss()
     }
