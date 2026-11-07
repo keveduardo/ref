@@ -25,6 +25,18 @@ struct LiveScreen: View {
     @State private var markingField = false
     @State private var confirmingChange = false
     @Environment(\.isLuminanceReduced) private var dimmed
+    /// Until when the buttons show under the clock. ! The face changes only
+    /// when touched (Kevin, 2026-11-06: "I'd rather have the screen only
+    /// change if I actually touch it, otherwise the big number should stay
+    /// persistent"). The buttons used to appear with every wrist raise and
+    /// squeeze the clock small; now a tap shows them for a few seconds.
+    @State private var controlsUntil: Date?
+    private static let controlsFor: TimeInterval = 8
+    /// How long after the quarter mark its button waits to be taken. The
+    /// break is called at the next stoppage, not on the minute; past this
+    /// it was run without the watch, and the button goes (2026-11-06: it
+    /// used to stay, big and orange, to the end of the half).
+    private static let quarterButtonFor: TimeInterval = 5 * 60
 
     var body: some View {
         Group {
@@ -58,19 +70,61 @@ struct LiveScreen: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let now = context.date
             let clock = session.clock
+            let phase = clock.phase(at: now)
+            // Before kick-off the buttons are the point; once the clock runs,
+            // they wait for a tap. The wrist alone never changes the face.
+            let showingControls: Bool = {
+                guard !dimmed else { return false }
+                if case .running = phase { return (controlsUntil ?? .distantPast) > now }
+                return true
+            }()
             VStack(spacing: 2) {
                 scoreRow
                 Text(clock.text(at: now))
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(.system(size: showingControls ? 40 : 58, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .minimumScaleFactor(0.5)
+                    .lineLimit(1)
                 Text(periodLabel(clock, at: now))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                if !dimmed {
+                breakCountdown(clock, at: now)
+                // A match timed without a running workout can lose the
+                // screen to the watch face; say so rather than let it.
+                if case .running = phase, !session.workout.isRunning,
+                   let kickOff = session.match?.events.events.first?.at, now.timeIntervalSince(kickOff) > 15 {
+                    Text("Workout off — may not stay on screen")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+                if showingControls {
                     healthRow
                     controls(clock, at: now)
                 }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            // Buttons take their own taps first; a tap anywhere else shows
+            // them, or keeps them a little longer.
+            .onTapGesture { controlsUntil = Date().addingTimeInterval(Self.controlsFor) }
+        }
+        .onChange(of: dimmed) { _, isDimmed in if isDimmed { controlsUntil = nil } }
+    }
+
+    /// The quarter break's own timer, under the clock whatever the wrist or
+    /// the buttons are doing: it is a number to read, like the clock.
+    @ViewBuilder
+    private func breakCountdown(_ clock: MatchClock, at now: Date) -> some View {
+        if case .running(let half) = clock.phase(at: now),
+           let quarter = session.match?.setup.quarterBreak, let match = session.match,
+           let taken = match.events.quarterBreak(inHalf: half), !match.events.quarterBreakEnded(inHalf: half) {
+            let left = TimeInterval(quarter.breakMinutes * 60) - now.timeIntervalSince(taken.at)
+            if left > 0 {
+                Text("Break \(ClockFormat.mmss(left))")
+                    .font(.footnote.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.orange)
             }
         }
     }
@@ -151,28 +205,23 @@ struct LiveScreen: View {
             // The quarter break: its button from the mark until it is taken,
             // then its own timer while it runs. The match clock never stops.
             if let quarter = session.match?.setup.quarterBreak, let match = session.match {
+                let elapsed = clock.elapsed(inHalf: half, at: now)
+                let mark = quarter.mark(halfLength: clock.config.halfLength)
                 if let taken = match.events.quarterBreak(inHalf: half) {
-                    // Counting down, and gone at zero — the alarm takes over
-                    // then, and once it is stopped nothing keeps counting
-                    // (Kevin, 2026-10-05). End finishes it early.
+                    // Its timer is under the clock (breakCountdown); End
+                    // finishes it early. Gone at zero — the alarm takes over
+                    // then (Kevin, 2026-10-05).
                     let left = TimeInterval(quarter.breakMinutes * 60) - now.timeIntervalSince(taken.at)
                     if left > 0, !match.events.quarterBreakEnded(inHalf: half) {
-                        HStack(spacing: 6) {
-                            Text("Break \(ClockFormat.mmss(left))")
-                                .font(.footnote.weight(.semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(.orange)
-                            Button("End") {
-                                Haptics.play(.click)
-                                session.endQuarterBreak()
-                            }
-                            .font(.footnote)
-                            .buttonStyle(.bordered)
-                            .fixedSize()
+                        Button("End break") {
+                            Haptics.play(.click)
+                            session.endQuarterBreak()
                         }
+                        .font(.footnote)
+                        .buttonStyle(.bordered)
+                        .tint(.orange)
                     }
-                } else if clock.elapsed(inHalf: half, at: now) >= quarter.mark(halfLength: clock.config.halfLength),
-                          clock.elapsed(inHalf: half, at: now) < clock.config.halfLength {
+                } else if elapsed >= mark, elapsed < min(mark + Self.quarterButtonFor, clock.config.halfLength) {
                     Button("Quarter break") {
                         Haptics.play(.stop)
                         session.startQuarterBreak()

@@ -17,6 +17,12 @@ import RefKit
     private var builder: HKLiveWorkoutBuilder?
 
     private(set) var heartRate: Double?
+    /// Whether the session is running — and with it, the app held on screen:
+    /// watchOS brings a running workout's app back on every wrist raise
+    /// (Kevin, 2026-11-06: "it's important that when a game is being timed
+    /// that it's the main app on the screen"). False before kick-off and
+    /// whenever the session failed, which used to happen silently.
+    private(set) var isRunning = false
     private(set) var activeCalories: Double?
 
     private static var heartRateType: HKQuantityType { HKQuantityType(.heartRate) }
@@ -83,6 +89,7 @@ import RefKit
         }
         session = recovered
         recovered.delegate = self
+        isRunning = recovered.state == .running
         let builder = recovered.associatedWorkoutBuilder()
         builder.delegate = self
         self.builder = builder
@@ -95,6 +102,7 @@ import RefKit
     func finish(route: [RoutePoint] = []) async -> MatchMetrics? {
         guard let session, let builder else { return nil }
         session.end()
+        isRunning = false
         let end = Date()
 
         // ! `nonisolated(unsafe)` because the SDK's completion handlers are
@@ -160,10 +168,15 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
                                     didChangeTo toState: HKWorkoutSessionState,
                                     from fromState: HKWorkoutSessionState,
-                                    date: Date) {}
+                                    date: Date) {
+        let running = toState == .running
+        Task { @MainActor in self.isRunning = running }
+    }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
-                                    didFailWithError error: any Error) {}
+                                    didFailWithError error: any Error) {
+        Task { @MainActor in self.isRunning = false }
+    }
 }
 
 extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
