@@ -5,11 +5,20 @@ import SwiftUI
 /// sheet. For an unplayed match, what it is waiting for.
 struct MatchDetailScreen: View {
     let store: PhoneStore
-    let match: Match
+    private let initial: Match
+
+    init(store: PhoneStore, match: Match) {
+        self.store = store
+        self.initial = match
+    }
+
+    /// The store's copy, so a goal added here shows at once.
+    private var match: Match { store.all.first { $0.id == initial.id } ?? initial }
 
     @Environment(\.dismiss) private var dismiss
     @State private var confirmingDelete = false
     @State private var editing = false
+    @State private var addingGoal = false
 
     var body: some View {
         List {
@@ -43,6 +52,13 @@ struct MatchDetailScreen: View {
                     }
                 }
                 Section {
+                    // A goal the watch missed — scored on the whistle while
+                    // the alarm rang (Kevin, 2026-11-06).
+                    Button {
+                        addingGoal = true
+                    } label: {
+                        Label("Add a goal", systemImage: "soccerball")
+                    }
                     ShareLink(item: match.report.shareText(match: match)) {
                         Label("Share report", systemImage: "square.and.arrow.up")
                     }
@@ -79,6 +95,9 @@ struct MatchDetailScreen: View {
         }
         .sheet(isPresented: $editing) {
             MatchEditScreen(store: store, match: match)
+        }
+        .sheet(isPresented: $addingGoal) {
+            AddGoalScreen(store: store, match: match)
         }
         .confirmationDialog("Delete this match?", isPresented: $confirmingDelete) {
             Button("Delete", role: .destructive) {
@@ -220,5 +239,74 @@ extension TeamColor {
 
     var phoneColorInk: Color {
         self == .white ? .secondary : phoneColor
+    }
+}
+
+/// A goal added after the match: which team, who (if known), and which half.
+/// It goes in that half's last minute, a second before its whistle
+/// (`EventLog.lateGoal`), so the score by half and the report agree.
+struct AddGoalScreen: View {
+    let store: PhoneStore
+    let match: Match
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var side: TeamSide = .home
+    @State private var number = ""
+    @State private var half: Int
+
+    init(store: PhoneStore, match: Match) {
+        self.store = store
+        self.match = match
+        // The last half by default: the goal on the final whistle.
+        _half = State(initialValue: match.events.lastWhistle?.half ?? 1)
+    }
+
+    /// Halves that were played to a whistle.
+    private var halves: [Int] {
+        (1...max(1, match.setup.clock.halves)).filter { match.events.whistle(endingHalf: $0) != nil }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Picker("Team", selection: $side) {
+                    Text(match.setup.home.name).tag(TeamSide.home)
+                    Text(match.setup.away.name).tag(TeamSide.away)
+                }
+                .pickerStyle(.inline)
+                Section {
+                    TextField("Scorer's number (optional)", text: $number)
+                        .keyboardType(.numberPad)
+                }
+                if halves.count > 1 {
+                    Picker("Half", selection: $half) {
+                        ForEach(halves, id: \.self) { h in
+                            Text(h == 1 ? "1st half" : h == 2 ? "2nd half" : "Half \(h)").tag(h)
+                        }
+                    }
+                }
+                Section {
+                    Text("It goes in that half's last minute.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .themedBackground()
+            .navigationTitle("Add a goal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Add") { add() } }
+            }
+        }
+    }
+
+    private func add() {
+        guard let whistle = match.events.whistle(endingHalf: half) else { return }
+        let scorer = Int(number.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? PlayerRef(number: $0) : nil }
+        var updated = match
+        updated.events.append(EventLog.lateGoal(side: side, scorer: scorer, beforeWhistle: whistle))
+        store.save(updated)
+        dismiss()
     }
 }

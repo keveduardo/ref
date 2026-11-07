@@ -72,6 +72,51 @@ public struct EventLog: Codable, Sendable, Equatable {
         return last
     }
 
+    /// The whistle that ended a half: its half end, or full time for a half
+    /// the match ended in. Nil for a half still running or never played.
+    public func whistle(endingHalf half: Int) -> Date? {
+        var kicked = false
+        for event in events {
+            switch event.kind {
+            case .kickOff(let h) where h == half: kicked = true
+            case .halfEnd(let h) where h == half: return event.at
+            case .fullTime where kicked: return event.at
+            default: break
+            }
+        }
+        return nil
+    }
+
+    /// The half the clock last stopped on, and when — while the match is in a
+    /// break or over. Nil while a half runs.
+    public var lastWhistle: (half: Int, at: Date)? {
+        guard let last = events.last(where: { event in
+            if case .addedTime = event.kind { return false }
+            return event.kind.isClockRelevant
+        }) else { return nil }
+        let half: Int
+        switch last.kind {
+        case .halfEnd(let h): half = h
+        case .fullTime:
+            half = events.compactMap { event -> Int? in
+                if case .kickOff(let h) = event.kind { return h }
+                return nil
+            }.max() ?? 1
+        default: return nil
+        }
+        return (half, last.at)
+    }
+
+    /// A goal recorded after its half was over — at half time, after full
+    /// time, or on the phone afterwards (Kevin, 2026-11-06: a goal "at the
+    /// last second of the game ... because the timer went off, I couldn't
+    /// still add the goal"). It is stamped a second before the whistle, so
+    /// the clock, the score by half and the report all put it in that half,
+    /// at its last minute.
+    public static func lateGoal(side: TeamSide, scorer: PlayerRef?, beforeWhistle whistle: Date) -> MatchEvent {
+        MatchEvent(at: whistle.addingTimeInterval(-1), kind: .goal(side: side, scorer: scorer))
+    }
+
     /// The quarter break taken in a half, if one was.
     public func quarterBreak(inHalf half: Int) -> MatchEvent? {
         events.last { event in

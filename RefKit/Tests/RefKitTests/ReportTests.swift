@@ -118,3 +118,35 @@ struct ScorersTests {
         #expect(MatchReport.goals(for: .away, in: match) == ["#11 45+2'"])
     }
 }
+
+@Suite("goals added after the whistle")
+struct LateGoalTests {
+    @Test func afterFullTimeTheGoalIsTheLastHalfsLastMinute() throws {
+        var match = Fixture.playedMatch()
+        let whistle = try #require(match.events.lastWhistle)
+        #expect(whistle.half == 2 && whistle.at == Fixture.at(105 * 60))
+        match.events.append(EventLog.lateGoal(side: .away, scorer: PlayerRef(number: 7), beforeWhistle: whistle.at))
+        #expect(match.report.score.away == 2)
+        #expect(match.clock.phase(at: Fixture.at(106 * 60)) == .fullTime)
+        let line = try #require(match.report.timeline.last { $0.text.contains("ARS") && $0.half == 2 })
+        #expect(line.minute == 45 && line.added == 0)
+        #expect(match.report.timeline.last?.text == line.text)   // after the red, in time order
+    }
+
+    @Test func atHalfTimeTheGoalIsTheFirstHalfsWithItsAddedTime() throws {
+        var match = Fixture.playedMatch()
+        let whistle = try #require(match.events.whistle(endingHalf: 1))
+        match.events.append(EventLog.lateGoal(side: .home, scorer: nil, beforeWhistle: whistle))
+        let goal = try #require(match.report.timeline.last { $0.half == 1 && $0.text.contains("Real Madrid") })
+        #expect(goal.minute == 45 && goal.added == 2)
+        #expect(match.report.halves.first?.homeGoals == 2)
+    }
+
+    @Test func noWhistleWhileAHalfRuns() {
+        let running = EventLog(events: [Fixture.event(0, .kickOff(half: 1))])
+        #expect(running.lastWhistle == nil)
+        #expect(running.whistle(endingHalf: 1) == nil)
+        #expect(Fixture.playedMatch().events.whistle(endingHalf: 2) == Fixture.at(105 * 60))
+        #expect(Fixture.playedMatch().events.whistle(endingHalf: 3) == nil)
+    }
+}

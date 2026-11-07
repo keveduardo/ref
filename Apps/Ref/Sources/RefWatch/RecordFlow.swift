@@ -16,6 +16,9 @@ struct RecordFlow: View {
     /// What "done" means on a swipe page — back to the live face. Without it
     /// the flow is a sheet, and done dismisses it.
     var onDone: (@MainActor () -> Void)? = nil
+    /// A goal after the whistle, from the half-time or full-time screen:
+    /// straight to the team, and recorded at the whistle (Kevin, 2026-11-06).
+    var lateGoal = false
 
     @Environment(\.dismiss) private var dismiss
     @State private var step: Step = .menu
@@ -63,6 +66,7 @@ struct RecordFlow: View {
         NavigationStack {
             content
         }
+        .onAppear { if lateGoal, step == .menu { step = .team(.goal) } }
     }
 
     @ViewBuilder
@@ -200,7 +204,11 @@ struct RecordFlow: View {
             switch kind {
             case .goal:
                 let scorer = (ref.number > 0 || ref.id != nil) ? ref : nil
-                session.goal(side: side, scorer: scorer)
+                if lateGoal {
+                    session.lateGoal(side: side, scorer: scorer)
+                } else {
+                    session.goal(side: side, scorer: scorer)
+                }
             case .yellow:
                 session.card(.yellow, side: side, player: ref)
             case .red:

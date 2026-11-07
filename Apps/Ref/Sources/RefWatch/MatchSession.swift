@@ -206,7 +206,10 @@ import RefKit
         // ! Saving the workout takes a moment, and "Done" may have been
         // tapped meanwhile — the record is still saved and sent, but the
         // summary is not put back on a screen the referee already left.
-        if match?.id == current.id {
+        // A goal added on the full-time screen while the workout was saving
+        // is in `match`, not in `current`: carry it over before saving.
+        if let latest = match, latest.id == current.id {
+            current.events.append(contentsOf: latest.events.recorded)
             match = current
         }
         try? store.save(current)
@@ -248,6 +251,23 @@ import RefKit
 
     func goal(side: TeamSide, scorer: PlayerRef?) {
         append(.goal(side: side, scorer: scorer))
+    }
+
+    /// A goal recorded after its half's whistle — from the half-time or the
+    /// full-time screen — put a second before that whistle
+    /// (`EventLog.lateGoal`). After full time the record is already on the
+    /// shelf and on its way to the phone, so it is saved and sent again; the
+    /// phone keeps the newer copy.
+    func lateGoal(side: TeamSide, scorer: PlayerRef?) {
+        guard var current = match, let whistle = current.events.lastWhistle else { return }
+        current.events.append(EventLog.lateGoal(side: side, scorer: scorer, beforeWhistle: whistle.at))
+        match = current
+        if current.isFinished {
+            try? store.save(current)
+            if playedIDs.contains(current.id) { link.send(current) }
+        } else {
+            persist()
+        }
     }
 
     /// A yellow to a player already booked is recorded as the second yellow
