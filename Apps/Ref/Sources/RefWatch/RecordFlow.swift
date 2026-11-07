@@ -341,6 +341,8 @@ struct PlayerPicker: View {
                     .disabled(!canSave)
                 }
             }
+            // The rows share whatever height is left, down to the inset.
+            .frame(maxHeight: .infinity)
         }
         // ! Clear of the screen's rounded corners (Kevin, 2026-11-06: the
         // check mark was cut off in the corner on an Ultra). The title went
