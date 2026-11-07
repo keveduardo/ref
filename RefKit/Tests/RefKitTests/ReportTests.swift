@@ -54,20 +54,32 @@ struct ReportTests {
     }
 }
 
-@Suite("assistant referees")
+@Suite("referees")
 struct AssistantRefereeTests {
     @Test func theirNamesAreOnTheReportAndOldSetupsHaveNone() throws {
         var match = Fixture.playedMatch()
         match.setup.ar1 = "Sam Lee"
         match.setup.ar2 = "  "
-        #expect(MatchReport.assistants(match.setup) == "AR1 Sam Lee")
+        #expect(MatchReport.referees(match.setup) == "AR1 Sam Lee")
         #expect(match.report.shareText(match: match).contains("AR1 Sam Lee"))
-        #expect(MatchReport.assistants(Fixture.setup) == nil)
+        #expect(MatchReport.referees(Fixture.setup) == nil)
+        match.setup.cr = "Alex Ruiz"
+        #expect(MatchReport.referees(match.setup) == "CR Alex Ruiz · AR1 Sam Lee")
+    }
+
+    @Test func aSetupSavedBeforeTheCentreRefereeStillDecodes() throws {
+        var old = Fixture.setup
+        old.ar1 = "Sam Lee"
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(old)) as! [String: Any]
+        json.removeValue(forKey: "cr")
+        let back = try JSONDecoder().decode(MatchSetup.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(back.cr == nil && back.ar1 == "Sam Lee")
     }
 
     @Test func aRemindersCrewFillsTheARs() throws {
         let game = try #require(ScheduledGame.parse(ScheduleImportTests.reminder).first)
         let setup = game.matchSetup()
+        #expect(setup.cr == "Pat Referee")
         #expect(setup.ar1 == "Sam Assistant")
         #expect(setup.ar2 == nil)
     }

@@ -126,7 +126,7 @@ enum RouteFiles {
                      addedTimeButton: Bool = false,
                      formatID: String? = nil,
                      quarterBreak: QuarterBreak? = nil,
-                     ar1: String? = nil, ar2: String? = nil) -> Match {
+                     cr: String? = nil, ar1: String? = nil, ar2: String? = nil) -> Match {
         // Team sheets ride along when both teams are known — the watch offers
         // their numbers instead of 1–18.
         let sheets = [home, away].compactMap { squad(for: $0) }
@@ -134,7 +134,7 @@ enum RouteFiles {
                                kickOff: kickOff, clock: clock, squads: sheets,
                                formatID: formatID, halfTimeMinutes: halfTimeMinutes,
                                addedTimeButton: addedTimeButton, quarterBreak: quarterBreak,
-                               ar1: ar1, ar2: ar2)
+                               cr: cr, ar1: ar1, ar2: ar2)
         let match = Match(setup: setup)
         try? matches.save(match)
         reload()

@@ -15,8 +15,8 @@ struct MatchDetailScreen: View {
         List {
             Section {
                 header
-                if let crew = MatchReport.assistants(match.setup) {
-                    LabeledContent("Assistant referees", value: crew)
+                if let crew = MatchReport.referees(match.setup) {
+                    LabeledContent("Referees", value: crew)
                 }
             }
 

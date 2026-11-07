@@ -34,7 +34,8 @@ struct MatchEditScreen: View {
                         Label("Swap home and away", systemImage: "arrow.up.arrow.down")
                     }
                 }
-                Section("Assistant referees") {
+                Section("Referees") {
+                    TextField("Center referee", text: optionalText($setup.cr))
                     TextField("AR1 name", text: optionalText($setup.ar1))
                     TextField("AR2 name", text: optionalText($setup.ar2))
                 }

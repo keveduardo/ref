@@ -68,7 +68,7 @@ public struct ScheduledGame: Sendable, Equatable {
             formatID: format?.id,
             halfTimeMinutes: halfTimeMinutes,
             quarterBreak: format?.quarterSubstitutions == true ? QuarterBreak() : nil,
-            ar1: crew["AR1"], ar2: crew["AR2"])
+            cr: crew["CR"], ar1: crew["AR1"], ar2: crew["AR2"])
     }
 
     // MARK: - Reading the email

@@ -87,7 +87,10 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     public var addedTimeButton: Bool
     /// A break partway through each half — nil when the match has none.
     public var quarterBreak: QuarterBreak?
-    /// The assistant referees' names, for the report — nil when not given.
+    /// The referees' names, for the report — nil when not given. The centre
+    /// referee joined the assistants on 2026-11-06 (Kevin: "needs a center
+    /// ref option as well").
+    public var cr: String?
     public var ar1: String?
     public var ar2: String?
 
@@ -98,7 +101,7 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
                 halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
                 addedTimeButton: Bool = MatchDefaults.standard.addedTimeButton,
                 quarterBreak: QuarterBreak? = nil,
-                ar1: String? = nil, ar2: String? = nil) {
+                cr: String? = nil, ar1: String? = nil, ar2: String? = nil) {
         self.id = id
         self.home = home
         self.away = away
@@ -111,13 +114,14 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.halfTimeMinutes = halfTimeMinutes
         self.addedTimeButton = addedTimeButton
         self.quarterBreak = quarterBreak
+        self.cr = cr
         self.ar1 = ar1
         self.ar2 = ar2
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, home, away, competition, kickOff, clock, squads, sinBinMinutes, formatID, halfTimeMinutes
-        case addedTimeButton, quarterBreak, ar1, ar2
+        case addedTimeButton, quarterBreak, cr, ar1, ar2
     }
 
     /// ! Written out for one reason: a setup saved by build 22 or 25 has no
@@ -139,6 +143,7 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
             ?? MatchDefaults.standard.halfTimeMinutes
         addedTimeButton = try c.decodeIfPresent(Bool.self, forKey: .addedTimeButton) ?? false
         quarterBreak = try c.decodeIfPresent(QuarterBreak.self, forKey: .quarterBreak)
+        cr = try c.decodeIfPresent(String.self, forKey: .cr)
         ar1 = try c.decodeIfPresent(String.self, forKey: .ar1)
         ar2 = try c.decodeIfPresent(String.self, forKey: .ar2)
     }
@@ -253,6 +258,7 @@ extension MatchSetup {
         merged.competition = edited.competition
         merged.squads = edited.squads
         merged.kickOff = edited.kickOff
+        merged.cr = edited.cr
         merged.ar1 = edited.ar1
         merged.ar2 = edited.ar2
         if !kickedOff {
