@@ -62,7 +62,7 @@ struct RenderDemo: View {
     var body: some View {
         switch page {
         case .matches:
-            RefScreen(store: .demo(), link: PhoneLink(), account: AccountStore())
+            RefScreen(store: .demo(), link: PhoneLink(), account: AccountStore(), schedule: ScheduleSync())
         case .setup:
             MatchSetupScreen(store: .demo())
         case .teams:
@@ -72,7 +72,7 @@ struct RenderDemo: View {
         case .stats:
             StatsScreen(store: .demo())
         case .settings:
-            SettingsScreen(link: PhoneLink(), account: AccountStore(), store: PhoneStore(), schedule: ScheduleSync())
+            SettingsScreen(link: PhoneLink(), account: AccountStore(), store: .demo(), schedule: ScheduleSync())
         }
     }
 }

@@ -83,6 +83,8 @@ struct LiveScreen: View {
                 Text(clock.text(at: now))
                     .font(.system(size: showingControls ? 40 : 58, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    // Orange while stopped, so a paused clock is never read as a running one.
+                    .foregroundStyle(phase.isRunning ? Color.primary : (phase == .notStarted ? .primary : .orange))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                 Text(periodLabel(clock, at: now))
@@ -233,7 +235,13 @@ struct LiveScreen: View {
             }
             // Words, not symbols: "+1′" and a chequered flag had to be
             // explained (Kevin, 2026-10-04).
+            //
+            // ! Record and Pause (Kevin, 2026-11-06: "I don't think I need an
+            // end the half button there. Maybe just record and pause"). End
+            // half comes back once the half's time is up — the alarm offers
+            // it then too — and from a pause.
             let lastHalf = clock.currentHalf(at: now) >= clock.config.halves
+            let timeUp = clock.elapsed(inHalf: half, at: now) >= clock.config.halfLength
             HStack(spacing: 4) {
                 // Only when the match announces added time — off by default.
                 if session.match?.setup.addedTimeButton == true {
@@ -250,22 +258,52 @@ struct LiveScreen: View {
                     Text("Record")
                 }
                 .tint(.green)
-                Button {
-                    Haptics.play(.click)
-                    if lastHalf {
-                        confirmingFullTime = true
-                    } else {
-                        session.endHalf()
+                if timeUp {
+                    endHalfButton(lastHalf: lastHalf)
+                } else {
+                    Button {
+                        Haptics.play(.stop)
+                        session.pauseClock()
+                    } label: {
+                        Text("Pause")
                     }
-                } label: {
-                    Text(lastHalf ? "End match" : "End half")
+                    .tint(.orange)
                 }
             }
             .font(.footnote)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+        case .paused:
+            // Paused is a state to act on, so its buttons stay up untouched.
+            let lastHalf = clock.currentHalf(at: now) >= clock.config.halves
+            Button {
+                Haptics.play(.start)
+                session.resumeClock()
+            } label: {
+                Text("Resume")
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            endHalfButton(lastHalf: lastHalf)
+                .font(.footnote)
         default:
             EmptyView()
+        }
+    }
+}
+
+extension LiveScreen {
+    /// End half — or End match, which asks first — on its own tap.
+    fileprivate func endHalfButton(lastHalf: Bool) -> some View {
+        Button {
+            Haptics.play(.click)
+            if lastHalf {
+                confirmingFullTime = true
+            } else {
+                session.endHalf()
+            }
+        } label: {
+            Text(lastHalf ? "End match" : "End half")
         }
     }
 }

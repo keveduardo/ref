@@ -171,6 +171,13 @@ import RefKit
 
     func endHalf() { append(.halfEnd(half: halfAtNow)) }
 
+    /// Stop the match clock — an injury, a stoppage the referee times — and
+    /// start it again from where it stopped (Kevin, 2026-11-06: "there needs
+    /// to be an option to pause the clock"). Paused time is not played time,
+    /// and the alarms wait with it (RefKit's clock and `upcomingAlerts`).
+    func pauseClock() { append(.clockPaused) }
+    func resumeClock() { append(.clockResumed) }
+
     func startNextHalf() { append(.kickOff(half: halfAtNow + 1)) }
 
     /// The quarter break. The match clock keeps running (the half is a
