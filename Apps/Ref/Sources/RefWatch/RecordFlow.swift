@@ -333,12 +333,11 @@ struct PlayerPicker: View {
                     }
                     .disabled(digits.isEmpty)
                     digitKey(0)
-                    key {
+                    key(accent: .green) {
                         Image(systemName: "checkmark").fontWeight(.bold)
                     } action: {
                         pick(ref())
                     }
-                    .tint(.green)
                     .disabled(!canSave)
                 }
             }
@@ -363,7 +362,7 @@ struct PlayerPicker: View {
 
     /// A key that grows to fill its share of the screen, so the pad never
     /// needs a scroll on any watch size.
-    private func key<Label: View>(@ViewBuilder label: () -> Label,
+    private func key<Label: View>(accent: Color? = nil, @ViewBuilder label: () -> Label,
                                   action: @escaping @MainActor () -> Void) -> some View {
         Button {
             Haptics.play(.click)
@@ -371,13 +370,35 @@ struct PlayerPicker: View {
         } label: {
             label().frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.roundedRectangle(radius: 10))
+        // ! Drawn here, not `.bordered`: watchOS gives a bordered button a
+        // minimum height, and four rows of those overflowed an Ultra's screen
+        // — keys under the X, the number line pushed off the top (render,
+        // 2026-11-06). A plain button takes only the height it is given.
+        .buttonStyle(PadKeyStyle(accent: accent))
     }
 
     private func ref() -> PlayerRef {
         guard number > 0 else { return PlayerRef() }
         if let player { return PlayerRef(player) }
         return PlayerRef(number: number)
+    }
+}
+
+/// A keypad key: a rounded tile that fills its grid cell and lights when
+/// pressed; grey, or its accent, and dimmed when disabled.
+private struct PadKeyStyle: ButtonStyle {
+    /// Nil for a digit (grey); the check mark's green.
+    var accent: Color?
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(enabled ? Color.primary : Color.secondary)
+            .background(
+                RoundedRectangle(cornerRadius: 9)
+                    .fill((accent ?? .gray).opacity(configuration.isPressed ? 0.55 : (accent == nil ? 0.28 : 0.4)))
+            )
+            .opacity(enabled ? 1 : 0.5)
+            .contentShape(Rectangle())
     }
 }
