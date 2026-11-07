@@ -236,10 +236,12 @@ struct LiveScreen: View {
             // Words, not symbols: "+1′" and a chequered flag had to be
             // explained (Kevin, 2026-10-04).
             //
-            // ! Record and Pause (Kevin, 2026-11-06: "I don't think I need an
-            // end the half button there. Maybe just record and pause"). End
-            // half comes back once the half's time is up — the alarm offers
-            // it then too — and from a pause.
+            // ! Record and Pause in the row (Kevin, 2026-11-06: "Maybe just
+            // record and pause button?"), and End half / End match small
+            // underneath — always there, because a match started by mistake
+            // or for practice must be endable ("otherwise, there's no way to
+            // end the game"). End match asks first; an End half by mistake is
+            // resumed from the break screen.
             let lastHalf = clock.currentHalf(at: now) >= clock.config.halves
             let timeUp = clock.elapsed(inHalf: half, at: now) >= clock.config.halfLength
             HStack(spacing: 4) {
@@ -259,6 +261,7 @@ struct LiveScreen: View {
                 }
                 .tint(.green)
                 if timeUp {
+                    // Time is up: ending the half is the likely next tap.
                     endHalfButton(lastHalf: lastHalf)
                 } else {
                     Button {
@@ -273,6 +276,12 @@ struct LiveScreen: View {
             .font(.footnote)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+            if !timeUp {
+                endHalfButton(lastHalf: lastHalf)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
         case .paused:
             // Paused is a state to act on, so its buttons stay up untouched.
             let lastHalf = clock.currentHalf(at: now) >= clock.config.halves
