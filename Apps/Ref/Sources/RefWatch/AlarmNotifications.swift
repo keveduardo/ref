@@ -41,7 +41,8 @@ enum AlarmNotifications {
         if let ringing { slots.append((0, ringing)) }
         for (i, alert) in upcoming.prefix(3).enumerated() { slots.append((i + 1, alert)) }
         for (slot, alert) in slots {
-            for r in 0..<repeats {
+            // The break's end is a nudge, not an alarm: one notification.
+            for r in 0..<(MatchSession.ringsUntilStopped(alert.kind) ? repeats : 1) {
                 let wait = alert.at.timeIntervalSinceNow + Double(r) * every
                 guard wait > 1 else { continue }
                 let content = UNMutableNotificationContent()

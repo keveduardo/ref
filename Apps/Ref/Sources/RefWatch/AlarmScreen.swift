@@ -22,17 +22,37 @@ struct AlarmScreen: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-            Button("Stop") {
-                Haptics.play(.click)
-                session.stopAlarm()
+            // One button where one answer is all there is: the quarter mark
+            // (its Start break is the stop) and the break's end (Dismiss).
+            if let only = singleButton {
+                Button(only) {
+                    Haptics.play(.click)
+                    session.stopAlarm()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+            } else {
+                Button("Stop") {
+                    Haptics.play(.click)
+                    session.stopAlarm()
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
             }
-            .buttonStyle(.bordered)
-            .tint(.orange)
         }
         .padding(.horizontal, 4)
     }
 
     private var kind: MatchAlert.Kind? { session.ringing?.kind }
+
+    /// The label of the one button an alarm has, when it has only one.
+    private var singleButton: String? {
+        switch kind {
+        case .quarterMark: "Start break"
+        case .quarterBreakOver: "Dismiss"
+        default: nil
+        }
+    }
 
     private var title: String {
         guard let kind else { return "" }
@@ -50,9 +70,9 @@ struct AlarmScreen: View {
             return half >= session.clock.config.halves
                 ? ("End match", { session.fullTime() })
                 : ("End half", { session.endHalf() })
-        case .quarterMark:
-            return ("Start quarter break", { session.startQuarterBreak() })
-        case .halfTimeOver, .quarterBreakOver, .binOver:
+        case .quarterMark, .quarterBreakOver:
+            return nil   // singleButton
+        case .halfTimeOver, .binOver:
             // Half-time over only silences: kicking off the second half stays
             // its own deliberate tap on the break screen (Kevin, 2026-10-05).
             return nil

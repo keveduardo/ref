@@ -339,7 +339,17 @@ import RefKit
     private var ringTask: Task<Void, Never>?
 
     /// Stop the alarm going off.
+    ///
+    /// ! At the quarter mark, stopping IS starting the break (Kevin,
+    /// 2026-11-06): the half is a running clock, so the one thing the alarm
+    /// can be answered with is the break's own timer. However it is silenced
+    /// — the screen, the notification's Stop, a swipe — the break starts.
     func stopAlarm() {
+        if case .quarterMark(let half) = ringing?.kind,
+           match?.events.quarterBreak(inHalf: half) == nil {
+            startQuarterBreak()   // resolves the alarm too
+            return
+        }
         ringTask?.cancel()
         ringTask = nil
         ringing = nil
@@ -372,17 +382,29 @@ import RefKit
     private func ring(_ alert: MatchAlert) {
         ringTask?.cancel()
         ringing = alert
+        // The quarter break's end only tells: the match clock ran through it,
+        // so there is nothing to do, and it silences itself after three
+        // bursts (Kevin, 2026-11-06: "it should just auto dismiss").
+        let bursts = Self.ringsUntilStopped(alert.kind) ? 120 : 3
         ringTask = Task { [weak self] in
-            for _ in 0..<120 {
+            for _ in 0..<bursts {
                 guard !Task.isCancelled else { return }
                 await Haptics.alert(alert.kind)
                 try? await Task.sleep(for: .seconds(2.5))
             }
-            self?.ringing = nil
+            guard !Task.isCancelled else { return }
+            if bursts < 120 { self?.stopAlarm() } else { self?.ringing = nil }
         }
         // Plan the next alarm; this one's repeat notifications stay until
         // it is stopped.
         replanAlarms()
+    }
+
+    /// Whether an alarm rings until answered. The quarter break's end does
+    /// not: it is a nudge, and the clock never stopped.
+    nonisolated static func ringsUntilStopped(_ kind: MatchAlert.Kind) -> Bool {
+        if case .quarterBreakOver = kind { return false }
+        return true
     }
 
     /// Taking the step an alarm calls for stops it: ending the half, kicking
