@@ -8,6 +8,11 @@ import SwiftUI
 struct SettingsScreen: View {
     let link: PhoneLink
     let account: AccountStore
+    let store: PhoneStore
+    let schedule: ScheduleSync
+
+    @State private var pastedLink = ""
+    @State private var pasteFailed = false
 
     @State private var confirmingDelete = false
     @Environment(\.colorScheme) private var colorScheme
@@ -36,6 +41,7 @@ struct SettingsScreen: View {
                         }
                     }
                 }
+                scheduleSection
                 accountSection
                 Section("Watch") {
                     LabeledContent("Link", value: link.status)
@@ -58,6 +64,53 @@ struct SettingsScreen: View {
             }
             .themedBackground()
             .navigationTitle("Settings")
+        }
+    }
+
+    /// The CGI Sports schedule: games appear in Matches with teams and crew.
+    @ViewBuilder
+    private var scheduleSection: some View {
+        Section {
+            if let connected = schedule.link {
+                LabeledContent("Connected", value: "\(connected.displayName) · region \(connected.region)")
+                if let result = schedule.lastResult {
+                    LabeledContent(schedule.lastChecked.map { "Checked \($0.formatted(.relative(presentation: .named)))" } ?? "Checked",
+                                   value: result)
+                }
+                Button {
+                    Task { await schedule.check(store) }
+                } label: {
+                    HStack {
+                        Text("Check now")
+                        if schedule.checking { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(schedule.checking)
+                Button("Remove link", role: .destructive) { schedule.disconnect() }
+            } else {
+                TextField("Paste your My Schedule link", text: $pastedLink)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                Button("Connect") {
+                    if schedule.connect(pastedLink) {
+                        pastedLink = ""
+                        Task { await schedule.check(store) }
+                    } else {
+                        pasteFailed = true
+                    }
+                }
+                .disabled(pastedLink.isEmpty)
+            }
+        } header: {
+            Text("Referee schedule")
+        } footer: {
+            Text("Your CGI Sports games appear in Matches with the teams, field and crew, and are checked again each hour you open the app. The link signs you in, so it stays on this phone only. RefTime only reads it — it never requests or drops a game.")
+        }
+        .alert("That isn't a CGI Sports referee link", isPresented: $pasteFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Open My Schedule on cgisports.com and copy the address from there.")
         }
     }
 

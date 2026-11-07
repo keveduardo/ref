@@ -69,6 +69,14 @@ targets:
         # ! No WKAppBundleIdentifier on this side: that key belongs to the
         # legacy WatchKit *extension* pair, and a wrong value there is itself a
         # validation failure. The pairing lives on the watch side only.
+    info:
+      # URL types have no INFOPLIST_KEY_ setting. reftime://schedule?link=…
+      # connects the CGI Sports schedule in one tap (ScheduleSync).
+      path: Generated/Ref-Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: com.brisaloca.ref
+            CFBundleURLSchemes: [reftime]
 
   RefWatch:
     type: application

@@ -7,8 +7,10 @@ struct RefScreen: View {
     let store: PhoneStore
     let link: PhoneLink
     let account: AccountStore
+    let schedule: ScheduleSync
 
     @Environment(\.scenePhase) private var scenePhase
+    @State private var linkMessage: String?
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = MatchDefaults.standard.halfMinutes
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
@@ -24,7 +26,7 @@ struct RefScreen: View {
                 .tabItem { Label("Teams", systemImage: "person.3") }
             StatsScreen(store: store)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
-            SettingsScreen(link: link, account: account)
+            SettingsScreen(link: link, account: account, store: store, schedule: schedule)
                 .tabItem { Label("Settings", systemImage: "gear") }
         }
         // The look (Theme.swift): always dark, gold for what is selected,
@@ -41,8 +43,29 @@ struct RefScreen: View {
         .onChange(of: halfTimeMinutes) { _, _ in pushAssignment() }
         .onChange(of: addedTimeButton) { _, _ in pushAssignment() }
         // Back in the foreground: pick up what changed on another phone.
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await account.sync() } }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            guard phase == .active else { return }
+            Task { await account.sync() }
+            Task { await schedule.checkIfDue(store) }
+        }
+        // reftime://schedule?link=<the My Schedule address>, tapped once,
+        // connects the schedule (Kevin, 2026-11-06: "auto add the link").
+        .onOpenURL { url in
+            guard url.scheme == "reftime", url.host == "schedule",
+                  let given = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                      .queryItems?.first(where: { $0.name == "link" })?.value else { return }
+            if schedule.connect(given) {
+                linkMessage = "Your CGI Sports schedule is connected. Its games are on their way to Matches."
+                Task { await schedule.check(store) }
+            } else {
+                linkMessage = "That link isn't a CGI Sports referee schedule."
+            }
+        }
+        .alert("Referee schedule", isPresented: Binding(get: { linkMessage != nil },
+                                                        set: { if !$0 { linkMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(linkMessage ?? "")
         }
         .onChange(of: quarterBreak) { _, _ in pushAssignment() }
         .onChange(of: quarterBreakMinutes) { _, _ in pushAssignment() }

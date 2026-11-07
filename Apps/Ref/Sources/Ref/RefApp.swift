@@ -8,6 +8,7 @@ struct RefApp: App {
     @State private var store: PhoneStore
     @State private var link: PhoneLink
     @State private var account: AccountStore
+    @State private var schedule = ScheduleSync()
 
     init() {
         // ! Wired here, not in a view's `.task`: WatchConnectivity can wake
@@ -35,10 +36,10 @@ struct RefApp: App {
             if let page = RenderDemo.page {
                 RenderDemo(page: page)
             } else {
-                RefScreen(store: store, link: link, account: account)
+                RefScreen(store: store, link: link, account: account, schedule: schedule)
             }
             #else
-            RefScreen(store: store, link: link, account: account)
+            RefScreen(store: store, link: link, account: account, schedule: schedule)
             #endif
         }
     }
@@ -71,7 +72,7 @@ struct RenderDemo: View {
         case .stats:
             StatsScreen(store: .demo())
         case .settings:
-            SettingsScreen(link: PhoneLink(), account: AccountStore())
+            SettingsScreen(link: PhoneLink(), account: AccountStore(), store: PhoneStore(), schedule: ScheduleSync())
         }
     }
 }

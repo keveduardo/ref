@@ -149,8 +149,18 @@ enum RouteFiles {
     @discardableResult
     func importGames(from text: String) -> (new: Int, found: Int) {
         let games = ScheduledGame.parse(text)
+        return (importGames(games).new, games.count)
+    }
+
+    /// Games onto the shelf; see above. With `followSite` (the CGI schedule,
+    /// read again every hour), a match not yet played and not yet on the
+    /// watch takes the site's kick-off and crew when they change — the
+    /// assignor moves games and swaps referees. Returns new and updated.
+    @discardableResult
+    func importGames(_ games: [ScheduledGame], followSite: Bool = false) -> (new: Int, updated: Int) {
         let defaults = UserDefaults.standard.integer(forKey: "ref.halfTimeMinutes")
         var new = 0
+        var updated = 0
         for game in games {
             var setup = game.matchSetup(halfTimeMinutes: defaults == 0
                                         ? MatchDefaults.standard.halfTimeMinutes : defaults)
@@ -161,13 +171,25 @@ enum RouteFiles {
             } else if setup.quarterBreak != nil {
                 setup.quarterBreak?.breakMinutes = QuarterBreakDefaults.breakMinutes
             }
-            guard !all.contains(where: { $0.id == setup.id }) else { continue }
+            if var existing = all.first(where: { $0.id == setup.id }) {
+                guard followSite, !existing.isFinished, !startedOnWatch.contains(existing.id) else { continue }
+                var changed = existing.setup
+                changed.kickOff = setup.kickOff
+                changed.cr = setup.cr ?? changed.cr
+                changed.ar1 = setup.ar1 ?? changed.ar1
+                changed.ar2 = setup.ar2 ?? changed.ar2
+                guard changed != existing.setup else { continue }
+                existing.setup = changed
+                try? matches.save(existing)
+                updated += 1
+                continue
+            }
             try? matches.save(Match(setup: setup))
             new += 1
         }
         reload()
-        if new > 0 { onChange?() }
-        return (new, games.count)
+        if new > 0 || updated > 0 { onChange?() }
+        return (new, updated)
     }
 
     func save(_ match: Match) {
