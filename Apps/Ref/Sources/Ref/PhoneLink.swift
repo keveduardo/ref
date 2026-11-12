@@ -23,6 +23,8 @@ import WatchConnectivity
     private let onRoute: (@MainActor () -> Void)?
     private let onStarted: (@MainActor (MatchSetup) -> Void)?
     private let onCancelled: (@MainActor (UUID) -> Void)?
+    /// The watch changed its match in hand (team colours, chosen there).
+    private let onEdited: (@MainActor (MatchSetup) -> Void)?
     /// The match the watch says it is running (nil: none).
     var onWatchCurrent: (@MainActor (UUID?) -> Void)?
     /// The watch app's build, as it last reported it.
@@ -40,8 +42,10 @@ import WatchConnectivity
     init(onFinished: (@MainActor (Match) -> Void)? = nil,
          onRoute: (@MainActor () -> Void)? = nil,
          onStarted: (@MainActor (MatchSetup) -> Void)? = nil,
-         onCancelled: (@MainActor (UUID) -> Void)? = nil) {
+         onCancelled: (@MainActor (UUID) -> Void)? = nil,
+         onEdited: (@MainActor (MatchSetup) -> Void)? = nil) {
         self.onCancelled = onCancelled
+        self.onEdited = onEdited
         self.onFinished = onFinished
         self.onRoute = onRoute
         self.onStarted = onStarted
@@ -186,12 +190,17 @@ extension PhoneLink: WCSessionDelegate {
         let finished = userInfo["finishedMatch"] as? Data
         let started = userInfo["startedMatch"] as? Data
         let cancelled = (userInfo["cancelledMatch"] as? String).flatMap(UUID.init)
+        let edited = userInfo["editedMatch"] as? Data
         Task { @MainActor in
             if let cancelled { self.onCancelled?(cancelled) }
             if let finished { self.ingest(matchData: finished) }
             if let started,
                let payload = try? SyncPayload.decode(SyncPayload.StartedMatch.self, from: started) {
                 self.onStarted?(payload.setup)
+            }
+            if let edited,
+               let payload = try? SyncPayload.decode(SyncPayload.StartedMatch.self, from: edited) {
+                self.onEdited?(payload.setup)
             }
         }
     }

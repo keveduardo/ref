@@ -38,7 +38,7 @@ struct RefScreen: View {
         // Activation completes after launch, so the first push goes then;
         // after that, whenever the matches or the defaults change.
         .onChange(of: link.activated, initial: true) { _, _ in pushAssignment() }
-        .onChange(of: store.upcoming.map(\.setup)) { _, _ in pushAssignment() }
+        .onChange(of: (store.onWatch + store.upcoming).map(\.setup)) { _, _ in pushAssignment() }
         .onChange(of: halfMinutes) { _, _ in pushAssignment() }
         .onChange(of: halfTimeMinutes) { _, _ in pushAssignment() }
         .onChange(of: addedTimeButton) { _, _ in pushAssignment() }
@@ -71,9 +71,13 @@ struct RefScreen: View {
         .onChange(of: quarterBreakMinutes) { _, _ in pushAssignment() }
     }
 
-    /// The watch always has the newest set of matches to offer.
+    /// The watch always has the newest set of matches to offer — and the
+    /// one it is running, so edits made here to a quick start reach it. (Left
+    /// out from 2026-10-04 to 2026-11-12, when "On the watch" was split from
+    /// Upcoming: until then a quick start's names and colours stayed on the
+    /// phone.) The watch never offers its match in hand back as a choice.
     private func pushAssignment() {
-        link.sendAssignment(store.upcoming.map(\.setup),
+        link.sendAssignment((store.onWatch + store.upcoming).map(\.setup),
                             defaults: MatchDefaults(halfMinutes: halfMinutes,
                                                     halfTimeMinutes: halfTimeMinutes,
                                                     addedTimeButton: addedTimeButton,

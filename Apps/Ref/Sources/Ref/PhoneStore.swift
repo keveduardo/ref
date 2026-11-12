@@ -226,6 +226,22 @@ enum RouteFiles {
         save(Match(setup: setup))
     }
 
+    /// Team colours chosen on the watch, mid-match too: taken into the
+    /// phone's copy, which then goes back to the watch as usual. Only the
+    /// colours — names and the rest are edited here.
+    func colorsChangedOnWatch(_ setup: MatchSetup) {
+        guard var match = all.first(where: { $0.id == setup.id }) else {
+            addStartedOnWatch(setup)
+            return
+        }
+        var changed = match.setup
+        changed.setColor(setup.home.color, for: .home)
+        changed.setColor(setup.away.color, for: .away)
+        guard changed != match.setup else { return }
+        match.setup = changed
+        save(match)
+    }
+
     /// The watch's report of its match in hand. Any other watch-started match
     /// it no longer has goes back to Upcoming — on the watch's list again,
     /// to be picked — rather than claiming to be on the watch.

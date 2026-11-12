@@ -24,6 +24,7 @@ struct LiveScreen: View {
     @State private var confirmingFullTime = false
     @State private var markingField = false
     @State private var confirmingChange = false
+    @State private var choosingColors = false
     @Environment(\.isLuminanceReduced) private var dimmed
     /// Until when the buttons show under the clock. ! The face changes only
     /// when touched (Kevin, 2026-11-06: "I'd rather have the screen only
@@ -58,6 +59,7 @@ struct LiveScreen: View {
         }
         .sheet(isPresented: $showingRecord) { RecordFlow(session: session) }
         .sheet(isPresented: $markingField) { MarkFieldScreen(session: session) }
+        .sheet(isPresented: $choosingColors) { TeamColorsScreen(session: session) }
         .confirmationDialog("Full time?", isPresented: $confirmingFullTime) {
             Button("End the match", role: .destructive) { session.fullTime() }
         }
@@ -79,7 +81,11 @@ struct LiveScreen: View {
                 return true
             }()
             VStack(spacing: 2) {
-                scoreRow
+                // The team names are the way to their colours (Kevin,
+                // 2026-11-12), mid-match too.
+                Button { choosingColors = true } label: { scoreRow }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Change team colours")
                 Text(clock.text(at: now))
                     .font(.system(size: showingControls ? 40 : 58, weight: .bold, design: .rounded))
                     .monospacedDigit()

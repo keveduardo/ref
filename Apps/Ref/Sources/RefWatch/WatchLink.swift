@@ -32,6 +32,7 @@ import WatchConnectivity
     private var pending: [Match] = []
     private var pendingRoutes: [SyncPayload.Route] = []
     private var pendingStarts: [MatchSetup] = []
+    private var pendingEdits: [MatchSetup] = []
     /// The match in hand, as last reported — resent on activation.
     private var currentMatchID: UUID?
     /// Told of every assignment from the phone — the session takes the
@@ -72,6 +73,18 @@ import WatchConnectivity
         }
         guard let data = try? SyncPayload.encode(SyncPayload.StartedMatch(setup: setup)) else { return }
         WCSession.default.transferUserInfo(["startedMatch": data])
+    }
+
+    /// A change made on the watch to the match in hand (team colours), for
+    /// the phone's copy. Queued like a start; a newer one makes the older moot.
+    func sendEdited(_ setup: MatchSetup) {
+        guard activated else {
+            pendingEdits.removeAll { $0.id == setup.id }
+            pendingEdits.append(setup)
+            return
+        }
+        guard let data = try? SyncPayload.encode(SyncPayload.StartedMatch(setup: setup)) else { return }
+        WCSession.default.transferUserInfo(["editedMatch": data])
     }
 
     /// This app's build number — the run number CI stamps on both apps.
@@ -142,6 +155,9 @@ import WatchConnectivity
         let starts = pendingStarts
         pendingStarts = []
         for setup in starts { sendStarted(setup) }
+        let edits = pendingEdits
+        pendingEdits = []
+        for setup in edits { sendEdited(setup) }
         reportCurrent(currentMatchID)
     }
 

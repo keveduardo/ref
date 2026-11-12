@@ -126,10 +126,25 @@ import RefKit
         link.reportCurrent(match.id)
     }
 
+    /// Colours chosen here that the phone's copy does not have yet — held
+    /// against a list from the phone that crossed them on the way.
+    private var heldColors: [TeamSide: TeamColor] = [:]
+
+    /// A team's colour, chosen on the watch, mid-match too (Kevin,
+    /// 2026-11-12). Sent to the phone, whose copy is the one it edits.
+    func setColor(_ color: TeamColor, for side: TeamSide) {
+        guard var current = match, current.setup.team(side).color != color else { return }
+        current.setup.setColor(color, for: side)
+        heldColors[side] = color
+        match = current
+        persist()
+        link.sendEdited(current.setup)
+    }
+
     private func applyPhoneEdits(_ setups: [MatchSetup]) {
         guard var current = match, let edited = setups.first(where: { $0.id == current.id }) else { return }
         let kickedOff = current.clock.phase(at: Date()) != .notStarted
-        let merged = current.setup.applyingEdits(edited, kickedOff: kickedOff)
+        let merged = current.setup.applyingEdits(edited, kickedOff: kickedOff, holding: &heldColors)
         guard merged != current.setup else { return }
         current.setup = merged
         match = current

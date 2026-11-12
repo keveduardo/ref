@@ -20,7 +20,8 @@ struct RefApp: App {
         let link = PhoneLink(onFinished: { match in store.save(match) },
                              onRoute: { store.routesChanged() },
                              onStarted: { setup in store.addStartedOnWatch(setup) },
-                             onCancelled: { id in store.cancelledOnWatch(id) })
+                             onCancelled: { id in store.cancelledOnWatch(id) },
+                             onEdited: { setup in store.colorsChangedOnWatch(setup) })
         // The watch's match in hand: "On the watch" shows only that one.
         link.onWatchCurrent = { id in store.watchIsRunning(id) }
         _link = State(initialValue: link)

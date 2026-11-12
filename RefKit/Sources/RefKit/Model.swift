@@ -323,3 +323,29 @@ extension MatchSetup {
         return merged
     }
 }
+
+extension MatchSetup {
+    public mutating func setColor(_ color: TeamColor, for side: TeamSide) {
+        if side == .home { home.color = color } else { away.color = color }
+    }
+
+    /// The phone's edits, with the colours just chosen on the watch held
+    /// (Kevin, 2026-11-12: team colours from the watch, mid-match). The
+    /// phone's copy is the one that gets edited, and it only hears of the
+    /// watch's choice a moment later, so a list it sent in between would undo
+    /// it. A held colour stays until the phone's copy has it too; then it is
+    /// let go, and the phone may change it again.
+    public func applyingEdits(_ edited: MatchSetup, kickedOff: Bool,
+                              holding held: inout [TeamSide: TeamColor]) -> MatchSetup {
+        var merged = applyingEdits(edited, kickedOff: kickedOff)
+        guard edited.id == id else { return merged }
+        for (side, color) in held {
+            if edited.team(side).color == color {
+                held[side] = nil
+            } else {
+                merged.setColor(color, for: side)
+            }
+        }
+        return merged
+    }
+}
