@@ -14,6 +14,7 @@ struct MatchEditScreen: View {
     @State private var setup: MatchSetup
     @State private var hasKickOff: Bool
     @State private var kickOff: Date
+    @State private var showingAdvanced = false
 
     init(store: PhoneStore, match: Match) {
         self.store = store
@@ -35,17 +36,6 @@ struct MatchEditScreen: View {
                         Label("Swap home and away", systemImage: "arrow.up.arrow.down")
                     }
                 }
-                Section("Referees") {
-                    Picker("Your position", selection: $setup.myRole) {
-                        Text("Not set").tag(RefereeRole?.none)
-                        ForEach(RefereeRole.allCases, id: \.self) { role in
-                            Text(role.title).tag(RefereeRole?.some(role))
-                        }
-                    }
-                    TextField("Center referee", text: optionalText($setup.cr))
-                    TextField("AR1 name", text: optionalText($setup.ar1))
-                    TextField("AR2 name", text: optionalText($setup.ar2))
-                }
                 Section("Competition") {
                     TextField("Friendly, League…", text: Binding(
                         get: { setup.competition ?? "" },
@@ -57,6 +47,42 @@ struct MatchEditScreen: View {
                         DatePicker("Kick-off", selection: $kickOff,
                                    displayedComponents: [.date, .hourAndMinute])
                     }
+                }
+                Section {
+                    MyRolePicker(role: $setup.myRole)
+                }
+                AdvancedToggle(isOpen: $showingAdvanced, summary: AdvancedToggle.summary(
+                    halfMinutes: Int(setup.clock.halfLength / 60), halfTimeMinutes: setup.halfTimeMinutes,
+                    countsDown: setup.clock.countsDown, quarterBreak: setup.quarterBreak,
+                    referees: [setup.cr, setup.ar1, setup.ar2]))
+                if showingAdvanced {
+                    advanced
+                }
+            }
+            .themedBackground()
+            .navigationTitle("Edit match")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(setup.home.name.trimmingCharacters(in: .whitespaces).isEmpty
+                                  || setup.away.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+    }
+
+    /// Behind Advanced: the teams' numbers and coaches, the clock, quarter
+    /// breaks and the referees' names.
+    @ViewBuilder
+    private var advanced: some View {
+                Section("Team details") {
+                    TextField("Home team number", text: optionalText($setup.home.number))
+                    TextField("Home coach", text: optionalText($setup.home.coach))
+                    TextField("Away team number", text: optionalText($setup.away.number))
+                    TextField("Away coach", text: optionalText($setup.away.coach))
                 }
                 Section {
                     Picker("Half length", selection: halfMinutes) {
@@ -74,20 +100,11 @@ struct MatchEditScreen: View {
                 }
                 QuarterBreakSection(quarterBreak: $setup.quarterBreak,
                                     halfMinutes: Int(setup.clock.halfLength / 60))
-            }
-            .themedBackground()
-            .navigationTitle("Edit match")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                Section("Referees") {
+                    TextField("Center referee", text: optionalText($setup.cr))
+                    TextField("AR1 name", text: optionalText($setup.ar1))
+                    TextField("AR2 name", text: optionalText($setup.ar2))
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(setup.home.name.trimmingCharacters(in: .whitespaces).isEmpty
-                                  || setup.away.name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-        }
     }
 
     /// An optional name as a text field: empty means none.
@@ -108,8 +125,6 @@ struct MatchEditScreen: View {
             TextField("Short (3 letters)", text: Binding(
                 get: { team.wrappedValue.abbreviation },
                 set: { team.wrappedValue.abbreviation = String($0.uppercased().prefix(3)) }))
-            TextField("Team number", text: optionalText(team.number))
-            TextField("Coach", text: optionalText(team.coach))
             TeamColorPicker(color: team.color)
         }
     }

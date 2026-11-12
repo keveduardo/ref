@@ -49,6 +49,8 @@ struct MatchSetupScreen: View {
     @State private var cr = ""
     @State private var ar1 = ""
     @State private var ar2 = ""
+    @State private var myRole: RefereeRole?
+    @State private var showingAdvanced = false
 
     init(store: PhoneStore) {
         self.store = store
@@ -101,6 +103,42 @@ struct MatchSetupScreen: View {
                     }
                 }
                 Section {
+                    MyRolePicker(role: $myRole)
+                }
+                AdvancedToggle(isOpen: $showingAdvanced, summary: AdvancedToggle.summary(
+                    halfMinutes: halfMinutes, halfTimeMinutes: halfTimeMinutes, countsDown: countsDown,
+                    quarterBreak: quarterBreak, referees: [cr, ar1, ar2]))
+                if showingAdvanced {
+                    advanced
+                }
+            }
+            .themedBackground()
+            .navigationTitle("New match")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                // Top right, always in reach however far the form scrolls
+                // (Kevin, 2026-10-04) — it used to sit at the bottom.
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(homeTeam.id == awayTeam.id)
+                }
+            }
+        }
+    }
+
+    /// Behind Advanced: the teams' numbers and coaches, the clock, quarter
+    /// breaks and the referees' names.
+    @ViewBuilder
+    private var advanced: some View {
+                Section("Team details") {
+                    TextField("Home team number", text: $home.number)
+                    TextField("Home coach", text: $home.coach).textContentType(.name)
+                    TextField("Away team number", text: $away.number)
+                    TextField("Away coach", text: $away.coach).textContentType(.name)
+                }
+                Section {
                     Picker("Half length", selection: $halfMinutes) {
                         ForEach(halfLengths, id: \.self) { Text("\($0) minutes") }
                     }
@@ -120,21 +158,6 @@ struct MatchSetupScreen: View {
                     TextField("AR1 name", text: $ar1).textContentType(.name)
                     TextField("AR2 name", text: $ar2).textContentType(.name)
                 }
-            }
-            .themedBackground()
-            .navigationTitle("New match")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                // Top right, always in reach however far the form scrolls
-                // (Kevin, 2026-10-04) — it used to sit at the bottom.
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(homeTeam.id == awayTeam.id)
-                }
-            }
-        }
     }
 
     private let halfLengths = [20, 25, 30, 35, 40, 45]
@@ -180,13 +203,11 @@ struct MatchSetupScreen: View {
         if selection.wrappedValue == nil {
             TextField("\(label) team name (optional)", text: newName)
         }
-        TextField("Team number", text: draft.number)
-        TextField("Coach", text: draft.coach).textContentType(.name)
         TeamColorPicker(color: draft.color)
     }
 
     private func save() {
-        store.createMatch(
+        var match = store.createMatch(
             home: homeTeam, away: awayTeam,
             competition: competition.trimmingCharacters(in: .whitespaces).isEmpty ? nil : competition,
             kickOff: hasKickOff ? kickOff : nil,
@@ -198,6 +219,10 @@ struct MatchSetupScreen: View {
             cr: cr.trimmingCharacters(in: .whitespaces).isEmpty ? nil : cr.trimmingCharacters(in: .whitespaces),
             ar1: ar1.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ar1.trimmingCharacters(in: .whitespaces),
             ar2: ar2.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ar2.trimmingCharacters(in: .whitespaces))
+        if let myRole {
+            match.setup.myRole = myRole
+            store.save(match)
+        }
         dismiss()
     }
 
