@@ -162,10 +162,11 @@ public struct MatchFormat: Codable, Sendable, Equatable, Identifiable {
     public static func ageTitle(_ age: Int) -> String { "AYSO \(age)U" }
 }
 
-/// A round of the Beach Club tournament, whose half lengths differ from the
+/// A round of the Beach Cup tournament, whose half lengths differ from the
 /// league's by round and age (Kevin, 2026-11-12, from the tournament's rules
-/// sheet: "a little toggle to click for beach club settings").
-public enum BeachClubRound: String, Codable, Sendable, Equatable, CaseIterable {
+/// sheet: "a little toggle to click for beach club settings" — then: "should
+/// be beach CUP not club").
+public enum BeachCupRound: String, Codable, Sendable, Equatable, CaseIterable {
     case pool, quarterFinal, semiFinal, final
 
     public var title: String {

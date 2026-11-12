@@ -63,11 +63,11 @@ struct MyRolePicker: View {
     }
 }
 
-/// Beach Club tournament: a toggle, and the round, which with the division's
+/// Beach Cup tournament: a toggle, and the round, which with the division's
 /// age sets the half length from the tournament's sheet (Kevin, 2026-11-12).
 /// In view on both match forms, not under Advanced.
-struct BeachClubSection: View {
-    @Binding var round: BeachClubRound?
+struct BeachCupSection: View {
+    @Binding var round: BeachCupRound?
     /// The division's age — 10, 12, 14 are on the sheet.
     let age: Int?
     /// Sets the match's half length.
@@ -75,7 +75,7 @@ struct BeachClubSection: View {
 
     var body: some View {
         Section {
-            Toggle("Beach Club tournament", isOn: Binding(
+            Toggle("Beach Cup tournament", isOn: Binding(
                 get: { round != nil },
                 set: { on in
                     round = on ? (round ?? .pool) : nil
@@ -85,7 +85,7 @@ struct BeachClubSection: View {
                 Picker("Round", selection: Binding(
                     get: { round ?? .pool },
                     set: { round = $0; apply() })) {
-                    ForEach(BeachClubRound.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(BeachCupRound.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
         } footer: {
