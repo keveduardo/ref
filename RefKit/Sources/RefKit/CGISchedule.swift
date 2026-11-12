@@ -176,3 +176,90 @@ public enum CGISchedule {
         }
     }
 }
+
+/// Signing in with the referee's username and password, so the schedule keeps
+/// working (Kevin, 2026-11-12: "after pasting in my schedule for ref it only
+/// lasts for so long"). The number in `?user=<name>.<number>` is a session:
+/// the site stops honouring it after a while, and a pasted link dies with it.
+/// Each check signs in afresh and reads the new number out of the answer.
+///
+/// The form is the site's own front page (2026-11-12): a POST of `userid`,
+/// `password` and `login=Login` to `/ref/<region>/`. Whatever page comes back
+/// carries the new session in its links; a refused sign-in answers with the
+/// login form again, whose only `user=` link is `new_user`.
+///
+/// ! THE PASSWORD. Built into a request body here and nowhere else — never a
+/// URL, never a log. The app keeps it in the Keychain, this device only.
+public struct CGILogin: Sendable, Equatable {
+    /// AYSO Region 34's scheduler, used when no earlier link names another.
+    public static let defaultRegion = "5524"
+
+    public let region: String
+    public let userid: String
+    public let password: String
+
+    public init(region: String = CGILogin.defaultRegion, userid: String, password: String) {
+        self.region = region
+        self.userid = userid.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.password = password
+    }
+
+    public var url: URL { URL(string: "https://cgisports.com/ref/\(region)/")! }
+
+    public static let contentType = "application/x-www-form-urlencoded"
+
+    /// The form as the site's own page submits it.
+    public var body: Data {
+        let fields = [("user", ""), ("ck", ""), ("userid", userid), ("password", password),
+                      ("view_schedule", "1"), ("login", "Login")]
+        return Data(fields.map { "\(Self.encode($0.0))=\(Self.encode($0.1))" }.joined(separator: "&").utf8)
+    }
+
+    /// The session the site handed back, from where the answer landed or any
+    /// link in it. Nil when the sign-in was refused.
+    public func link(fromPage html: String, finalURL: URL? = nil) -> CGIScheduleLink? {
+        var candidates: [String] = []
+        if let finalURL,
+           let user = URLComponents(url: finalURL, resolvingAgainstBaseURL: false)?
+               .queryItems?.first(where: { $0.name == "user" })?.value {
+            candidates.append(user)
+        }
+        candidates += CGISchedule.sessions(in: html)
+        // A session is "<name>.<digits>"; prefer the one for this username.
+        let sessions = candidates.filter { CGILogin.isSession($0) }
+        let mine = sessions.first { $0.split(separator: ".").first.map(String.init)?.lowercased() == userid.lowercased() }
+        guard let user = mine ?? sessions.first else { return nil }
+        return CGIScheduleLink("https://cgisports.com/ref/\(region)/?user=\(user)")
+    }
+
+    static func isSession(_ user: String) -> Bool {
+        let parts = user.split(separator: ".", omittingEmptySubsequences: false)
+        return parts.count == 2 && !parts[0].isEmpty && !parts[1].isEmpty && parts[1].allSatisfy(\.isNumber)
+    }
+
+    /// x-www-form-urlencoded: letters, digits and `-._*` as they are, space
+    /// as `+`, everything else as %XX of its UTF-8 bytes.
+    static func encode(_ value: String) -> String {
+        var out = ""
+        for byte in value.utf8 {
+            switch byte {
+            case UInt8(ascii: "a")...UInt8(ascii: "z"), UInt8(ascii: "A")...UInt8(ascii: "Z"),
+                 UInt8(ascii: "0")...UInt8(ascii: "9"), UInt8(ascii: "-"), UInt8(ascii: "."),
+                 UInt8(ascii: "_"), UInt8(ascii: "*"):
+                out.append(Character(UnicodeScalar(byte)))
+            case UInt8(ascii: " "):
+                out.append("+")
+            default:
+                out += String(format: "%%%02X", byte)
+            }
+        }
+        return out
+    }
+}
+
+extension CGISchedule {
+    /// Every `user=` value in a page's links, in order.
+    static func sessions(in html: String) -> [String] {
+        all(#"[?&](?:amp;)?user=([A-Za-z0-9._-]+)"#, in: html, groups: 1).map { $0[0] }
+    }
+}

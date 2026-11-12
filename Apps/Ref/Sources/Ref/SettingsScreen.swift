@@ -11,8 +11,10 @@ struct SettingsScreen: View {
     let store: PhoneStore
     let schedule: ScheduleSync
 
-    @State private var pastedLink = ""
-    @State private var pasteFailed = false
+    @State private var cgiUser = ""
+    @State private var cgiPassword = ""
+    @State private var signingIn = false
+    @State private var signInError: String?
 
     @State private var confirmingDelete = false
     @Environment(\.colorScheme) private var colorScheme
@@ -72,7 +74,8 @@ struct SettingsScreen: View {
     private var scheduleSection: some View {
         Section {
             if let connected = schedule.link {
-                LabeledContent("Connected", value: "\(connected.displayName) · region \(connected.region)")
+                LabeledContent(schedule.userid == nil ? "Connected" : "Signed in",
+                               value: "\(schedule.userid ?? connected.displayName) · region \(connected.region)")
                 if let result = schedule.lastResult {
                     LabeledContent(schedule.lastChecked.map { "Checked \($0.formatted(.relative(presentation: .named)))" } ?? "Checked",
                                    value: result)
@@ -86,31 +89,45 @@ struct SettingsScreen: View {
                     }
                 }
                 .disabled(schedule.checking)
-                Button("Remove link", role: .destructive) { schedule.disconnect() }
-            } else {
-                TextField("Paste your My Schedule link", text: $pastedLink)
+            }
+            if schedule.userid == nil {
+                TextField("CGI Sports username", text: $cgiUser)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                Button("Connect") {
-                    if schedule.connect(pastedLink) {
-                        pastedLink = ""
-                        Task { await schedule.check(store) }
-                    } else {
-                        pasteFailed = true
+                    .textContentType(.username)
+                SecureField("Password", text: $cgiPassword)
+                    .textContentType(.password)
+                Button {
+                    signingIn = true
+                    Task {
+                        signInError = await schedule.signIn(userid: cgiUser, password: cgiPassword, store: store)
+                        if signInError == nil { cgiPassword = "" }
+                        signingIn = false
+                    }
+                } label: {
+                    HStack {
+                        Text("Sign in")
+                        if signingIn { Spacer(); ProgressView() }
                     }
                 }
-                .disabled(pastedLink.isEmpty)
+                .disabled(cgiUser.isEmpty || cgiPassword.isEmpty || signingIn)
+            }
+            if schedule.link != nil || schedule.userid != nil {
+                Button("Disconnect schedule", role: .destructive) { schedule.disconnect() }
             }
         } header: {
             Text("Referee schedule")
         } footer: {
-            Text("Your CGI Sports games appear in Matches with the teams, field and crew, and are checked again each hour you open the app. The link signs you in, so it stays on this phone only. RefTime only reads it — it never requests or drops a game.")
+            Text("Your CGI Sports games appear in Matches with the teams, field and crew, and are checked again each hour you open the app. RefTime signs in for you each time, so it keeps working. Your username and password stay on this phone only, in the Keychain. RefTime only reads your schedule — it never requests or drops a game.")
         }
-        .alert("That isn't a CGI Sports referee link", isPresented: $pasteFailed) {
+        .alert("Couldn't sign in", isPresented: Binding(get: { signInError != nil },
+                                                         set: { if !$0 { signInError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Open My Schedule on cgisports.com and copy the address from there.")
+            Text(signInError ?? "")
+        }
+        .onAppear {
+            if cgiUser.isEmpty, let name = schedule.link?.displayName { cgiUser = name }
         }
     }
 
