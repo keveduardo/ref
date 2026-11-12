@@ -188,6 +188,7 @@ enum RouteFiles {
                 changed.cr = setup.cr
                 changed.ar1 = setup.ar1
                 changed.ar2 = setup.ar2
+                changed.myRole = setup.myRole ?? changed.myRole
                 guard changed != existing.setup else { continue }
                 existing.setup = changed
                 try? matches.save(existing)
@@ -342,8 +343,11 @@ extension PhoneStore {
         RouteFiles.file((try? SyncPayload.encode(SyncPayload.Route(matchID: played.id, points: points))) ?? Data(),
                         in: dir.appendingPathComponent("routes"))
 
-        store.createMatch(home: away, away: home, competition: "League — Saturday",
-                          kickOff: now.addingTimeInterval(2 * 86_400), clock: .adult)
+        let upcoming = store.createMatch(home: away, away: home, competition: "League — Saturday",
+                                         kickOff: now.addingTimeInterval(2 * 86_400), clock: .adult)
+        var assigned = upcoming
+        assigned.setup.myRole = .ar
+        store.save(assigned)
         return store
     }
 }

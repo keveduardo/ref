@@ -267,9 +267,12 @@ struct FixtureRow: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.ink.opacity(0.85))
                 }
-                Text(MatchCardText.when(match))
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
+                HStack(spacing: 8) {
+                    MatchCardText.roleBadge(match.setup.myRole)
+                    Text(MatchCardText.when(match))
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -297,6 +300,18 @@ enum MatchCardText {
             return match.createdAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year())
         }
         return "\(kickOff.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year())) · \(kickOff.formatted(date: .omitted, time: .shortened))"
+    }
+
+    /// The referee's own slot, "CR" or "AR", in gold — nothing when unknown.
+    @ViewBuilder static func roleBadge(_ role: RefereeRole?) -> some View {
+        if let role {
+            Text("You: \(role.rawValue)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Theme.navy)
+                .padding(.horizontal, 8).padding(.vertical, 2)
+                .background(Theme.gold, in: Capsule())
+                .accessibilityLabel("You are \(role.title.lowercased())")
+        }
     }
 
     static func sideLabel(_ text: String) -> some View {
@@ -339,9 +354,12 @@ struct ResultRow: View {
             if let competition = match.setup.competition, !competition.isEmpty {
                 Text(competition).font(.subheadline).foregroundStyle(Theme.ink.opacity(0.85))
             }
-            Text(MatchCardText.when(match))
-                .font(.caption)
-                .foregroundStyle(Theme.muted)
+            HStack(spacing: 8) {
+                MatchCardText.roleBadge(match.setup.myRole)
+                Text(MatchCardText.when(match))
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+            }
             let home = MatchReport.goals(for: .home, in: match)
             let away = MatchReport.goals(for: .away, in: match)
             if !home.isEmpty || !away.isEmpty {

@@ -120,6 +120,9 @@ struct CGIScheduleTests {
         let game = try #require(CGISchedule.game(row, page: Self.game, timeZone: Self.pacific))
         let setup = game.matchSetup()
         #expect(setup.cr == "Alex Rivera" && setup.ar1 == "Sam Lee" && setup.ar2 == "Pat Referee")
+        // The schedule's Position column is the referee's own slot.
+        #expect(setup.myRole == .ar)
+        #expect(CGISchedule.game(CGISchedule.rows(Self.schedule)[1], page: nil)?.myRole == .cr)
         #expect(setup.home.number == "08" && setup.home.coach == "Garcia")
         #expect(setup.format?.id == "ayso-12u-boys")
         #expect(game.venue == "Alta Vista · AVP")

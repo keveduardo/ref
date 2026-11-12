@@ -36,6 +36,12 @@ struct MatchEditScreen: View {
                     }
                 }
                 Section("Referees") {
+                    Picker("Your position", selection: $setup.myRole) {
+                        Text("Not set").tag(RefereeRole?.none)
+                        ForEach(RefereeRole.allCases, id: \.self) { role in
+                            Text(role.title).tag(RefereeRole?.some(role))
+                        }
+                    }
                     TextField("Center referee", text: optionalText($setup.cr))
                     TextField("AR1 name", text: optionalText($setup.ar1))
                     TextField("AR2 name", text: optionalText($setup.ar2))

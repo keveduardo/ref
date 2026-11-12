@@ -135,22 +135,12 @@ public enum CGISchedule {
     /// would have announced — the rest of the import is the email's.
     public static func game(_ row: CGIScheduleRow, page: String?, timeZone: TimeZone = .current) -> ScheduledGame? {
         guard let kickOff = ScheduledGame.kickOff(date: row.date, time: row.time, timeZone: timeZone) else { return nil }
-        var crew = page.map(crew) ?? [:]
-        if crew.isEmpty, let me = mySlot(row.position) { crew[me] = "" }
-        crew = crew.filter { !$0.value.isEmpty }
+        let crew = (page.map(crew) ?? [:]).filter { !$0.value.isEmpty }
         let venue = page.flatMap(venue)
         return ScheduledGame(gameID: row.gameID, division: row.division, kickOff: kickOff,
                              location: venue?.location ?? row.location, field: venue?.field,
-                             home: row.home, visitor: row.visitor, crew: crew)
-    }
-
-    static func mySlot(_ position: String) -> String? {
-        switch position.uppercased() {
-        case "CENTER", "CR": "CR"
-        case "AR", "AR1": "AR1"
-        case "AR2": "AR2"
-        default: nil
-        }
+                             home: row.home, visitor: row.visitor, crew: crew,
+                             myRole: RefereeRole(scheduled: row.position))
     }
 
     // MARK: - Text

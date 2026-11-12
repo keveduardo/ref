@@ -76,6 +76,35 @@ public struct Squad: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// The referee's own slot in a match (Kevin, 2026-11-12: "on the cards can
+/// it actually show my assignment? CR or AR?"). "AR" when the scheduler does
+/// not say which assistant.
+public enum RefereeRole: String, Codable, Sendable, Equatable, CaseIterable {
+    case cr = "CR", ar = "AR", ar1 = "AR1", ar2 = "AR2", fourth = "4th"
+
+    /// The schedule's own word for a slot: "Center", "AR", "AR2", "4th".
+    public init?(scheduled position: String) {
+        switch position.trimmingCharacters(in: .whitespaces).uppercased() {
+        case "CENTER", "CENTRE", "CR", "REFEREE": self = .cr
+        case "AR", "ASSISTANT", "ASSISTANT REFEREE": self = .ar
+        case "AR1": self = .ar1
+        case "AR2": self = .ar2
+        case "4TH", "4TH OFFICIAL", "FOURTH": self = .fourth
+        default: return nil
+        }
+    }
+
+    public var title: String {
+        switch self {
+        case .cr: "Center referee"
+        case .ar: "Assistant referee"
+        case .ar1: "Assistant referee 1"
+        case .ar2: "Assistant referee 2"
+        case .fourth: "Fourth official"
+        }
+    }
+}
+
 /// A match as the phone sets it up and sends to the watch.
 public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     public var id: UUID
@@ -108,6 +137,8 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     public var cr: String?
     public var ar1: String?
     public var ar2: String?
+    /// Which slot is the referee's own — nil when not known.
+    public var myRole: RefereeRole?
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
                 kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
@@ -116,7 +147,8 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
                 halfTimeMinutes: Int = MatchDefaults.standard.halfTimeMinutes,
                 addedTimeButton: Bool = MatchDefaults.standard.addedTimeButton,
                 quarterBreak: QuarterBreak? = nil,
-                cr: String? = nil, ar1: String? = nil, ar2: String? = nil) {
+                cr: String? = nil, ar1: String? = nil, ar2: String? = nil,
+                myRole: RefereeRole? = nil) {
         self.id = id
         self.home = home
         self.away = away
@@ -132,11 +164,12 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         self.cr = cr
         self.ar1 = ar1
         self.ar2 = ar2
+        self.myRole = myRole
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, home, away, competition, kickOff, clock, squads, sinBinMinutes, formatID, halfTimeMinutes
-        case addedTimeButton, quarterBreak, cr, ar1, ar2
+        case addedTimeButton, quarterBreak, cr, ar1, ar2, myRole
     }
 
     /// ! Written out for one reason: a setup saved by build 22 or 25 has no
@@ -161,6 +194,9 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         cr = try c.decodeIfPresent(String.self, forKey: .cr)
         ar1 = try c.decodeIfPresent(String.self, forKey: .ar1)
         ar2 = try c.decodeIfPresent(String.self, forKey: .ar2)
+        // An older watch or phone that knows no role, or a role this build
+        // does not know, is simply no role — never a refused match.
+        myRole = (try? c.decodeIfPresent(RefereeRole.self, forKey: .myRole)) ?? nil
     }
 
     public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
@@ -276,6 +312,7 @@ extension MatchSetup {
         merged.cr = edited.cr
         merged.ar1 = edited.ar1
         merged.ar2 = edited.ar2
+        merged.myRole = edited.myRole
         if !kickedOff {
             merged.clock = edited.clock
             merged.halfTimeMinutes = edited.halfTimeMinutes

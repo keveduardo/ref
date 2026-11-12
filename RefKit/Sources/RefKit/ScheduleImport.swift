@@ -28,6 +28,8 @@ public struct ScheduledGame: Sendable, Equatable {
     public var visitor: String
     /// Who holds each slot, as the email names them ("CR", "AR1", "AR2").
     public var crew: [String: String]
+    /// The referee's own slot, when the schedule says.
+    public var myRole: RefereeRole? = nil
 
     /// The AYSO preset the division names, when it is one RefTime has:
     /// "BC Boys 12U", "Girls 10U", "U14 G" and the like.
@@ -70,7 +72,7 @@ public struct ScheduledGame: Sendable, Equatable {
             formatID: format?.id,
             halfTimeMinutes: halfTimeMinutes,
             quarterBreak: format?.quarterSubstitutions == true ? QuarterBreak() : nil,
-            cr: crew["CR"], ar1: crew["AR1"], ar2: crew["AR2"])
+            cr: crew["CR"], ar1: crew["AR1"], ar2: crew["AR2"], myRole: myRole)
     }
 
     // MARK: - Reading the email
