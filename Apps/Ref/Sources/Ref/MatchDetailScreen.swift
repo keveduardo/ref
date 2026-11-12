@@ -1,5 +1,6 @@
 import RefKit
 import SwiftUI
+import UIKit
 
 /// One match: the score, the fitness it cost, the timeline — and the share
 /// sheet. For an unplayed match, what it is waiting for.
@@ -116,11 +117,11 @@ struct MatchDetailScreen: View {
     private var header: some View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
-                teamLabel(match.setup.home)
+                teamLabel(.home)
                 Text(match.isFinished ? match.score.text : "vs")
                     .font(.title2.bold())
                     .monospacedDigit()
-                teamLabel(match.setup.away)
+                teamLabel(.away)
             }
             .frame(maxWidth: .infinity)
             Text(subtitle)
@@ -130,21 +131,49 @@ struct MatchDetailScreen: View {
         .padding(.vertical, 4)
     }
 
-    private func teamLabel(_ team: Team) -> some View {
-        VStack(spacing: 2) {
-            Circle()
-                .fill(team.color.phoneColor)
-                .overlay(Circle().strokeBorder(.secondary.opacity(0.4), lineWidth: 0.5))
-                .frame(width: 14, height: 14)
-            Text(team.abbreviation)
-                .font(.headline)
-                .foregroundStyle(team.color.phoneColorInk)
-            Text(team.name)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+    /// A team's dot, short name and name. A tap opens its colours (Kevin,
+    /// 2026-11-12: "click directly on the color icon to change the uniform
+    /// color rather than having to go to edit"); the choice is saved at once
+    /// and reaches the watch like any edit, mid-match too.
+    private func teamLabel(_ side: TeamSide) -> some View {
+        let team = match.setup.team(side)
+        return Menu {
+            Picker("\(side == .home ? "Home" : "Away") colour", selection: Binding(
+                get: { team.color },
+                set: { setColor($0, for: side) })) {
+                ForEach(TeamColor.allCases, id: \.self) { token in
+                    Label {
+                        Text(token.rawValue.capitalized)
+                    } icon: {
+                        Image(uiImage: token.swatch)
+                    }
+                    .tag(token)
+                }
+            }
+        } label: {
+            VStack(spacing: 2) {
+                Circle()
+                    .fill(team.color.phoneColor)
+                    .overlay(Circle().strokeBorder(.secondary.opacity(0.4), lineWidth: 0.5))
+                    .frame(width: 22, height: 22)
+                Text(team.abbreviation)
+                    .font(.headline)
+                    .foregroundStyle(team.color.phoneColorInk)
+                Text(team.name)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
+        .accessibilityHint("Change this team's colour")
+    }
+
+    private func setColor(_ color: TeamColor, for side: TeamSide) {
+        var updated = match
+        updated.setup.setColor(color, for: side)
+        store.save(updated)
     }
 
     /// The pitch diagram and what it says — once the route has arrived.
