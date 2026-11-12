@@ -122,6 +122,11 @@ promises it.
 8. `xcodegen` regenerates everything under `Generated/`; the entitlements file
    is committed (`Entitlements/RefWatch.entitlements`) and referenced by
    `CODE_SIGN_ENTITLEMENTS`, not generated.
+9. **A macOS job that fails at exactly 15m with no steps** never got a
+   runner: "The job was not acquired by Runner of type hosted even after
+   multiple attempts" (2026-11-12, twice). Nothing is wrong with the code;
+   run it again. Don't fire `render` and `upload` together when the queue is
+   slow — they compete for the same scarce runners, so ship first.
 
 ## Where things live
 
