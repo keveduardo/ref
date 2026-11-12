@@ -184,3 +184,18 @@ public struct Match: Codable, Sendable, Identifiable, Equatable {
         return false
     }
 }
+
+extension Match {
+    /// How long past its kick-off a game nobody started stays Upcoming
+    /// (Kevin, 2026-11-12: "if a game is 1 day past expected let's retire it").
+    public static let retireAfter: TimeInterval = 24 * 3600
+
+    /// A game that was never started, a day past its kick-off: cancelled,
+    /// dropped, or refereed as a quick start instead. It leaves Upcoming and
+    /// the watch's list. A game with no kick-off time never retires, and one
+    /// the site moves later comes back on its own.
+    public func isRetired(at now: Date = Date()) -> Bool {
+        guard events.recorded.isEmpty, !isFinished, let kickOff = setup.kickOff else { return false }
+        return now.timeIntervalSince(kickOff) > Self.retireAfter
+    }
+}

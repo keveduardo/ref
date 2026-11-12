@@ -95,7 +95,7 @@ struct MatchesScreen: View {
             List {
                 ScreenHeader(title: "Matches")
                     .bareRow()
-                if store.upcoming.isEmpty && store.played.isEmpty && store.onWatch.isEmpty {
+                if store.upcoming.isEmpty && store.played.isEmpty && store.onWatch.isEmpty && store.notRefereed.isEmpty {
                     ContentUnavailableView(
                         "No matches yet", systemImage: "soccerball",
                         description: Text("Tap + to set one up, or quick start on the watch."))
@@ -110,6 +110,10 @@ struct MatchesScreen: View {
                 }
                 matchCard(symbol: "trophy.fill", title: "Recent results", matches: store.played) {
                     ResultRow(match: $0)
+                }
+                matchCard(symbol: "calendar.badge.minus", title: "Not refereed", matches: store.notRefereed,
+                          note: "Never started, a day past kick-off — off Upcoming and the watch. Swipe to delete.") {
+                    FixtureRow(match: $0)
                 }
             }
             .listStyle(.plain)

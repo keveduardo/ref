@@ -1,5 +1,6 @@
 import RefKit
 import SwiftUI
+import UIKit
 
 /// Change an upcoming match: who is home and away, their names, short names
 /// and colours, and the clock. The edit is saved to the shelf, and the shelf
@@ -135,11 +136,39 @@ struct TeamColorPicker: View {
                 Label {
                     Text(token.rawValue.capitalized)
                 } icon: {
-                    Image(systemName: "circle.fill")
-                        .foregroundStyle(token.phoneColor)
+                    Image(uiImage: token.swatch)
                 }
                 .tag(token)
             }
         }
+    }
+}
+
+extension TeamColor {
+    /// The swatch as a finished picture. A symbol would be repainted in the
+    /// app's gold inside a menu (Kevin, 2026-11-12: "Colors should actually
+    /// show"); a drawn image keeps its own colour. The grey ring keeps black
+    /// and white visible on either background.
+    var swatch: UIImage {
+        let fill: UIColor = switch self {
+        case .red: .systemRed
+        case .blue: .systemBlue
+        case .green: .systemGreen
+        case .yellow: .systemYellow
+        case .orange: .systemOrange
+        case .purple: .systemPurple
+        case .black: .black
+        case .white: .white
+        }
+        let size = CGSize(width: 22, height: 22)
+        let image = UIGraphicsImageRenderer(size: size).image { _ in
+            let ring = UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1))
+            fill.setFill()
+            ring.fill()
+            UIColor.systemGray.setStroke()
+            ring.lineWidth = 1
+            ring.stroke()
+        }
+        return image.withRenderingMode(.alwaysOriginal)
     }
 }

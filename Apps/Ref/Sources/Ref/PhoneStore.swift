@@ -76,9 +76,17 @@ enum RouteFiles {
     private(set) var startedOnWatch: Set<UUID> = Set(
         (UserDefaults.standard.stringArray(forKey: "ref.startedOnWatch") ?? []).compactMap(UUID.init))
 
+    /// Not yet played, and not a day past kick-off unstarted — those are
+    /// `notRefereed` (RefKit's `Match.isRetired`). This is also the watch's list.
     var upcoming: [Match] {
-        all.filter { !$0.isFinished && !startedOnWatch.contains($0.id) }
+        all.filter { !$0.isFinished && !startedOnWatch.contains($0.id) && !$0.isRetired() }
             .sorted { ($0.setup.kickOff ?? $0.createdAt) < ($1.setup.kickOff ?? $1.createdAt) }
+    }
+
+    /// Scheduled games nobody started, a day past kick-off, newest first.
+    var notRefereed: [Match] {
+        all.filter { !startedOnWatch.contains($0.id) && $0.isRetired() }
+            .sorted { ($0.setup.kickOff ?? $0.createdAt) > ($1.setup.kickOff ?? $1.createdAt) }
     }
 
     var played: [Match] { all.filter(\.isFinished) }
