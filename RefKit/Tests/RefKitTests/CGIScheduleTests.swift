@@ -92,6 +92,29 @@ struct CGIScheduleTests {
         #expect(venue.location == "Alta Vista" && venue.field == "AVP")
     }
 
+    /// The 7 PM game of 2026-11-13: no centre yet, the referee is AR1.
+    /// The open slot's row has no name, and must not borrow the next one.
+    static let openCentre = """
+    <table width="100%" align="center" cellspacing="3" cellpadding="3">
+        <tr bgcolor="#E9E9E9">
+        <td width="20%" align="center" height="30" class="tip"><a href="#" title="Center Referee">CR</a>: </td><td align="left"><span class="request tip"><a href="#" title="Click to request">Make Request</a></span></td>
+        </tr>
+        <tr bgcolor="#E9E9E9">
+        <td align="center" height="30" class="tip"><a href="#" title="Assistant Referee">AR</a>: </td><td align="left"><b class="cancel_tip">Pat Referee</b>&nbsp;&nbsp;<span class="drop tip"><a href="#" title="Click to drop this assignment">drop</a></span></td>
+        </tr>
+        <tr bgcolor="#E9E9E9">
+        <td align="center" height="30" class="tip"><a href="#" title="Assistant Referee">AR</a>: </td><td align="left"><b class="cancel_tip">Sam Lee</b></td>
+        </tr>
+    </table>
+    """
+
+    @Test func anOpenSlotStaysOpen() {
+        #expect(CGISchedule.crew(Self.openCentre) == ["AR1": "Pat Referee", "AR2": "Sam Lee"])
+        // An open first AR leaves the second as AR2.
+        let openAR1 = Self.openCentre.replacingOccurrences(of: #"<b class="cancel_tip">Pat Referee</b>"#, with: "")
+        #expect(CGISchedule.crew(openAR1) == ["AR2": "Sam Lee"])
+    }
+
     @Test func aRowAndItsPageMakeTheMatch() throws {
         let row = CGISchedule.rows(Self.schedule)[0]
         let game = try #require(CGISchedule.game(row, page: Self.game, timeZone: Self.pacific))

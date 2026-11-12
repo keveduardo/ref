@@ -183,9 +183,11 @@ enum RouteFiles {
                 guard followSite, !existing.isFinished, !startedOnWatch.contains(existing.id) else { continue }
                 var changed = existing.setup
                 changed.kickOff = setup.kickOff
-                changed.cr = setup.cr ?? changed.cr
-                changed.ar1 = setup.ar1 ?? changed.ar1
-                changed.ar2 = setup.ar2 ?? changed.ar2
+                // The site's crew as it stands — an open slot clears a name,
+                // which also undoes a crew misread before 2026-11-12.
+                changed.cr = setup.cr
+                changed.ar1 = setup.ar1
+                changed.ar2 = setup.ar2
                 guard changed != existing.setup else { continue }
                 existing.setup = changed
                 try? matches.save(existing)

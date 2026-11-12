@@ -96,18 +96,27 @@ public enum CGISchedule {
     /// A game's page: the crew by slot, "CR", "AR1", "AR2", "4th" — the ARs
     /// numbered in the page's order, as the site's own slot ids number them.
     /// An empty slot is left out.
+    ///
+    /// ! ONE ROW AT A TIME. Each slot's name is read only from its own table
+    /// row. Searching the page from a slot's label to the next bold name
+    /// put an AR in the centre's place whenever the centre was still open
+    /// (Kevin, 2026-11-12: his 7 PM game showed him as CR, not AR).
     public static func crew(_ html: String) -> [String: String] {
         var crew: [String: String] = [:]
         var assistants = 0
-        let pattern = #"title="([^"]+)">\s*(CR|AR|4th|4TH)\s*</a>.*?<b[^>]*>(.*?)</b>"#
-        for groups in all(pattern, in: html, groups: 3) {
-            let name = text(groups[2])
-            guard !name.isEmpty else { continue }
-            switch groups[1].uppercased() {
+        for row in html.components(separatedBy: "<tr").dropFirst() {
+            let row = row.components(separatedBy: "</tr>").first ?? row
+            guard let slot = first(#"title="[^"]+">\s*(CR|AR|4th|4TH)\s*</a>"#, in: row, groups: 1)?.first
+            else { continue }
+            let isAR = slot.uppercased() == "AR"
+            // The AR count moves on for an open AR slot too: the second AR
+            // row is AR2 whether or not the first is filled.
+            if isAR { assistants += 1 }
+            guard let name = first(#"<b[^>]*>(.*?)</b>"#, in: row, groups: 1).map({ text($0[0]) }),
+                  !name.isEmpty else { continue }
+            switch slot.uppercased() {
             case "CR": crew["CR"] = name
-            case "AR":
-                assistants += 1
-                crew["AR\(assistants)"] = name
+            case "AR": crew["AR\(assistants)"] = name
             default: crew["4th"] = name
             }
         }
