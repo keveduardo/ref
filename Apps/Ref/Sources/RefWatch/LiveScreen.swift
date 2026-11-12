@@ -144,14 +144,13 @@ struct LiveScreen: View {
             if let setup = session.match?.setup {
                 Text(setup.home.abbreviation)
                     .foregroundStyle(setup.home.color.watchColor)
-                // 7U and 8U keep no score (Region 34), so the face shows none.
-                if setup.format?.keepsScore == false {
-                    Text("vs").foregroundStyle(.secondary)
-                } else {
-                    Text(session.score.text)
-                        .font(.title3.bold())
-                        .monospacedDigit()
-                }
+                // The score in every division, 8U too (Kevin, 2026-11-12):
+                // with "vs" in its place a recorded goal left no trace on the
+                // face. The no-score rule is the league's, not the referee's
+                // record of the match.
+                Text(session.score.text)
+                    .font(.title3.bold())
+                    .monospacedDigit()
                 Text(setup.away.abbreviation)
                     .foregroundStyle(setup.away.color.watchColor)
             }

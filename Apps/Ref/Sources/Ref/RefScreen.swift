@@ -380,8 +380,6 @@ struct ResultRow: View {
         .padding(.vertical, 4)
     }
 
-    /// No score where the division keeps none (8U).
-    private var scoreText: String {
-        match.setup.format?.keepsScore == false ? "vs" : "\(match.score.home) - \(match.score.away)"
-    }
+    /// The score in every division, 8U too — as the watch shows it.
+    private var scoreText: String { "\(match.score.home) - \(match.score.away)" }
 }
