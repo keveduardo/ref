@@ -161,3 +161,43 @@ public struct MatchFormat: Codable, Sendable, Equatable, Identifiable {
     /// "AYSO 10U" — the name without girls or boys, for the age list.
     public static func ageTitle(_ age: Int) -> String { "AYSO \(age)U" }
 }
+
+/// A round of the Beach Club tournament, whose half lengths differ from the
+/// league's by round and age (Kevin, 2026-11-12, from the tournament's rules
+/// sheet: "a little toggle to click for beach club settings").
+public enum BeachClubRound: String, Codable, Sendable, Equatable, CaseIterable {
+    case pool, quarterFinal, semiFinal, final
+
+    public var title: String {
+        switch self {
+        case .pool: "Pool Play"
+        case .quarterFinal: "Quarter-Final"
+        case .semiFinal: "Semi-Final"
+        case .final: "Championship/Consolation"
+        }
+    }
+
+    /// The sheet's table, minutes a half:
+    ///
+    ///                     U10  U12  U14
+    ///     Pool Play        20   25   25
+    ///     Quarter-Final    20   25   30
+    ///     Semi-Final       25   30   35
+    ///     Championship     25   30   35
+    ///
+    /// Nil for an age the sheet does not cover.
+    public func halfMinutes(age: Int) -> Int? {
+        switch (age, self) {
+        case (10, .pool), (10, .quarterFinal): 20
+        case (10, .semiFinal), (10, .final): 25
+        case (12, .pool), (12, .quarterFinal): 25
+        case (12, .semiFinal), (12, .final): 30
+        case (14, .pool): 25
+        case (14, .quarterFinal): 30
+        case (14, .semiFinal), (14, .final): 35
+        default: nil
+        }
+    }
+
+    public static let ages = [10, 12, 14]
+}

@@ -51,6 +51,7 @@ struct MatchSetupScreen: View {
     @State private var ar2 = ""
     @State private var myRole: RefereeRole?
     @State private var showingAdvanced = false
+    @State private var beachClub: BeachClubRound?
 
     init(store: PhoneStore) {
         self.store = store
@@ -105,6 +106,7 @@ struct MatchSetupScreen: View {
                 Section {
                     MyRolePicker(role: $myRole)
                 }
+                BeachClubSection(round: $beachClub, age: age) { halfMinutes = $0 }
                 AdvancedToggle(isOpen: $showingAdvanced, summary: AdvancedToggle.summary(
                     halfMinutes: halfMinutes, halfTimeMinutes: halfTimeMinutes, countsDown: countsDown,
                     quarterBreak: quarterBreak, referees: [cr, ar1, ar2]))
@@ -219,8 +221,9 @@ struct MatchSetupScreen: View {
             cr: cr.trimmingCharacters(in: .whitespaces).isEmpty ? nil : cr.trimmingCharacters(in: .whitespaces),
             ar1: ar1.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ar1.trimmingCharacters(in: .whitespaces),
             ar2: ar2.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ar2.trimmingCharacters(in: .whitespaces))
-        if let myRole {
+        if myRole != nil || beachClub != nil {
             match.setup.myRole = myRole
+            match.setup.beachClub = beachClub
             store.save(match)
         }
         dismiss()
@@ -237,6 +240,8 @@ struct MatchSetupScreen: View {
         // Subs at quarters means a quarter break; free subs means none.
         quarterBreak = format.quarterSubstitutions
             ? QuarterBreak(breakMinutes: QuarterBreakDefaults.breakMinutes) : nil
+        // A tournament game takes the sheet's half over the league's.
+        if let minutes = beachClub?.halfMinutes(age: format.age) { halfMinutes = minutes }
         let typed = competition.trimmingCharacters(in: .whitespaces)
         if typed.isEmpty || typed == MatchFormat.preset(id: old)?.title {
             competition = format.title

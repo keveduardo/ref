@@ -62,3 +62,45 @@ struct MyRolePicker: View {
         }
     }
 }
+
+/// Beach Club tournament: a toggle, and the round, which with the division's
+/// age sets the half length from the tournament's sheet (Kevin, 2026-11-12).
+/// In view on both match forms, not under Advanced.
+struct BeachClubSection: View {
+    @Binding var round: BeachClubRound?
+    /// The division's age — 10, 12, 14 are on the sheet.
+    let age: Int?
+    /// Sets the match's half length.
+    let setHalfMinutes: (Int) -> Void
+
+    var body: some View {
+        Section {
+            Toggle("Beach Club tournament", isOn: Binding(
+                get: { round != nil },
+                set: { on in
+                    round = on ? (round ?? .pool) : nil
+                    apply()
+                }))
+            if round != nil {
+                Picker("Round", selection: Binding(
+                    get: { round ?? .pool },
+                    set: { round = $0; apply() })) {
+                    ForEach(BeachClubRound.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+            }
+        } footer: {
+            if let round {
+                if let age, let minutes = round.halfMinutes(age: age) {
+                    Text("U\(age) \(round.title): \(minutes) min halves, from the tournament's sheet.")
+                } else {
+                    Text("The tournament's sheet has half lengths for U10, U12 and U14 — choose one of those as the match type, or set the halves under Advanced.")
+                }
+            }
+        }
+    }
+
+    private func apply() {
+        guard let round, let age, let minutes = round.halfMinutes(age: age) else { return }
+        setHalfMinutes(minutes)
+    }
+}

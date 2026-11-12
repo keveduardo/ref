@@ -139,6 +139,8 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
     public var ar2: String?
     /// Which slot is the referee's own — nil when not known.
     public var myRole: RefereeRole?
+    /// The Beach Club tournament round, when this match is one of its games.
+    public var beachClub: BeachClubRound?
 
     public init(id: UUID = UUID(), home: Team, away: Team, competition: String? = nil,
                 kickOff: Date? = nil, clock: ClockConfig = .adult, squads: [Squad] = [],
@@ -169,7 +171,7 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, home, away, competition, kickOff, clock, squads, sinBinMinutes, formatID, halfTimeMinutes
-        case addedTimeButton, quarterBreak, cr, ar1, ar2, myRole
+        case addedTimeButton, quarterBreak, cr, ar1, ar2, myRole, beachClub
     }
 
     /// ! Written out for one reason: a setup saved by build 22 or 25 has no
@@ -197,6 +199,7 @@ public struct MatchSetup: Codable, Sendable, Identifiable, Equatable {
         // An older watch or phone that knows no role, or a role this build
         // does not know, is simply no role — never a refused match.
         myRole = (try? c.decodeIfPresent(RefereeRole.self, forKey: .myRole)) ?? nil
+        beachClub = (try? c.decodeIfPresent(BeachClubRound.self, forKey: .beachClub)) ?? nil
     }
 
     public var format: MatchFormat? { MatchFormat.preset(id: formatID) }
@@ -313,6 +316,7 @@ extension MatchSetup {
         merged.ar1 = edited.ar1
         merged.ar2 = edited.ar2
         merged.myRole = edited.myRole
+        merged.beachClub = edited.beachClub
         if !kickedOff {
             merged.clock = edited.clock
             merged.halfTimeMinutes = edited.halfTimeMinutes
