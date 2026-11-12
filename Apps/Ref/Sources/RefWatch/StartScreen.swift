@@ -11,6 +11,16 @@ struct StartScreen: View {
 
     @State private var choosingDivision = false
 
+    /// "Fri 6:00 PM · AR": the kick-off, and the referee's own slot if known.
+    static func whenLine(_ setup: MatchSetup) -> String? {
+        var parts: [String] = []
+        if let kickOff = setup.kickOff {
+            parts.append(kickOff.formatted(.dateTime.weekday(.abbreviated).hour().minute()))
+        }
+        if let role = setup.myRole { parts.append(role.rawValue) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -26,6 +36,14 @@ struct StartScreen: View {
                             VStack(spacing: 2) {
                                 Text("\(setup.home.abbreviation) vs \(setup.away.abbreviation)")
                                     .font(.body.bold())
+                                // Two games at one field look alike — the kick-off
+                                // tells them apart (Kevin, 2026-11-12: "I can't
+                                // see which match is 6p and which is 7p").
+                                if let line = Self.whenLine(setup) {
+                                    Text(line)
+                                        .font(.headline)
+                                        .foregroundStyle(.yellow)
+                                }
                                 if let competition = setup.competition, !competition.isEmpty {
                                     Text(competition)
                                         .font(.footnote)
