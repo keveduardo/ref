@@ -250,45 +250,60 @@ struct FixtureRow: View {
     let match: Match
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(spacing: 6) {
+            HStack(alignment: .top, spacing: 8) {
                 Crest(color: match.setup.home.color)
-                Text(match.setup.home.name)
-                    .font(.headline)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                side(match.setup.home.name, "Home", alignment: .trailing)
                 Text("vs").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.gold)
-                Text(match.setup.away.name)
-                    .font(.headline)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                side(match.setup.away.name, "Away", alignment: .leading)
                 Crest(color: match.setup.away.color)
             }
             .foregroundStyle(Theme.ink)
-            // Side by side when they fit, one above the other when not — a
-            // long competition no longer cuts the date off.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 14) { competitionLabel; dateLabel }
-                VStack(spacing: 4) { competitionLabel; dateLabel }
+            // Each on its own line, whole (Kevin, 2026-11-12: "for each card
+            // you can easily see division and full date and time").
+            VStack(spacing: 3) {
+                if let competition = match.setup.competition, !competition.isEmpty {
+                    Text(competition)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.ink.opacity(0.85))
+                }
+                Text(MatchCardText.when(match))
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
             }
-            .font(.caption)
-            .foregroundStyle(Theme.muted)
-            .lineLimit(1)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)
     }
 
-    @ViewBuilder private var competitionLabel: some View {
-        if let competition = match.setup.competition, !competition.isEmpty {
-            Label(competition, systemImage: "mappin.and.ellipse")
+    /// A team's name with "HOME" or "AWAY" beneath it.
+    private func side(_ name: String, _ label: String, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text(name)
+                .font(.headline)
+                .lineLimit(1).minimumScaleFactor(0.7)
+            MatchCardText.sideLabel(label)
         }
+        .frame(maxWidth: .infinity, alignment: alignment == .trailing ? .trailing : .leading)
+    }
+}
+
+/// What every match card says the same way.
+enum MatchCardText {
+    /// "Fri, Nov 13, 2026 · 6:00 PM" — or just the date with no kick-off time.
+    static func when(_ match: Match) -> String {
+        guard let kickOff = match.setup.kickOff else {
+            return match.createdAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year())
+        }
+        return "\(kickOff.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year())) · \(kickOff.formatted(date: .omitted, time: .shortened))"
     }
 
-    /// "Oct 7 · 2:13 PM" — short enough to stay whole.
-    private var dateLabel: some View {
-        let when = match.setup.kickOff ?? match.createdAt
-        return Label("\(when.formatted(.dateTime.month(.abbreviated).day())) · \(when.formatted(date: .omitted, time: .shortened))",
-                     systemImage: "calendar")
+    static func sideLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.caption2.weight(.semibold))
+            .tracking(0.8)
+            .foregroundStyle(Theme.gold.opacity(0.8))
     }
 }
 
@@ -300,25 +315,31 @@ struct ResultRow: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack(alignment: .center, spacing: 8) {
-                Text(match.setup.home.name)
-                    .font(.headline)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(match.setup.home.name)
+                        .font(.headline)
+                        .multilineTextAlignment(.trailing)
+                    MatchCardText.sideLabel("Home")
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
                 Text(scoreText)
                     .font(.system(size: 34, weight: .bold, design: .serif))
                     .monospacedDigit()
                     .foregroundStyle(Theme.gold)
                     .fixedSize()
-                Text(match.setup.away.name)
-                    .font(.headline)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(match.setup.away.name)
+                        .font(.headline)
+                        .multilineTextAlignment(.leading)
+                    MatchCardText.sideLabel("Away")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .foregroundStyle(Theme.ink)
             if let competition = match.setup.competition, !competition.isEmpty {
                 Text(competition).font(.subheadline).foregroundStyle(Theme.ink.opacity(0.85))
             }
-            Text((match.setup.kickOff ?? match.createdAt).formatted(date: .abbreviated, time: .omitted))
+            Text(MatchCardText.when(match))
                 .font(.caption)
                 .foregroundStyle(Theme.muted)
             let home = MatchReport.goals(for: .home, in: match)
