@@ -1,8 +1,12 @@
 import RefKit
 import SwiftUI
 
-/// The phone's home: the shelf of matches, the teams, the season, the
+/// The phone's home: the shelf of matches, a new one, the season, the
 /// settings. Set a match up here, record it on the watch, read it back here.
+///
+/// The tabs (Kevin, 2026-11-12): + sits beside Matches and opens New match
+/// at once; Teams, rarely used, moved into Settings; the corner + and
+/// "Paste reminder email" went — the CGI schedule brings the games now.
 struct RefScreen: View {
     let store: PhoneStore
     let link: PhoneLink
@@ -11,6 +15,10 @@ struct RefScreen: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var linkMessage: String?
+    @State private var tab = HomeTab.matches
+    @State private var addingMatch = false
+
+    enum HomeTab: Hashable { case matches, add, stats, settings }
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = MatchDefaults.standard.halfMinutes
     @AppStorage("ref.halfTimeMinutes") private var halfTimeMinutes = MatchDefaults.standard.halfTimeMinutes
@@ -19,15 +27,25 @@ struct RefScreen: View {
     @AppStorage("ref.quarterBreakMinutes") private var quarterBreakMinutes = 2
 
     var body: some View {
-        TabView {
+        // + is a button dressed as a tab: choosing it opens New match and
+        // leaves the tab where it was.
+        TabView(selection: Binding(get: { tab },
+                                   set: { if $0 == .add { addingMatch = true } else { tab = $0 } })) {
             MatchesScreen(store: store)
                 .tabItem { Label("Matches", systemImage: "soccerball") }
-            TeamsScreen(store: store)
-                .tabItem { Label("Teams", systemImage: "person.3") }
+                .tag(HomeTab.matches)
+            Color.clear
+                .tabItem { Label("New", systemImage: "plus.circle.fill") }
+                .tag(HomeTab.add)
             StatsScreen(store: store)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
+                .tag(HomeTab.stats)
             SettingsScreen(link: link, account: account, store: store, schedule: schedule)
                 .tabItem { Label("Settings", systemImage: "gear") }
+                .tag(HomeTab.settings)
+        }
+        .sheet(isPresented: $addingMatch) {
+            MatchSetupScreen(store: store)
         }
         // The look (Theme.swift): always dark, gold for what is selected,
         // a navy tab bar.
@@ -88,8 +106,6 @@ struct RefScreen: View {
 
 struct MatchesScreen: View {
     let store: PhoneStore
-    @State private var settingUp = false
-    @State private var importResult: String?
     /// The match just deleted by a swipe, kept for a few seconds so a full
     /// swipe by accident can be taken back.
     @State private var recentlyDeleted: Match?
@@ -128,27 +144,6 @@ struct MatchesScreen: View {
                     MatchDetailScreen(store: store, match: match)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            settingUp = true
-                        } label: {
-                            Label("New match", systemImage: "plus")
-                        }
-                        Button {
-                            pasteReminder()
-                        } label: {
-                            Label("Paste reminder email", systemImage: "doc.on.clipboard")
-                        }
-                    } label: {
-                        Label("Add", systemImage: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $settingUp) {
-                MatchSetupScreen(store: store)
-            }
             .safeAreaInset(edge: .bottom) {
                 if let match = recentlyDeleted {
                     HStack {
@@ -168,33 +163,6 @@ struct MatchesScreen: View {
                 }
             }
             .animation(.default, value: recentlyDeleted?.id)
-            .alert(importResult ?? "", isPresented: Binding(
-                get: { importResult != nil }, set: { if !$0 { importResult = nil } })) {
-                Button("OK") { importResult = nil }
-            }
-        }
-    }
-}
-
-extension MatchesScreen {
-    /// The text of a scheduler's reminder email, copied in Mail or Gmail,
-    /// becomes upcoming matches — CGI Sports has no calendar feed to
-    /// subscribe to, but its reminders are one field per line.
-    fileprivate func pasteReminder() {
-        guard let text = UIPasteboard.general.string, !text.isEmpty else {
-            importResult = "Nothing to paste. Copy the text of a game reminder email first."
-            return
-        }
-        let result = store.importGames(from: text)
-        switch (result.new, result.found) {
-        case (_, 0):
-            importResult = "No games found. Copy the whole reminder, from \u{201C}Game ID\u{201D} to \u{201C}Visitor\u{201D}."
-        case (0, _):
-            importResult = "Already on your list."
-        case (1, _):
-            importResult = "1 match added."
-        case (let n, _):
-            importResult = "\(n) matches added."
         }
     }
 }

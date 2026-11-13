@@ -17,6 +17,7 @@ struct SettingsScreen: View {
     @State private var signInError: String?
 
     @State private var confirmingDelete = false
+    @State private var showingTeams = false
     @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("ref.halfMinutes") private var halfMinutes = 45
@@ -53,6 +54,15 @@ struct SettingsScreen: View {
                 } footer: {
                     Text("For distance, speed and the shared match report. What the watch records is the same either way.")
                 }
+                Section {
+                    Button {
+                        showingTeams = true
+                    } label: {
+                        LabeledContent("Teams", value: "\(store.squads.count)")
+                    }
+                } footer: {
+                    Text("Saved teams, their players and colours — offered when you set up a new match.")
+                }
                 scheduleSection
                 accountSection
                 Section("Watch") {
@@ -76,6 +86,10 @@ struct SettingsScreen: View {
             }
             .themedBackground()
             .navigationTitle("Settings")
+            .sheet(isPresented: $showingTeams) {
+                TeamsScreen(store: store)
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
 

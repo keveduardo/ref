@@ -150,20 +150,12 @@ enum RouteFiles {
         return match
     }
 
-    /// Games read from a scheduler's reminder email, onto the shelf. A game
-    /// already here (same scheduler id) is left as it is — the referee may
-    /// have edited it — so pasting the same reminder twice changes nothing.
-    /// Returns how many were new.
-    @discardableResult
-    func importGames(from text: String) -> (new: Int, found: Int) {
-        let games = ScheduledGame.parse(text)
-        return (importGames(games).new, games.count)
-    }
-
-    /// Games onto the shelf; see above. With `followSite` (the CGI schedule,
-    /// read again every hour), a match not yet played and not yet on the
-    /// watch takes the site's kick-off and crew when they change — the
-    /// assignor moves games and swaps referees. Returns new and updated.
+    /// Games onto the shelf. A game already here (same scheduler id) is
+    /// left as it is — the referee may have edited it. With `followSite`
+    /// (the CGI schedule, read again every hour), a match not yet played and
+    /// not yet on the watch takes the site's kick-off and crew when they
+    /// change — the assignor moves games and swaps referees. Returns new and
+    /// updated.
     @discardableResult
     func importGames(_ games: [ScheduledGame], followSite: Bool = false) -> (new: Int, updated: Int) {
         let defaults = UserDefaults.standard.integer(forKey: "ref.halfTimeMinutes")
