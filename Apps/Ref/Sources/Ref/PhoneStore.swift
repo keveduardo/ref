@@ -72,9 +72,21 @@ enum RouteFiles {
         all.filter { !$0.isFinished && startedOnWatch.contains($0.id) }
     }
 
-    /// The ids of those, remembered across launches.
-    private(set) var startedOnWatch: Set<UUID> = Set(
-        (UserDefaults.standard.stringArray(forKey: "ref.startedOnWatch") ?? []).compactMap(UUID.init))
+    /// Which matches the watch has, and which of them it made (RefKit's
+    /// `WatchHandoff`), remembered across launches.
+    private var handoff = WatchHandoff(
+        onWatch: Self.ids("ref.startedOnWatch"), madeOnWatch: Self.ids("ref.madeOnWatch")) {
+        didSet {
+            UserDefaults.standard.set(handoff.onWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
+            UserDefaults.standard.set(handoff.madeOnWatch.map(\.uuidString), forKey: "ref.madeOnWatch")
+        }
+    }
+
+    var startedOnWatch: Set<UUID> { handoff.onWatch }
+
+    private static func ids(_ key: String) -> Set<UUID> {
+        Set((UserDefaults.standard.stringArray(forKey: key) ?? []).compactMap(UUID.init))
+    }
 
     /// Not yet played, and not a day past kick-off unstarted — those are
     /// `notRefereed` (RefKit's `Match.isRetired`). This is also the watch's list.
@@ -177,9 +189,13 @@ enum RouteFiles {
                 changed.kickOff = setup.kickOff
                 // The site's crew as it stands — an open slot clears a name,
                 // which also undoes a crew misread before 2026-11-12.
-                changed.cr = setup.cr
-                changed.ar1 = setup.ar1
-                changed.ar2 = setup.ar2
+                // Only when the game's page was read — a page that timed out
+                // says nothing about the crew.
+                if game.crewKnown {
+                    changed.cr = setup.cr
+                    changed.ar1 = setup.ar1
+                    changed.ar2 = setup.ar2
+                }
                 changed.myRole = setup.myRole ?? changed.myRole
                 guard changed != existing.setup else { continue }
                 existing.setup = changed
@@ -201,7 +217,18 @@ enum RouteFiles {
         onChange?()
     }
 
+    /// A finished match from the watch. Merged into the phone's copy when
+    /// there is one, so names given here after full time, and a goal added
+    /// on either side, are kept (`Match.receivingFromWatch`).
+    func finishedOnWatch(_ incoming: Match) {
+        let merged = all.first(where: { $0.id == incoming.id })
+            .map { $0.receivingFromWatch(incoming) } ?? incoming
+        if merged.isFinished { handoff.forget(merged.id) }
+        save(merged)
+    }
+
     func delete(_ match: Match) {
+        handoff.forget(match.id)
         try? matches.delete(id: match.id)
         reload()
         onDelete?("match", match.id)
@@ -212,9 +239,9 @@ enum RouteFiles {
     /// Upcoming so it can be edited here. One already here is left alone —
     /// the phone's copy is where edits are made.
     func addStartedOnWatch(_ setup: MatchSetup) {
-        startedOnWatch.insert(setup.id)
-        UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
-        guard !all.contains(where: { $0.id == setup.id }) else { reload(); return }
+        let phoneHadIt = all.contains(where: { $0.id == setup.id })
+        handoff.started(setup.id, phoneHadIt: phoneHadIt)
+        guard !phoneHadIt else { reload(); return }
         save(Match(setup: setup))
     }
 
@@ -238,19 +265,18 @@ enum RouteFiles {
     /// it no longer has goes back to Upcoming — on the watch's list again,
     /// to be picked — rather than claiming to be on the watch.
     func watchIsRunning(_ id: UUID?) {
-        let stale = startedOnWatch.filter { $0 != id }
-        guard !stale.isEmpty else { return }
-        startedOnWatch.subtract(stale)
-        UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
+        guard startedOnWatch.contains(where: { $0 != id }) else { return }
+        handoff.running(id)
         reload()
     }
 
-    /// Put back on the watch before kick-off: it was never played, so it goes.
+    /// Put back on the watch before kick-off. A quick start was never more
+    /// than a placeholder, so it goes; a match from the phone's list goes
+    /// back to Upcoming, edits and all.
     func cancelledOnWatch(_ id: UUID) {
-        guard startedOnWatch.contains(id), let match = all.first(where: { $0.id == id }),
-              !match.isFinished else { return }
-        startedOnWatch.remove(id)
-        UserDefaults.standard.set(startedOnWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
+        let isQuickStart = handoff.cancelled(id)
+        guard isQuickStart, let match = all.first(where: { $0.id == id }),
+              !match.isFinished, match.events.recorded.isEmpty else { reload(); return }
         delete(match)
     }
 
@@ -301,16 +327,17 @@ extension PhoneStore {
                                library: TeamLibrary(directory: dir),
                                routesDirectory: dir.appendingPathComponent("routes"))
 
-        let home = Team(name: "Real Madrid Club", abbreviation: "RMC", color: .white)
-        let away = Team(name: "Arsenal", abbreviation: "ARS", color: .red)
+        // Invented teams and players — no real clubs or people (the repo's rule).
+        let home = Team(name: "Harbor City FC", abbreviation: "HCF", color: .white)
+        let away = Team(name: "Ridgeline United", abbreviation: "RLU", color: .red)
         store.saveTeam(Squad(team: home, players: [
-            Player(name: "Courtois", number: 1), Player(name: "Carvajal", number: 2),
-            Player(name: "Militão", number: 3), Player(name: "Vinícius", number: 7),
-            Player(name: "Bellingham", number: 5), Player(name: "Mbappé", number: 9),
+            Player(name: "Player 1", number: 1), Player(name: "Player 2", number: 2),
+            Player(name: "Player 3", number: 3), Player(name: "Player 7", number: 7),
+            Player(name: "Player 5", number: 5), Player(name: "Player 9", number: 9),
         ]))
         store.saveTeam(Squad(team: away, players: [
-            Player(name: "Raya", number: 22), Player(name: "Saka", number: 7),
-            Player(name: "Ødegaard", number: 8), Player(name: "Havertz", number: 29),
+            Player(name: "Player 22", number: 22), Player(name: "Player 7", number: 7),
+            Player(name: "Player 8", number: 8), Player(name: "Player 29", number: 29),
         ]))
 
         let now = Date()

@@ -37,7 +37,7 @@ public struct Team: Codable, Sendable, Identifiable, Equatable {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    /// "Real Madrid Club" → "RMC", "Arsenal" → "ARS", "FC Barcelona" → "FB".
+    /// "Westfield Rovers Club" → "WRC", "Bayside" → "BAY", "FC Lakeside" → "FL".
     public static func defaultAbbreviation(_ name: String) -> String {
         let words = name.split(whereSeparator: \.isWhitespace)
         if words.count >= 2 {
@@ -307,8 +307,16 @@ extension MatchSetup {
     public func applyingEdits(_ edited: MatchSetup, kickedOff: Bool) -> MatchSetup {
         guard edited.id == id else { return self }
         var merged = self
-        merged.home = edited.home
-        merged.away = edited.away
+        // Once the match is under way its events are keyed to home and away,
+        // so a swap made on the phone is not taken: each team stays on its
+        // side, with the phone's names and colours.
+        if kickedOff, edited.home.id == away.id, edited.away.id == home.id, home.id != away.id {
+            merged.home = edited.away
+            merged.away = edited.home
+        } else {
+            merged.home = edited.home
+            merged.away = edited.away
+        }
         merged.competition = edited.competition
         merged.squads = edited.squads
         merged.kickOff = edited.kickOff

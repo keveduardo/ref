@@ -17,7 +17,7 @@ struct RefApp: App {
         // gone for good.
         let store = PhoneStore()
         _store = State(initialValue: store)
-        let link = PhoneLink(onFinished: { match in store.save(match) },
+        let link = PhoneLink(onFinished: { match in store.finishedOnWatch(match) },
                              onRoute: { store.routesChanged() },
                              onStarted: { setup in store.addStartedOnWatch(setup) },
                              onCancelled: { id in store.cancelledOnWatch(id) },

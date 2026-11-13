@@ -8,17 +8,17 @@ struct ReportTests {
         let report = Fixture.playedMatch().report
         let added = report.timeline.first { $0.added > 0 }
         #expect(added?.stamp == "45+2'")
-        #expect(added?.line == "45+2' Goal — ARS #11")
+        #expect(added?.line == "45+2' Goal — BAY #11")
     }
 
     @Test func theTimelineIsChronologicalAndNamed() {
         let report = Fixture.playedMatch().report
         #expect(report.timeline.map(\.line) == [
-            "12' Goal — RMC #9",
-            "35' Yellow card — ARS #7",
+            "12' Goal — WRC #9",
+            "35' Yellow card — BAY #7",
             "45' Added time, 1st half: 2′",
-            "45+2' Goal — ARS #11",
-            "11' Red card — RMC #4",
+            "45+2' Goal — BAY #11",
+            "11' Red card — WRC #4",
         ])
     }
 
@@ -47,8 +47,8 @@ struct ReportTests {
     @Test func shareTextReadsLikeARefereesReport() {
         let match = Fixture.playedMatch()
         let text = match.report.shareText(match: match)
-        #expect(text.contains("Real Madrid Club 1–1 Arsenal"))
-        #expect(text.contains("45+2' Goal — ARS #11"))
+        #expect(text.contains("Westfield Rovers Club 1–1 Bayside"))
+        #expect(text.contains("45+2' Goal — BAY #11"))
         #expect(text.contains("1 yellow, 1 red."))
         #expect(text.contains("Distance 8.5 km."))
     }
@@ -128,7 +128,7 @@ struct LateGoalTests {
         match.events.append(EventLog.lateGoal(side: .away, scorer: PlayerRef(number: 7), beforeWhistle: whistle.at))
         #expect(match.report.score.away == 2)
         #expect(match.clock.phase(at: Fixture.at(106 * 60)) == .fullTime)
-        let line = try #require(match.report.timeline.last { $0.text.contains("ARS") && $0.half == 2 })
+        let line = try #require(match.report.timeline.last { $0.text.contains("BAY") && $0.half == 2 })
         #expect(line.minute == 45 && line.added == 0)
         #expect(match.report.timeline.last?.text == line.text)   // after the red, in time order
     }
@@ -137,7 +137,7 @@ struct LateGoalTests {
         var match = Fixture.playedMatch()
         let whistle = try #require(match.events.whistle(endingHalf: 1))
         match.events.append(EventLog.lateGoal(side: .home, scorer: nil, beforeWhistle: whistle))
-        let goal = try #require(match.report.timeline.last { $0.half == 1 && $0.text.contains("Real Madrid") })
+        let goal = try #require(match.report.timeline.last { $0.half == 1 && $0.text.contains("Westfield Rovers") })
         #expect(goal.minute == 45 && goal.added == 2)
         #expect(match.report.halves.first?.homeGoals == 2)
     }
@@ -161,7 +161,7 @@ struct TeamDetailsTests {
         match.setup.away.coach = "  "
         #expect(match.setup.home.details == "Team A1 02 · Coach Smith")
         #expect(match.setup.away.details == nil)
-        #expect(match.report.shareText(match: match).contains("Real Madrid Club: Team A1 02 · Coach Smith"))
+        #expect(match.report.shareText(match: match).contains("Westfield Rovers Club: Team A1 02 · Coach Smith"))
 
         let old = #"{"id":"00000000-0000-0000-0000-000000000001","name":"Old","abbreviation":"OLD","color":"red"}"#
         let team = try JSONDecoder().decode(Team.self, from: Data(old.utf8))

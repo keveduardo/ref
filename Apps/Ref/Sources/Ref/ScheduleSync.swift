@@ -42,6 +42,7 @@ import Security
         ScheduleKeychain.write(parsed.scheduleURL.absoluteString)
         link = parsed
         lastChecked = nil
+        refused = false
         return true
     }
 
@@ -56,6 +57,7 @@ import Security
             }
             ScheduleKeychain.writeLogin(login)
             self.userid = login.userid
+            refused = false
             remember(fresh)
         } catch {
             return "Couldn't reach cgisports.com."
@@ -68,6 +70,7 @@ import Security
     func disconnect() {
         ScheduleKeychain.delete()
         ScheduleKeychain.deleteLogin()
+        refused = false
         link = nil
         userid = nil
         lastChecked = nil
@@ -77,7 +80,7 @@ import Security
     }
 
     func checkIfDue(_ store: PhoneStore) async {
-        guard link != nil || userid != nil, !checking,
+        guard link != nil || userid != nil, !checking, !refused,
               Date().timeIntervalSince(lastChecked ?? .distantPast) > Self.every else { return }
         await check(store)
     }
@@ -114,6 +117,7 @@ import Security
             }
         } catch ScheduleError.refused {
             result = "CGI Sports didn't accept your password — sign in again."
+            refused = true
         } catch {
             result = "Couldn't reach cgisports.com."
         }
@@ -132,6 +136,23 @@ import Security
 
     private enum ScheduleError: Error { case refused }
 
+    /// Nothing written to disk: the session link is a login, so no cache,
+    /// cookie or credential store outside the Keychain keeps a copy.
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.urlCache = nil
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: config)
+    }()
+
+    /// The last check was refused: no more automatic checks until the
+    /// referee signs in again — retrying a wrong password every hour could
+    /// lock the account on the site.
+    private var refused: Bool {
+        get { UserDefaults.standard.bool(forKey: "ref.schedule.refused") }
+        set { UserDefaults.standard.set(newValue, forKey: "ref.schedule.refused") }
+    }
+
     private func remember(_ fresh: CGIScheduleLink) {
         ScheduleKeychain.write(fresh.scheduleURL.absoluteString)
         link = fresh
@@ -143,7 +164,7 @@ import Security
         request.httpMethod = "POST"
         request.setValue(CGILogin.contentType, forHTTPHeaderField: "Content-Type")
         request.httpBody = login.body
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await Self.session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
         let page = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
         return login.link(fromPage: page, finalURL: response.url)
@@ -152,7 +173,7 @@ import Security
     private func fetch(_ url: URL) async throws -> String {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         request.httpMethod = "GET"
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await Self.session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
         // The site declares ISO-8859-1.
         return String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""

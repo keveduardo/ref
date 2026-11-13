@@ -234,10 +234,14 @@ import RefKit
             current.events.append(contentsOf: latest.events.recorded)
             match = current
         }
-        try? store.save(current)
-        try? store.clearCurrent()
+        let saved = (try? store.save(current)) != nil
+        // The next match may already be under way — "Done", then another
+        // match, while the workout was saving. Its file and its report to
+        // the phone are left alone.
+        let nextStarted = match.map { $0.id != current.id } ?? false
+        if saved && !nextStarted { try? store.clearCurrent() }
         link.send(current)
-        link.reportCurrent(nil)
+        if !nextStarted { link.reportCurrent(nil) }
         if !route.isEmpty {
             link.send(SyncPayload.Route(matchID: current.id, points: route))
         }
@@ -467,8 +471,8 @@ extension MatchSession {
             MatchEvent(at: now.addingTimeInterval(TimeInterval(-ago)), kind: kind)
         }
 
-        let home = Team(name: "Madrid", abbreviation: "RMA", color: .white)
-        let away = Team(name: "Arsenal", abbreviation: "ARS", color: .red)
+        let home = Team(name: "Harbor City FC", abbreviation: "HCF", color: .white)
+        let away = Team(name: "Ridgeline United", abbreviation: "RLU", color: .red)
         let squad = { (team: Team) in
             Squad(team: team, players: (1...11).map { Player(name: "Player \($0)", number: $0) })
         }

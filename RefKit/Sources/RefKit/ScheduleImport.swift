@@ -30,6 +30,9 @@ public struct ScheduledGame: Sendable, Equatable {
     public var crew: [String: String]
     /// The referee's own slot, when the schedule says.
     public var myRole: RefereeRole? = nil
+    /// False when the game's own page could not be read: `crew` is then
+    /// unknown, not empty, and a schedule check leaves the names it has.
+    public var crewKnown: Bool = true
 
     /// The AYSO preset the division names, when it is one RefTime has:
     /// "BC Boys 12U", "Girls 10U", "U14 G" and the like.

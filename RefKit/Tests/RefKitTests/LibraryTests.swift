@@ -14,15 +14,15 @@ struct TeamLibraryTests {
         let library = tempLibrary()
         #expect(try library.all().isEmpty)
 
-        let arsenal = Squad(team: Team(name: "Arsenal"),
+        let bayside = Squad(team: Team(name: "Bayside"),
                             players: [Player(name: "Winger", number: 7)])
-        let madrid = Squad(team: Team(name: "Madrid"))
-        try library.save(madrid)
-        try library.save(arsenal)
-        #expect(try library.all().map(\.team.name) == ["Arsenal", "Madrid"])
+        let westfield = Squad(team: Team(name: "Westfield"))
+        try library.save(westfield)
+        try library.save(bayside)
+        #expect(try library.all().map(\.team.name) == ["Bayside", "Westfield"])
 
         // A second save of the same team replaces it rather than duplicating.
-        var edited = arsenal
+        var edited = bayside
         edited.players.append(Player(name: "Forward", number: 11))
         try library.save(edited)
         let all = try library.all()
@@ -32,17 +32,17 @@ struct TeamLibraryTests {
 
     @Test func deletingRemovesOnlyThatTeam() throws {
         let library = tempLibrary()
-        let madrid = Squad(team: Team(name: "Madrid"))
-        let arsenal = Squad(team: Team(name: "Arsenal"))
-        try library.save(madrid)
-        try library.save(arsenal)
-        try library.delete(teamID: madrid.team.id)
-        #expect(try library.all().map(\.team.name) == ["Arsenal"])
+        let westfield = Squad(team: Team(name: "Westfield"))
+        let bayside = Squad(team: Team(name: "Bayside"))
+        try library.save(westfield)
+        try library.save(bayside)
+        try library.delete(teamID: westfield.team.id)
+        #expect(try library.all().map(\.team.name) == ["Bayside"])
     }
 
     @Test func theLibrarySurvivesANewInstance() throws {
         let library = tempLibrary()
-        let squad = Squad(team: Team(name: "Madrid"), players: [Player(name: "Striker", number: 9)])
+        let squad = Squad(team: Team(name: "Westfield"), players: [Player(name: "Striker", number: 9)])
         try library.save(squad)
         let reopened = try TeamLibrary(directory: library.directory).all()
         #expect(reopened == [squad])

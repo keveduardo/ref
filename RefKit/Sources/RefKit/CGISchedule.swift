@@ -140,7 +140,7 @@ public enum CGISchedule {
         return ScheduledGame(gameID: row.gameID, division: row.division, kickOff: kickOff,
                              location: venue?.location ?? row.location, field: venue?.field,
                              home: row.home, visitor: row.visitor, crew: crew,
-                             myRole: RefereeRole(scheduled: row.position))
+                             myRole: RefereeRole(scheduled: row.position), crewKnown: page != nil)
     }
 
     // MARK: - Text

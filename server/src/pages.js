@@ -27,7 +27,7 @@ each age group.</p>`);
 
 export const privacyPage = () => page('RefTime — Privacy', `
 <h1>Privacy</h1>
-<p class="lede">Last updated 4 October 2026.</p>
+<p class="lede">Last updated 13 November 2026.</p>
 
 <h2>Without an account</h2>
 <p>Everything stays on your iPhone and Apple Watch: your matches, teams,
@@ -47,11 +47,17 @@ matches and teams so they survive a new phone. We then store:</p>
   <li>the account identifier Apple or Google gives us, and the email address
       if you chose to share it;</li>
   <li>your matches (teams, kick-off, timeline of goals, cards and
-      substitutions) and your team sheets (names and shirt numbers) —
-      without any health numbers or routes.</li>
+      substitutions, and the referee crew's names) and your team sheets
+      (names and shirt numbers) — without any health numbers or routes.</li>
 </ul>
 <p>It is stored on Cloudflare's infrastructure and used only to give it back
 to you. There are no ads, analytics or trackers.</p>
+
+<h2>CGI Sports schedule</h2>
+<p>If you connect your CGI Sports referee schedule, your CGI Sports username,
+password and schedule link are kept only in your iPhone's Keychain. The app
+sends them only to cgisports.com, to read your assignments, and never to us.
+The games it reads become matches like any other.</p>
 
 <h2>Deleting your data</h2>
 <p>In the app, Settings › Account › <strong>Delete account</strong> deletes

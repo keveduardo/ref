@@ -94,7 +94,7 @@ struct RenderDemo: View {
             // corners under them, unseen here without the sheet).
             Color.clear.sheet(isPresented: .constant(true)) {
                 NavigationStack {
-                    PlayerPicker(squad: nil, allowNone: true, title: "Goal · ARS", pick: { _ in })
+                    PlayerPicker(squad: nil, allowNone: true, title: "Goal · RLU", pick: { _ in })
                 }
             }
         case .halftime:

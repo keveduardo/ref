@@ -90,7 +90,7 @@ struct UndoTests {
     @Test func theUndoLabelIsTheReportsOwnLine() {
         let text = MatchReport.text(for: .yellowCard(side: .away, player: PlayerRef(number: 7)),
                                     in: Match(setup: Fixture.setup))
-        #expect(text == "Yellow card — ARS #7")
+        #expect(text == "Yellow card — BAY #7")
         #expect(MatchReport.text(for: .kickOff(half: 1), in: Match(setup: Fixture.setup)) == nil)
     }
 }

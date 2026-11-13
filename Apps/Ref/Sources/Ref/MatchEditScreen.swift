@@ -29,11 +29,15 @@ struct MatchEditScreen: View {
             Form {
                 teamSection("Home", team: $setup.home)
                 teamSection("Away", team: $setup.away)
-                Section {
-                    Button {
-                        setup = setup.swappingSides()
-                    } label: {
-                        Label("Swap home and away", systemImage: "arrow.up.arrow.down")
+                // Not once the watch has it: goals and cards are recorded by
+                // side, and a swap mid-match would move them.
+                if !store.startedOnWatch.contains(match.id) && match.events.recorded.isEmpty {
+                    Section {
+                        Button {
+                            setup = setup.swappingSides()
+                        } label: {
+                            Label("Swap home and away", systemImage: "arrow.up.arrow.down")
+                        }
                     }
                 }
                 Section("Competition") {
@@ -133,7 +137,9 @@ struct MatchEditScreen: View {
     }
 
     private func save() {
-        var updated = match
+        // The store's copy as it is now — a finished match may have arrived
+        // from the watch while this screen was open.
+        var updated = store.all.first(where: { $0.id == match.id }) ?? match
         updated.setup = setup
         updated.setup.kickOff = hasKickOff ? kickOff : nil
         // A short name left empty falls back to one made from the name.

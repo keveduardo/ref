@@ -10,8 +10,8 @@ enum Fixture {
     /// must build on the oldest toolchain it claims.
     static func at(_ seconds: Int) -> Date { t0.addingTimeInterval(TimeInterval(seconds)) }
 
-    static let home = Team(name: "Real Madrid Club", abbreviation: "RMC", color: .white)
-    static let away = Team(name: "Arsenal", abbreviation: "ARS", color: .red)
+    static let home = Team(name: "Westfield Rovers Club", abbreviation: "WRC", color: .white)
+    static let away = Team(name: "Bayside", abbreviation: "BAY", color: .red)
 
     static let home9 = Player(name: "Striker", number: 9)
     static let home4 = Player(name: "Centre back", number: 4)

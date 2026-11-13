@@ -130,7 +130,7 @@ public struct MatchReport: Codable, Sendable, Equatable {
         return MatchReport(score: score, timeline: timeline, halves: halves, totals: totals)
     }
 
-    /// One event as the report words it — "Yellow card — ARS #7" — or nil
+    /// One event as the report words it — "Yellow card — BAY #7" — or nil
     /// for the clock's own bookkeeping. The watch's undo button reuses it, so
     /// the referee takes back exactly the line the report would have shown.
     public static func text(for kind: MatchEvent.Kind, in match: Match) -> String? {

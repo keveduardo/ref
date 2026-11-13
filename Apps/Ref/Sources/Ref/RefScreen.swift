@@ -15,6 +15,8 @@ struct RefScreen: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var linkMessage: String?
+    /// A schedule link opened from outside, waiting for the referee's yes.
+    @State private var pendingLink: CGIScheduleLink?
     @State private var tab = HomeTab.matches
     @State private var addingMatch = false
 
@@ -72,12 +74,30 @@ struct RefScreen: View {
             guard url.scheme == "reftime", url.host == "schedule",
                   let given = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                       .queryItems?.first(where: { $0.name == "link" })?.value else { return }
-            if schedule.connect(given) {
-                linkMessage = "Your CGI Sports schedule is connected. Its games are on their way to Matches."
-                Task { await schedule.check(store) }
-            } else {
+            // Any page or app can open this address, so it asks first
+            // (Fable audit, 2026-11-13) — and a signed-in account is not
+            // replaced by a link at all.
+            guard let parsed = CGIScheduleLink(given) else {
                 linkMessage = "That link isn't a CGI Sports referee schedule."
+                return
             }
+            if schedule.userid != nil {
+                linkMessage = "You're signed in to CGI Sports already. To use a different schedule, sign out in Settings first."
+            } else {
+                pendingLink = parsed
+            }
+        }
+        .alert("Connect this schedule?", isPresented: Binding(get: { pendingLink != nil },
+                                                              set: { if !$0 { pendingLink = nil } }),
+               presenting: pendingLink) { parsed in
+            Button("Connect") {
+                if schedule.connect(parsed.scheduleURL.absoluteString) {
+                    Task { await schedule.check(store) }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { parsed in
+            Text("RefTime will read the CGI Sports referee schedule for \(parsed.displayName) and add its games to Matches.")
         }
         .alert("Referee schedule", isPresented: Binding(get: { linkMessage != nil },
                                                         set: { if !$0 { linkMessage = nil } })) {

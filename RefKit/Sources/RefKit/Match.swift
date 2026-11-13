@@ -186,6 +186,22 @@ public struct Match: Codable, Sendable, Identifiable, Equatable {
 }
 
 extension Match {
+    /// A finished match back from the watch, onto the phone's copy of it
+    /// (`self`). The phone's names, colours and crew stay — they may have
+    /// been edited here after full time; the clock is the watch's, as
+    /// played. Events are the union of both, so a goal added on either side
+    /// survives, and the same delivery twice changes nothing.
+    public func receivingFromWatch(_ incoming: Match) -> Match {
+        guard incoming.id == id else { return incoming }
+        var merged = incoming
+        merged.setup = incoming.setup.applyingEdits(setup, kickedOff: true)
+        merged.events.append(contentsOf: events.recorded)
+        merged.metrics = incoming.metrics ?? metrics
+        merged.pitch = incoming.pitch ?? pitch
+        merged.createdAt = min(createdAt, incoming.createdAt)
+        return merged
+    }
+
     /// How long past its kick-off a game nobody started stays Upcoming
     /// (Kevin, 2026-11-12: "if a game is 1 day past expected let's retire it").
     public static let retireAfter: TimeInterval = 24 * 3600
