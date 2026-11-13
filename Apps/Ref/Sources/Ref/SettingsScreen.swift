@@ -24,6 +24,7 @@ struct SettingsScreen: View {
     @AppStorage("ref.addedTimeButton") private var addedTimeButton = false
     @AppStorage("ref.quarterBreak") private var quarterBreak = false
     @AppStorage("ref.quarterBreakMinutes") private var quarterBreakMinutes = 2
+    @AppStorage("ref.distanceUnit") private var unit = DistanceUnit.default()
 
     var body: some View {
         NavigationStack {
@@ -42,6 +43,15 @@ struct SettingsScreen: View {
                             ForEach(1...10, id: \.self) { Text("\($0) min").tag($0) }
                         }
                     }
+                }
+                Section {
+                    Picker("Distance", selection: $unit) {
+                        ForEach(DistanceUnit.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                } header: {
+                    Text("Units")
+                } footer: {
+                    Text("For distance, speed and the shared match report. What the watch records is the same either way.")
                 }
                 scheduleSection
                 accountSection

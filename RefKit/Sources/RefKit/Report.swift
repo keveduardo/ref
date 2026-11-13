@@ -168,7 +168,7 @@ public struct MatchReport: Codable, Sendable, Equatable {
 
     // MARK: - Text for the share sheet
 
-    public func shareText(match: Match) -> String {
+    public func shareText(match: Match, unit: DistanceUnit = .kilometres) -> String {
         var lines: [String] = []
         let home = match.setup.home.name
         let away = match.setup.away.name
@@ -193,7 +193,7 @@ public struct MatchReport: Codable, Sendable, Equatable {
         if totals.substitutions > 0 { totalBits.append("\(totals.substitutions) subs") }
         lines.append(totalBits.isEmpty ? "No cards." : totalBits.joined(separator: ", ") + ".")
         if let metrics = match.metrics, let meters = metrics.distanceMeters {
-            lines.append(String(format: "Distance %.1f km.", meters / 1000))
+            lines.append("Distance \(unit.format(metres: meters)).")
         }
         if let steps = match.metrics?.steps {
             lines.append("\(steps.formatted()) steps.")

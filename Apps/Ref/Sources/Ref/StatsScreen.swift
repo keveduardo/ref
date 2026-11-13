@@ -6,6 +6,7 @@ import SwiftUI
 /// discipline, with the numbers big and gold.
 struct StatsScreen: View {
     let store: PhoneStore
+    @AppStorage("ref.distanceUnit") private var unit = DistanceUnit.default()
 
     var body: some View {
         NavigationStack {
@@ -77,8 +78,8 @@ struct StatsScreen: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                     if let perMatch = activity.distancePerMatch {
                         BigStat(symbol: "point.topleft.down.to.point.bottomright.curvepath", title: "Distance",
-                                value: String(format: "%.1f km", activity.distanceMeters / 1000),
-                                caption: String(format: "%.1f km per match", perMatch / 1000))
+                                value: unit.format(metres: activity.distanceMeters),
+                                caption: "\(unit.format(metres: perMatch)) per match")
                     }
                     if let perMatch = activity.stepsPerMatch {
                         BigStat(symbol: "shoeprints.fill", title: "Steps",

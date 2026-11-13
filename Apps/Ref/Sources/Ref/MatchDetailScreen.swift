@@ -18,6 +18,7 @@ struct MatchDetailScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var confirmingDelete = false
+    @AppStorage("ref.distanceUnit") private var unit = DistanceUnit.default()
     @State private var editing = false
     @State private var addingGoal = false
 
@@ -66,7 +67,7 @@ struct MatchDetailScreen: View {
                     } label: {
                         Label("Add a goal", systemImage: "soccerball")
                     }
-                    ShareLink(item: match.report.shareText(match: match)) {
+                    ShareLink(item: match.report.shareText(match: match, unit: unit)) {
                         Label("Share report", systemImage: "square.and.arrow.up")
                     }
                 }
@@ -188,10 +189,10 @@ struct MatchDetailScreen: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                 ForEach(Array(report.distanceByHalf.enumerated()), id: \.offset) { index, metres in
                     LabeledContent(index == 0 ? "First half" : index == 1 ? "Second half" : "Half \(index + 1)",
-                                   value: String(format: "%.2f km", metres / 1000))
+                                   value: unit.format(metres: metres, decimals: 2))
                 }
-                LabeledContent("Top speed", value: String(format: "%.1f km/h", report.topSpeed * 3.6))
-                LabeledContent("Sprints (20+ km/h)", value: "\(report.sprints)")
+                LabeledContent("Top speed", value: unit.formatSpeed(metresPerSecond: report.topSpeed))
+                LabeledContent("Sprints (\(unit.sprintThreshold)+)", value: "\(report.sprints)")
                 LabeledContent("Thirds", value: report.thirds
                     .map { "\(Int(($0 * 100).rounded()))%" }.joined(separator: " · "))
                 LabeledContent("On the diagonal", value: "\(Int((report.onDiagonal * 100).rounded()))%")
@@ -208,7 +209,7 @@ struct MatchDetailScreen: View {
     private func metricsSection(_ metrics: MatchMetrics) -> some View {
         Section("On the whistle") {
             if let meters = metrics.distanceMeters {
-                LabeledContent("Distance", value: String(format: "%.1f km", meters / 1000))
+                LabeledContent("Distance", value: unit.format(metres: meters))
             }
             if let steps = metrics.steps {
                 LabeledContent("Steps", value: steps.formatted())
