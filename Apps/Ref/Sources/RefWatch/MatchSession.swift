@@ -95,9 +95,16 @@ import RefKit
 
     // MARK: - Starting
 
-    /// The phone's matches still to be played.
+    /// The phone's matches still to be played. One three hours past its
+    /// kick-off goes here too, not only when the phone next sends its list —
+    /// the phone may stay in the bag until morning.
     var offers: [MatchSetup] {
-        link.assignments.filter { !playedIDs.contains($0.id) }
+        let now = Date()
+        return link.assignments.filter { setup in
+            guard !playedIDs.contains(setup.id) else { return false }
+            guard let kickOff = setup.kickOff else { return true }
+            return now.timeIntervalSince(kickOff) <= Match.retireAfter
+        }
     }
 
     /// Quick start: two teams to be named on the phone later, kick-off
@@ -550,10 +557,33 @@ extension MatchSession {
             ]
         }
 
+        // The start screen is the list from the phone, nothing in hand.
+        if page == "start" {
+            session.link.showForRender(demoGames)
+            return session
+        }
         session.assign(Match(setup: MatchSetup(
             home: home, away: away, competition: "Friendly",
             squads: [squad(home), squad(away)]), events: EventLog(events: events)))
         return session
+    }
+
+    /// Tomorrow's two games, at fixed clock times (the render job runs at
+    /// any hour). Invented teams and referees.
+    static var demoGames: [MatchSetup] {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1,
+                                             to: Calendar.current.startOfDay(for: Date())) ?? Date()
+        let home = Team(name: "Harbor City FC", abbreviation: "HCF", color: .white)
+        let away = Team(name: "Ridgeline United", abbreviation: "RLU", color: .red)
+        let third = Team(name: "Mesa Verde SC", abbreviation: "MVS", color: .blue)
+        return [
+            MatchSetup(home: home, away: away, competition: "Girls 12U — Field 3",
+                       kickOff: tomorrow.addingTimeInterval(9 * 3600), clock: .adult,
+                       cr: "Sam Rivera", ar1: "Alex Chen", ar2: "Jordan Lee", myRole: .cr),
+            MatchSetup(home: third, away: home, competition: "Boys 14U — Field 1",
+                       kickOff: tomorrow.addingTimeInterval(10.5 * 3600), clock: .adult,
+                       cr: "Taylor Brooks", ar1: "Sam Rivera", myRole: .ar1),
+        ]
     }
 }
 #endif

@@ -72,7 +72,12 @@ import Security
             let response: SignInResponse = try await send("POST", "/v1/auth/apple",
                                                           body: ["identity_token": token, "nonce": nonce],
                                                           authorized: false)
-            Keychain.write(response.key)
+            // A key the Keychain refused would sign this phone in for this
+            // launch only, then silently out — say so instead.
+            guard Keychain.write(response.key) else {
+                lastError = "Couldn't keep the sign-in on this iPhone. Try again."
+                return
+            }
             signedIn = true
             email = response.email
             provider = response.provider
@@ -335,13 +340,15 @@ enum Keychain {
         return String(data: data, encoding: .utf8)
     }
 
-    static func write(_ key: String) {
+    /// False when the Keychain refused it (a locked device, say).
+    @discardableResult
+    static func write(_ key: String) -> Bool {
         delete()
         let item: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service,
                                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                                    kSecValueData as String: Data(key.utf8)]
-        SecItemAdd(item as CFDictionary, nil)
+        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
     static func delete() {

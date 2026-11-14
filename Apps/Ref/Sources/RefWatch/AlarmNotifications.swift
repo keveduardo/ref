@@ -60,6 +60,17 @@ enum AlarmNotifications {
         (0...3).flatMap { slot in (0..<repeats).map { "\(prefix)\(slot).\($0)" } }
     }
 
+    /// Every repeat of the alarm a notification belongs to — pending and
+    /// shown — gone. "ref.alarm.<slot>.<repeat>": the slot is the alarm.
+    static func cancelSlot(of identifier: String) {
+        let parts = identifier.dropFirst(prefix.count).split(separator: ".")
+        guard identifier.hasPrefix(prefix), let slot = parts.first.flatMap({ Int($0) }) else { return }
+        let ids = (0..<repeats).map { "\(prefix)\(slot).\($0)" }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+    }
+
     static func cancelAll() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: allIdentifiers)
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
@@ -90,6 +101,10 @@ final class AlarmNotificationDelegate: NSObject, UNUserNotificationCenterDelegat
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             didReceive response: UNNotificationResponse) async {
         guard response.actionIdentifier == AlarmNotifications.stopAction else { return }
+        // Silenced here first, app or no app: with the app not running there
+        // is no session to tell, and its repeats would ring on for four
+        // minutes (2026-11-14 review).
+        AlarmNotifications.cancelSlot(of: response.notification.request.identifier)
         let stop = onStop
         await MainActor.run { stop?() }
     }

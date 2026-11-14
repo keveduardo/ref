@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import RefKit
 
-/// A scheduled game nobody started retires a day after its kick-off.
+/// A scheduled game nobody started retires three hours after its kick-off.
 @Suite("retiring missed games")
 struct RetireTests {
     static func scheduled(kickOff: Date?) -> Match {
@@ -11,10 +11,10 @@ struct RetireTests {
         return Match(setup: setup)
     }
 
-    @Test func aDayPastKickOffItRetires() {
+    @Test func threeHoursPastKickOffItRetires() {
         let match = Self.scheduled(kickOff: Fixture.t0)
-        #expect(!match.isRetired(at: Fixture.at(23 * 3600)))
-        #expect(match.isRetired(at: Fixture.at(25 * 3600)))
+        #expect(!match.isRetired(at: Fixture.at(2 * 3600 + 59 * 60)))
+        #expect(match.isRetired(at: Fixture.at(3 * 3600 + 60)))
     }
 
     @Test func noKickOffNeverRetires() {

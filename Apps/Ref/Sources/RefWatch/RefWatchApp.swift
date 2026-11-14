@@ -64,7 +64,7 @@ struct RootScreen: View {
 /// launched as `-renderDemo <page>` by the `render` job of ref.yml. Debug
 /// builds only.
 struct RenderDemo: View {
-    enum Page: String { case start, live, home, record, number, halftime, summary }
+    enum Page: String { case start, game, live, home, record, number, halftime, summary }
 
     static var page: Page? {
         let args = ProcessInfo.processInfo.arguments
@@ -78,6 +78,11 @@ struct RenderDemo: View {
         switch page {
         case .start:
             StartScreen(session: .showing("start"), requestsAccess: false)
+        case .game:
+            let session = MatchSession.showing("start")
+            NavigationStack {
+                GameScreen(session: session, setup: session.offers.first ?? MatchSession.demoGames[0])
+            }
         case .live:
             LiveScreen(session: .showing("live"))
         case .home:

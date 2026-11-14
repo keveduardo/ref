@@ -168,7 +168,7 @@ struct MatchesScreen: View {
                     ResultRow(match: $0)
                 }
                 matchCard(symbol: "calendar.badge.minus", title: "Not refereed", matches: store.notRefereed,
-                          note: "Never started, a day past kick-off — off Upcoming and the watch. Swipe to delete.") {
+                          note: "Never started, three hours past kick-off — off Upcoming and the watch. Swipe to delete.") {
                     FixtureRow(match: $0)
                 }
             }

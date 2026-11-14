@@ -39,7 +39,10 @@ import Security
     @discardableResult
     func connect(_ text: String) -> Bool {
         guard let parsed = CGIScheduleLink(text) else { return false }
-        ScheduleKeychain.write(parsed.scheduleURL.absoluteString)
+        if !ScheduleKeychain.write(parsed.scheduleURL.absoluteString) {
+            // Kept for this launch; the next one would have lost it.
+            lastResult = "Couldn't save the link on this iPhone — connect again later."
+        }
         link = parsed
         lastChecked = nil
         refused = false
@@ -55,7 +58,11 @@ import Security
             guard let fresh = try await signIn(login) else {
                 return "CGI Sports didn't accept that username and password."
             }
-            ScheduleKeychain.writeLogin(login)
+            // Unsaved, the next hourly check would have no password — and the
+            // referee would believe it was kept.
+            guard ScheduleKeychain.writeLogin(login) else {
+                return "Couldn't save your password on this iPhone. Try again."
+            }
             self.userid = login.userid
             refused = false
             remember(fresh)
@@ -194,13 +201,15 @@ enum ScheduleKeychain {
         return String(data: data, encoding: .utf8)
     }
 
-    static func write(_ value: String) {
+    /// False when the Keychain refused it (a locked device, say).
+    @discardableResult
+    static func write(_ value: String) -> Bool {
         delete()
         let item: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service,
                                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                                    kSecValueData as String: Data(value.utf8)]
-        SecItemAdd(item as CFDictionary, nil)
+        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
     static func delete() {
@@ -228,14 +237,15 @@ enum ScheduleKeychain {
         return CGILogin(region: parts[0], userid: parts[1], password: password)
     }
 
-    static func writeLogin(_ login: CGILogin) {
+    @discardableResult
+    static func writeLogin(_ login: CGILogin) -> Bool {
         deleteLogin()
         let item: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: loginService,
                                    kSecAttrAccount as String: "\(login.region)/\(login.userid)",
                                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                                    kSecValueData as String: Data(login.password.utf8)]
-        SecItemAdd(item as CFDictionary, nil)
+        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
     static func deleteLogin() {

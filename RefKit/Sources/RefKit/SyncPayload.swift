@@ -35,6 +35,30 @@ public enum SyncPayload {
             self.sentAt = sentAt
             self.awaitingResults = awaitingResults
         }
+
+        private enum CodingKeys: String, CodingKey {
+            case version, setups, defaults, sentAt, awaitingResults
+        }
+
+        /// One setup this build cannot read is skipped, not the whole list —
+        /// before 2026-11-14 a single odd match emptied the watch.
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            version = try c.decode(Int.self, forKey: .version)
+            setups = try c.decode([Lossy<MatchSetup>].self, forKey: .setups).compactMap(\.value)
+            defaults = try c.decode(MatchDefaults.self, forKey: .defaults)
+            sentAt = try c.decodeIfPresent(Date.self, forKey: .sentAt)
+            awaitingResults = try c.decodeIfPresent([UUID].self, forKey: .awaitingResults)
+        }
+
+        /// Whether `self` should replace `held` on the watch: not when the
+        /// phone made it before the one already there. Lists cross on the
+        /// way — a message, the application context and an answer to the
+        /// watch's request can arrive in any order.
+        public func isNewer(than held: Date?) -> Bool {
+            guard let held, let sentAt else { return true }
+            return sentAt >= held
+        }
     }
 
     /// Watch → phone, after a match: the finished record, metrics included.
@@ -109,6 +133,14 @@ public enum SyncPayload {
             throw Refusal.futureVersion(probe.version)
         }
         return try decoder.decode(T.self, from: data)
+    }
+}
+
+/// An element decoded if it can be, nil if not — never failing its array.
+struct Lossy<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: any Decoder) throws {
+        value = try? T(from: decoder)
     }
 }
 

@@ -49,6 +49,7 @@ import WatchConnectivity
             assignments = saved.setups
             defaults = saved.defaults
             awaitingResults = Set(saved.awaitingResults ?? [])
+            lastUpdated = saved.sentAt
         }
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
@@ -174,6 +175,8 @@ import WatchConnectivity
                                                        from: assignmentData) else {
             return
         }
+        // An older list that crossed a newer one on the way is dropped.
+        guard assignment.isNewer(than: lastUpdated) else { return }
         assignments = assignment.setups
         defaults = assignment.defaults
         // The phone's own time for the list, not ours: re-reading an old list
@@ -246,3 +249,13 @@ extension WatchLink: WCSessionDelegate {
         // The watch is the sender of finished matches, not a receiver.
     }
 }
+
+#if DEBUG
+extension WatchLink {
+    /// A list as if from the phone — the render job's start screen only.
+    func showForRender(_ setups: [MatchSetup]) {
+        assignments = setups
+        lastUpdated = Date()
+    }
+}
+#endif

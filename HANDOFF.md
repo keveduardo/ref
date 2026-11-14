@@ -1,6 +1,7 @@
 # HANDOFF — where Ref stands, and the way in
 
-Written 2026-10-04 by the session that built P0–P4. Read this first, then
+Written 2026-10-04 by the session that built P0–P4; the state below brought
+up to date 2026-11-14. Read this first, then
 `README.md` (layout and current state) and `SCOPE.md` (the plan and the
 decisions behind it — including the phase table this file mirrors).
 
@@ -9,20 +10,18 @@ decisions behind it — including the phase table this file mirrors).
 | | State |
 |---|---|
 | Repo | `~/dev/ref` = `keveduardo/ref`, **public** since 2026-10-04 (Kevin's call, so Actions are free; Mac minutes had billed 10× while it was private). Nothing secret is in it: keys live in repo secrets and `~/.config/appstoreconnect`. Keep it so, and keep real people's names out of the test fixtures. The workflow has no `pull_request` trigger, so a fork can never reach the secrets. Commits go straight to `main`; push after committing. |
-| The engine | `RefKit` — 151 tests, green on this box: `swift test --package-path RefKit` |
+| The engine | `RefKit` — 160 tests, green on this box: `swift test --package-path RefKit` |
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |
-| Signed / uploaded | **Build 22 on TestFlight** (2026-10-04, ship run 37231400733 at `ea029ec`): processed VALID — Apple accepted the companion pairing. Internal group "Household" (every build, Kevin in it). Expires 2027-01-02. **No match has been refereed with it yet.** |
-| The gate | None left for shipping. Next is P5's proof: Kevin installs build 22 from TestFlight and referees a real match. |
+| Signed / uploaded | TestFlight gets every `ship` run (group "Household"); the build number is the run number. Kevin has refereed real matches with it since November 2026. |
+| App Store | **1.0 (build 156) submitted 2026-11-13, waiting for review**, release automatic on approval. US only (set 2026-11-14 — no EU trader status, by choice). The next update is 1.0.1: bump `MARKETING_VERSION` once 1.0 is approved, then attach a newer build. `APPSTORE.md` has the listing and the answers given. |
 
 ## The next action, exactly
 
-**Kevin:** open TestFlight on the iPhone, install **RefTime** (build 22) —
-the watch app installs with it (Watch app → Available Apps if it does not
-appear on its own) — and referee a match with it. First things to check,
-because only a real match can prove them: the wrist buzzes at 45:00 and at a
-sin bin's end *with the wrist down*; the report reaches the phone; heart rate
-and distance are in it.
+**Kevin:** install the newest TestFlight build on phone and watch. Open both
+apps after a match: a finished match the phone never got is sent again by
+the watch. **Claude:** when 1.0 is approved, bump to 1.0.1 and submit the
+newest build.
 
 **Shipping a new build** after a code change, from this box:
 
@@ -30,10 +29,8 @@ and distance are in it.
 
 The secrets are set (`ASC_KEY_ID` = `BDTARG624T`, an **Admin** team key —
 trap 7; its `.p8` is in `~/.config/appstoreconnect/private_keys/`). New
-builds reach the Household group automatically.
-
-**The weekly `due` job** now has its secrets; trigger it once by hand
-(`-f expiry_check=true`) before trusting the schedule.
+builds reach the Household group automatically. Cancel the push-triggered
+runs before shipping, so they do not take the scarce macOS runners (trap 9).
 
 ## What the second session (2026-10-04) changed
 
@@ -85,7 +82,7 @@ promises it.
       gh run download <id> -R keveduardo/ref -n ref-renders -D .renders
       cp .renders/*.png renders/ && git add renders && git commit && git push
 
-  Pages screenshotted: watch `start live home record number halftime summary`, phone
+  Pages screenshotted: watch `start game live home record number halftime summary`, phone
   `matches setup teams detail stats settings` — the lists are in `ref.yml` and
   must match `RenderDemo.Page` in each app.
 - **Weekly, unattended**: the `due` job asks App Store Connect whether the live

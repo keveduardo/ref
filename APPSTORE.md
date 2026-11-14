@@ -1,7 +1,8 @@
 # RefTime — App Store Connect listing
 
 **Submitted for review 2026-11-13: version 1.0, build 156** — public, free,
-175 countries, released automatically on approval. Regulated medical device:
+released automatically on approval. **United States only** since 2026-11-14
+(174 territories switched off through the API; it was all 175 at submission). Regulated medical device:
 declared not one. EU trader status (DSA) deliberately not set up (Kevin, 2026-11-13: "US only
 is fine, skip the EU") — so no EU storefronts; that is intended.
 

@@ -88,14 +88,14 @@ enum RouteFiles {
         Set((UserDefaults.standard.stringArray(forKey: key) ?? []).compactMap(UUID.init))
     }
 
-    /// Not yet played, and not a day past kick-off unstarted — those are
+    /// Not yet played, and not three hours past kick-off unstarted — those are
     /// `notRefereed` (RefKit's `Match.isRetired`). This is also the watch's list.
     var upcoming: [Match] {
         all.filter { !$0.isFinished && !startedOnWatch.contains($0.id) && !$0.isRetired() }
             .sorted { ($0.setup.kickOff ?? $0.createdAt) < ($1.setup.kickOff ?? $1.createdAt) }
     }
 
-    /// Scheduled games nobody started, a day past kick-off, newest first.
+    /// Scheduled games nobody started, three hours past kick-off, newest first.
     var notRefereed: [Match] {
         all.filter { !startedOnWatch.contains($0.id) && $0.isRetired() }
             .sorted { ($0.setup.kickOff ?? $0.createdAt) > ($1.setup.kickOff ?? $1.createdAt) }
@@ -110,7 +110,9 @@ enum RouteFiles {
     /// The route the watch recorded for a match, if it has arrived.
     func route(for matchID: UUID) -> [RoutePoint]? {
         _ = routesVersion
-        guard let data = try? Data(contentsOf: RouteFiles.url(for: matchID, in: routesDirectory)) else {
+        // A folded quick start's route arrives under the quick start's id.
+        let ids = [matchID] + folded.filter { $0.value == matchID }.map(\.key)
+        guard let data = ids.lazy.compactMap({ try? Data(contentsOf: RouteFiles.url(for: $0, in: self.routesDirectory)) }).first else {
             return nil
         }
         return try? SyncPayload.decode(SyncPayload.Route.self, from: data).points
@@ -227,12 +229,56 @@ enum RouteFiles {
 
     /// A finished match from the watch. Merged into the phone's copy when
     /// there is one, so names given here after full time, and a goal added
-    /// on either side, are kept (`Match.receivingFromWatch`).
-    func finishedOnWatch(_ incoming: Match) {
-        let merged = all.first(where: { $0.id == incoming.id })
-            .map { $0.receivingFromWatch(incoming) } ?? incoming
+    /// on either side, are kept (`Match.receivingFromWatch`). A quick start
+    /// nobody named, played at a scheduled game's time, becomes that game
+    /// (RefKit's `QuickStartFold`). False when it could not be saved — the
+    /// link keeps the payload and tries again.
+    @discardableResult
+    func finishedOnWatch(_ incoming: Match) -> Bool {
+        // A second copy of a quick start already folded lands on its fixture.
+        if let fixtureID = folded[incoming.id], let fixture = all.first(where: { $0.id == fixtureID }) {
+            return saved(fixture.receivingFromWatch(QuickStartFold.fold(incoming, into: fixture)))
+        }
+        let local = all.first(where: { $0.id == incoming.id })
+        let merged = local.map { $0.receivingFromWatch(incoming) } ?? incoming
+        if merged.isFinished, handoff.madeOnWatch.contains(merged.id) || local == nil,
+           merged.setup.home.name == Team.placeholder(.home).name,
+           merged.setup.away.name == Team.placeholder(.away).name,
+           let fixture = QuickStartFold.target(for: merged, among: all, onWatch: startedOnWatch) {
+            folded[merged.id] = fixture.id
+            guard saved(QuickStartFold.fold(merged, into: fixture)) else {
+                folded[merged.id] = nil
+                return false
+            }
+            if let local { delete(local) } else { handoff.forget(merged.id) }
+            return true
+        }
+        guard saved(merged) else { return false }
         if merged.isFinished { handoff.forget(merged.id) }
-        save(merged)
+        return true
+    }
+
+    private func saved(_ match: Match) -> Bool {
+        guard (try? matches.save(match)) != nil else { return false }
+        reload()
+        onChange?()
+        return true
+    }
+
+    /// Quick starts folded into a fixture: quick start id → fixture id, so a
+    /// late copy, and the route filed under the quick start's id, find it.
+    private var folded: [UUID: UUID] = PhoneStore.foldedMap() {
+        didSet {
+            UserDefaults.standard.set(Dictionary(uniqueKeysWithValues: folded.map { ($0.uuidString, $1.uuidString) }),
+                                      forKey: "ref.foldedQuickStarts")
+        }
+    }
+
+    private static func foldedMap() -> [UUID: UUID] {
+        let raw = UserDefaults.standard.dictionary(forKey: "ref.foldedQuickStarts") as? [String: String] ?? [:]
+        return Dictionary(uniqueKeysWithValues: raw.compactMap { key, value in
+            UUID(uuidString: key).flatMap { k in UUID(uuidString: value).map { (k, $0) } }
+        })
     }
 
     func delete(_ match: Match) {
@@ -348,38 +394,45 @@ extension PhoneStore {
             Player(name: "Player 8", number: 8), Player(name: "Player 29", number: 29),
         ]))
 
-        let now = Date()
-        /// Whole seconds, so an older type-checker cannot read the arithmetic
-        /// as an Int (the Swift 6.0 trap from the kit's tests).
-        func at(_ secondsAgo: Int) -> Date {
-            now.addingTimeInterval(TimeInterval(-secondsAgo))
+        // Fixed clock times, not "now": the render job runs at any hour, and
+        // the App Store screenshots showed 12:43 AM kick-offs. The played
+        // match kicked off two days ago at 10:00; the next one is in two days.
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        /// Whole minutes after a day's midnight, `days` from today.
+        func at(day days: Int, _ minutes: Int) -> Date {
+            (cal.date(byAdding: .day, value: days, to: today) ?? today)
+                .addingTimeInterval(TimeInterval(minutes * 60))
         }
+        let kick = at(day: -2, 10 * 60)
+        func minute(_ m: Int) -> Date { kick.addingTimeInterval(TimeInterval(m * 60)) }
 
         var played = Match(setup: MatchSetup(
             home: home, away: away, competition: "Friendly",
-            kickOff: at(2 * 86_400),
-            squads: store.squads), createdAt: at(2 * 86_400))
+            kickOff: kick,
+            squads: store.squads), createdAt: kick)
         played.events = EventLog(events: [
-            MatchEvent(at: at(2 * 86_400 + 40 * 60), kind: .kickOff(half: 1)),
-            MatchEvent(at: at(2 * 86_400 + 28 * 60), kind: .goal(side: .home, scorer: PlayerRef(number: 9))),
-            MatchEvent(at: at(2 * 86_400 + 10 * 60), kind: .yellowCard(side: .away, player: PlayerRef(number: 8))),
-            MatchEvent(at: at(2 * 86_400 + 2 * 60), kind: .addedTime(half: 1, seconds: 120)),
-            MatchEvent(at: at(2 * 86_400 + 2 * 60), kind: .halfEnd(half: 1)),
-            MatchEvent(at: at(1 * 86_400 + 50 * 60), kind: .kickOff(half: 2)),
-            MatchEvent(at: at(1 * 86_400 + 20 * 60), kind: .goal(side: .away, scorer: PlayerRef(number: 7))),
-            MatchEvent(at: at(1 * 86_400), kind: .fullTime),
+            MatchEvent(at: minute(0), kind: .kickOff(half: 1)),
+            MatchEvent(at: minute(12), kind: .goal(side: .home, scorer: PlayerRef(number: 9))),
+            MatchEvent(at: minute(30), kind: .yellowCard(side: .away, player: PlayerRef(number: 8))),
+            MatchEvent(at: minute(45), kind: .addedTime(half: 1, seconds: 120)),
+            MatchEvent(at: minute(47), kind: .halfEnd(half: 1)),
+            MatchEvent(at: minute(62), kind: .kickOff(half: 2)),
+            MatchEvent(at: minute(93), kind: .goal(side: .away, scorer: PlayerRef(number: 7))),
+            MatchEvent(at: minute(108), kind: .fullTime),
         ])
         played.metrics = MatchMetrics(distanceMeters: 9_120, averageHeartRate: 134,
                                       maxHeartRate: 181, activeCalories: 812, steps: 11_406)
         let field = PitchFrame(latitude: 33.85, longitude: -118.38, bearing: 30, marked: true)
         played.pitch = field
         store.save(played)
-        // A plausible diagonal: corner to corner with the play, drifting.
-        let kick = at(2 * 86_400 + 40 * 60)
+        // A plausible diagonal: corner to corner with the play, drifting —
+        // both halves, a fix every 2 s.
         var points: [RoutePoint] = []
-        for i in 0..<2_700 {
+        for i in 0..<(108 * 30) {
             let t = Double(i) * 2
-            let along = sin(t / 140) * 0.8 + sin(t / 37) * 0.15
+            if t > 47 * 60, t < 62 * 60 { continue }   // half-time
+            let along = sin(t / 70) * 0.8 + sin(t / 15) * 0.15
             let x = along * 42, y = along * 22 + sin(t / 23) * 6
             points.append(field.point(x: x, y: y, at: kick.addingTimeInterval(t)))
         }
@@ -387,9 +440,10 @@ extension PhoneStore {
                         in: dir.appendingPathComponent("routes"))
 
         let upcoming = store.createMatch(home: away, away: home, competition: "League — Saturday",
-                                         kickOff: now.addingTimeInterval(2 * 86_400), clock: .adult)
+                                         kickOff: at(day: 2, 9 * 60 + 30), clock: .adult,
+                                         cr: "Sam Rivera", ar1: "Alex Chen", ar2: "Jordan Lee")
         var assigned = upcoming
-        assigned.setup.myRole = .ar
+        assigned.setup.myRole = .ar1
         store.save(assigned)
         return store
     }

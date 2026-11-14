@@ -23,7 +23,7 @@ tools/ci/   due.mjs (the weekly TestFlight expiry check) and the ASC helpers,
 tools/make-icon.py   draws the app icon into both asset catalogs
 ```
 
-## What works today (2026-10-04)
+## What works today (first written 2026-10-04; see HANDOFF.md for the current state)
 
 - **The whole app compiles and its shape is asserted, in CI.** Watch UI and
   phone UI (Swift 6 strict concurrency), the watch↔phone link, and the
@@ -31,7 +31,7 @@ tools/make-icon.py   draws the app icon into both asset catalogs
   companion watch app different from Rowing's and Swim's watch-only ones —
   the watch app inside `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier`
   pointing home, no `WKWatchOnly`, matching `CFBundleVersion`s.
-- **The engine is real and tested** — 54 tests, run on this box on every
+- **The engine is real and tested** — 160 tests, run on this box on every
   push and by the `kit` job:
 
       swift test --package-path RefKit
@@ -49,13 +49,10 @@ tools/make-icon.py   draws the app icon into both asset catalogs
   down is a device question, answered at the first real match.
 - **The `render` job screenshots both apps** in simulators, so the screens
   can be reviewed from a phone (the artifacts of a `render` run).
-- **On TestFlight**: build 22, uploaded by the `ship` job on 2026-10-04 and
-  processed VALID by Apple — the companion pairing is accepted. App Store
-  name "Brisaloca RefTime", "RefTime" under the icon, iPhone only. No match
-  has been refereed with it yet: the first real match is P5's acceptance
-  test.
+- **On TestFlight, and submitted to the App Store** (1.0, 2026-11-13, US
+  only). App Store name "Brisaloca RefTime", "RefTime" under the icon.
+  Refereed with on real matches since November 2026.
 
 ## What is next
 
-P5 in `SCOPE.md`: install from TestFlight and referee a real match — after
-which P6 is whatever that match teaches.
+App Review for 1.0, then 1.0.1 — `HANDOFF.md` has the next action.

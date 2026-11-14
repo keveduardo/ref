@@ -19,7 +19,9 @@ import WatchConnectivity
     /// ! `@MainActor`, not a bare closure: the app assigns this from a
     /// main-actor context, and in Swift 6 a non-Sendable closure keeps that
     /// isolation — handing it to a non-isolated parameter is an error.
-    private let onFinished: (@MainActor (Match) -> Void)?
+    /// True once the match is safely on the shelf — false keeps the payload
+    /// in `undelivered/`, to be tried again at the next launch.
+    private let onFinished: (@MainActor (Match) -> Bool)?
     private let onRoute: (@MainActor () -> Void)?
     private let onStarted: (@MainActor (MatchSetup) -> Void)?
     private let onCancelled: (@MainActor (UUID) -> Void)?
@@ -39,7 +41,7 @@ import WatchConnectivity
         return WCSession.default.isPaired ? "Connected" : "No watch paired"
     }
 
-    init(onFinished: (@MainActor (Match) -> Void)? = nil,
+    init(onFinished: (@MainActor (Match) -> Bool)? = nil,
          onRoute: (@MainActor () -> Void)? = nil,
          onStarted: (@MainActor (MatchSetup) -> Void)? = nil,
          onCancelled: (@MainActor (UUID) -> Void)? = nil,
@@ -122,7 +124,11 @@ import WatchConnectivity
             keepUndelivered(matchData)
             return
         }
-        onFinished?(payload.match)
+        // Read but not saved (a full disk, say): the transfer is spent all
+        // the same, so it is kept like one this build could not read.
+        if onFinished?(payload.match) == false {
+            keepUndelivered(matchData)
+        }
     }
 
     private static var undeliveredDirectory: URL {
@@ -143,7 +149,7 @@ import WatchConnectivity
             guard let data = try? Data(contentsOf: url),
                   let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self, from: data)
             else { continue }
-            onFinished?(payload.match)
+            guard onFinished?(payload.match) != false else { continue }
             try? fm.removeItem(at: url)
         }
     }
