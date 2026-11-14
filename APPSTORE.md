@@ -2,7 +2,8 @@
 
 **Submitted for review 2026-11-13: version 1.0, build 156** — public, free,
 175 countries, released automatically on approval. Regulated medical device:
-declared not one. EU trader status (DSA) not set up — see HANDOFF.
+declared not one. EU trader status (DSA) deliberately not set up (Kevin, 2026-11-13: "US only
+is fine, skip the EU") — so no EU storefronts; that is intended.
 
 Drafted 2026-10-04, in the shape of `Apps/Swim/APPSTORE.md` in brisaloca-ios.
 **The app record exists** (created 2026-10-04 as "Brisaloca RefTime"), but
