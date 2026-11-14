@@ -14,9 +14,6 @@ struct RefScreen: View {
     let schedule: ScheduleSync
 
     @Environment(\.scenePhase) private var scenePhase
-    @State private var linkMessage: String?
-    /// A schedule link opened from outside, waiting for the referee's yes.
-    @State private var pendingLink: CGIScheduleLink?
     @State private var tab = HomeTab.matches
     @State private var addingMatch = false
 
@@ -68,43 +65,7 @@ struct RefScreen: View {
             Task { await account.sync() }
             Task { await schedule.checkIfDue(store) }
         }
-        // reftime://schedule?link=<the My Schedule address>, tapped once,
-        // connects the schedule (Kevin, 2026-11-06: "auto add the link").
-        .onOpenURL { url in
-            guard url.scheme == "reftime", url.host == "schedule",
-                  let given = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-                      .queryItems?.first(where: { $0.name == "link" })?.value else { return }
-            // Any page or app can open this address, so it asks first
-            // (Fable audit, 2026-11-13) — and a signed-in account is not
-            // replaced by a link at all.
-            guard let parsed = CGIScheduleLink(given) else {
-                linkMessage = "That link isn't a CGI Sports referee schedule."
-                return
-            }
-            if schedule.userid != nil {
-                linkMessage = "You're signed in to CGI Sports already. To use a different schedule, sign out in Settings first."
-            } else {
-                pendingLink = parsed
-            }
-        }
-        .alert("Connect this schedule?", isPresented: Binding(get: { pendingLink != nil },
-                                                              set: { if !$0 { pendingLink = nil } }),
-               presenting: pendingLink) { parsed in
-            Button("Connect") {
-                if schedule.connect(parsed.scheduleURL.absoluteString) {
-                    Task { await schedule.check(store) }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { parsed in
-            Text("RefTime will read the CGI Sports referee schedule for \(parsed.displayName) and add its games to Matches.")
-        }
-        .alert("Referee schedule", isPresented: Binding(get: { linkMessage != nil },
-                                                        set: { if !$0 { linkMessage = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(linkMessage ?? "")
-        }
+        .modifier(ScheduleLinkHandler(store: store, schedule: schedule))
         .onChange(of: quarterBreak) { _, _ in pushAssignment() }
         .onChange(of: quarterBreakMinutes) { _, _ in pushAssignment() }
     }
@@ -121,6 +82,58 @@ struct RefScreen: View {
                                                     addedTimeButton: addedTimeButton,
                                                     quarterBreak: quarterBreak
                                                         ? QuarterBreak(breakMinutes: quarterBreakMinutes) : nil))
+    }
+}
+
+/// reftime://schedule?link=<the My Schedule address>, tapped once, connects
+/// the schedule (Kevin, 2026-11-06: "auto add the link"). Its own modifier so
+/// RefScreen's body stays small enough for the type-checker.
+private struct ScheduleLinkHandler: ViewModifier {
+    let store: PhoneStore
+    let schedule: ScheduleSync
+    @State private var linkMessage: String?
+    /// A schedule link opened from outside, waiting for the referee's yes.
+    @State private var pendingLink: CGIScheduleLink?
+
+    func body(content: Content) -> some View {
+        content
+            // reftime://schedule?link=<the My Schedule address>, tapped once,
+            // connects the schedule (Kevin, 2026-11-06: "auto add the link").
+            .onOpenURL { url in
+                guard url.scheme == "reftime", url.host == "schedule",
+                      let given = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                          .queryItems?.first(where: { $0.name == "link" })?.value else { return }
+                // Any page or app can open this address, so it asks first
+                // (Fable audit, 2026-11-13) — and a signed-in account is not
+                // replaced by a link at all.
+                guard let parsed = CGIScheduleLink(given) else {
+                    linkMessage = "That link isn't a CGI Sports referee schedule."
+                    return
+                }
+                if schedule.userid != nil {
+                    linkMessage = "You're signed in to CGI Sports already. To use a different schedule, sign out in Settings first."
+                } else {
+                    pendingLink = parsed
+                }
+            }
+            .alert("Connect this schedule?", isPresented: Binding(get: { pendingLink != nil },
+                                                                  set: { if !$0 { pendingLink = nil } }),
+                   presenting: pendingLink) { parsed in
+                Button("Connect") {
+                    if schedule.connect(parsed.scheduleURL.absoluteString) {
+                        Task { await schedule.check(store) }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { parsed in
+                Text("RefTime will read the CGI Sports referee schedule for \(parsed.displayName) and add its games to Matches.")
+            }
+            .alert("Referee schedule", isPresented: Binding(get: { linkMessage != nil },
+                                                            set: { if !$0 { linkMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(linkMessage ?? "")
+            }
     }
 }
 

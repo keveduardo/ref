@@ -75,7 +75,7 @@ enum RouteFiles {
     /// Which matches the watch has, and which of them it made (RefKit's
     /// `WatchHandoff`), remembered across launches.
     private var handoff = WatchHandoff(
-        onWatch: Self.ids("ref.startedOnWatch"), madeOnWatch: Self.ids("ref.madeOnWatch")) {
+        onWatch: PhoneStore.ids("ref.startedOnWatch"), madeOnWatch: PhoneStore.ids("ref.madeOnWatch")) {
         didSet {
             UserDefaults.standard.set(handoff.onWatch.map(\.uuidString), forKey: "ref.startedOnWatch")
             UserDefaults.standard.set(handoff.madeOnWatch.map(\.uuidString), forKey: "ref.madeOnWatch")
