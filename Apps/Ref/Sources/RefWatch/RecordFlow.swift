@@ -22,6 +22,7 @@ struct RecordFlow: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var step: Step = .menu
+    @State private var confirmingUndoKickOff = false
 
     enum RecordKind: String, CaseIterable {
         case goal, yellow, red, substitution
@@ -65,6 +66,13 @@ struct RecordFlow: View {
     var body: some View {
         NavigationStack {
             content
+        }
+        .confirmationDialog("Undo the kick-off?", isPresented: $confirmingUndoKickOff) {
+            Button("Undo kick-off", role: .destructive) {
+                Haptics.play(.stop)
+                session.undoKickOff()
+                finish()
+            }
         }
         .onAppear { if lateGoal, step == .menu { step = .team(.goal) } }
     }
@@ -120,6 +128,21 @@ struct RecordFlow: View {
                             Image(systemName: "arrow.uturn.backward")
                             Text("Undo")
                                 .font(.footnote)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                } else if session.canUndoKickOff {
+                    // Kicked off by mistake, nothing else recorded: back to
+                    // waiting for kick-off rather than into the results.
+                    Button {
+                        confirmingUndoKickOff = true
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: "arrow.uturn.backward")
+                            Text("Undo kick-off")
+                                .font(.footnote)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                         }
                         .frame(maxWidth: .infinity)
                     }
