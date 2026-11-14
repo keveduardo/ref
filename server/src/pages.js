@@ -41,10 +41,10 @@ to our server, sold, shared or used for advertising — including when you sign
 in.</p>
 
 <h2>If you sign in</h2>
-<p>Signing in (with Apple or Google) is optional and only backs up your
+<p>Signing in with Apple is optional and only backs up your
 matches and teams so they survive a new phone. We then store:</p>
 <ul>
-  <li>the account identifier Apple or Google gives us, and the email address
+  <li>the account identifier Apple gives us, and the email address
       if you chose to share it;</li>
   <li>your matches (teams, kick-off, timeline of goals, cards and
       substitutions, and the referee crew's names) and your team sheets
