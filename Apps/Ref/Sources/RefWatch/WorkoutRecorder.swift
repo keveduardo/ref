@@ -15,6 +15,11 @@ import RefKit
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
+    /// The previous match's workout, still saving — the next kick-off waits
+    /// for it (bounded), so two sessions are never live at once.
+    private var finishing: Task<HKWorkout?, Never>?
+    /// Resumed when an ending session reports `.stopped`.
+    private var stopWaiters: [ObjectIdentifier: ResumeOnce<Void>] = [:]
 
     private(set) var heartRate: Double?
     /// Whether the session is running — and with it, the app held on screen:
@@ -41,8 +46,19 @@ import RefKit
         _ = try? await store.requestAuthorization(toShare: share, read: read)
     }
 
-    /// Kick-off. The session runs for the whole match.
+    /// Kick-off. The session runs for the whole match. When the previous
+    /// match's workout is still saving (back-to-back games), it waits for
+    /// that first — at most the 35 s `finish` allows — and starts from the
+    /// real kick-off time.
     func start(at date: Date) {
+        guard let pending = finishing else { begin(at: date); return }
+        Task {
+            _ = await pending.value
+            begin(at: date)
+        }
+    }
+
+    private func begin(at date: Date) {
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .soccer
         configuration.locationType = .outdoor
@@ -101,39 +117,68 @@ import RefKit
     /// HealthKit has no distance.
     func finish(route: [RoutePoint] = []) async -> MatchMetrics? {
         guard let session, let builder else { return nil }
-        // Let go of this workout now, not after the save: the next game may
-        // kick off while it is still saving, and its new session must not be
-        // cleared when this one finishes (back-to-back games, 2026-11-13).
+        // No longer this recorder's current workout: callbacks from it are
+        // ignored from here on, and the next kick-off may begin — after
+        // `finishing`. The locals keep both alive until the save answers.
         self.session = nil
         self.builder = nil
         heartRate = nil
         activeCalories = nil
-        session.end()
         isRunning = false
         let end = Date()
+        // ! Not Sendable; only ever touched on this actor, inside the task.
+        nonisolated(unsafe) let session = session
+        nonisolated(unsafe) let builder = builder
 
-        // ! `nonisolated(unsafe)` because the SDK's completion handlers are
-        // `@Sendable` and the builder is not. It is used from this actor only,
-        // and only to finish a workout that has already been ended.
-        nonisolated(unsafe) let finisher = builder
-        // Never more than 30 s: a save that does not answer costs the
-        // report its heart rate, never the match.
-        let once = ResumeOnce<HKWorkout?>()
-        let finished: HKWorkout? = await withCheckedContinuation { continuation in
-            once.set(continuation)
-            finisher.endCollection(withEnd: end) { _, _ in
-                finisher.finishWorkout { workout, _ in
-                    once.resume(workout)
+        let work = Task { @MainActor () -> HKWorkout? in
+            // Apple's documented order: stop, wait for `.stopped`, end the
+            // collection, finish the workout, and only then end the session.
+            // The session keeps the app running in the background until it
+            // is ended — so a wrist dropped at full time cannot pause the
+            // save, and the timeouts below run in real time.
+            let stopped = ResumeOnce<Void>()
+            self.stopWaiters[ObjectIdentifier(session)] = stopped
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                stopped.set(continuation)
+                session.stopActivity(with: end)
+                Task {
+                    try? await Task.sleep(for: .seconds(5))
+                    stopped.resume(())
                 }
             }
-            Task {
-                try? await Task.sleep(for: .seconds(30))
-                once.resume(nil)
+            self.stopWaiters[ObjectIdentifier(session)] = nil
+
+            // ! `nonisolated(unsafe)` because the SDK's completion handlers
+            // are `@Sendable` and the builder is not. It is used from this
+            // actor only, to finish a workout that has already been stopped.
+            nonisolated(unsafe) let finisher = builder
+            // Never more than 30 s: a save that does not answer costs the
+            // report its heart rate, never the match.
+            let once = ResumeOnce<HKWorkout?>()
+            let finished: HKWorkout? = await withCheckedContinuation { continuation in
+                once.set(continuation)
+                finisher.endCollection(withEnd: end) { _, _ in
+                    finisher.finishWorkout { workout, _ in
+                        once.resume(workout)
+                    }
+                }
+                Task {
+                    try? await Task.sleep(for: .seconds(30))
+                    once.resume(nil)
+                }
             }
+            session.end()
+            return finished
         }
+        finishing = work
+        let finished = await work.value
+        if finishing == work { finishing = nil }
 
         guard let workout = finished else { return nil }
-        await saveRoute(route, to: workout)
+        // The map in Fitness: saved on its own, never waited for — a route
+        // save that does not answer costs the map, not the report.
+        nonisolated(unsafe) let saved = workout
+        Task { await self.saveRoute(route, to: saved) }
         let stats = workout.statistics(for: Self.heartRateType)
         return MatchMetrics(
             distanceMeters: workout.statistics(for: Self.distanceType)?
@@ -179,13 +224,25 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
                                     didChangeTo toState: HKWorkoutSessionState,
                                     from fromState: HKWorkoutSessionState,
                                     date: Date) {
-        let running = toState == .running
-        Task { @MainActor in self.isRunning = running }
+        let running = toState == .running, stopped = toState == .stopped
+        let id = ObjectIdentifier(workoutSession)
+        Task { @MainActor in
+            if stopped { self.stopWaiters[id]?.resume(()) }
+            // Only the current session speaks for `isRunning`: a late word
+            // from the last match's must not show "Workout off" in this one.
+            guard self.session.map(ObjectIdentifier.init) == id else { return }
+            self.isRunning = running
+        }
     }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
                                     didFailWithError error: any Error) {
-        Task { @MainActor in self.isRunning = false }
+        let id = ObjectIdentifier(workoutSession)
+        Task { @MainActor in
+            self.stopWaiters[id]?.resume(())
+            guard self.session.map(ObjectIdentifier.init) == id else { return }
+            self.isRunning = false
+        }
     }
 }
 
@@ -198,7 +255,11 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
         let calories = workoutBuilder.statistics(for: HKQuantityType(.activeEnergyBurned))?
             .sumQuantity()?
             .doubleValue(for: .kilocalorie())
+        let id = ObjectIdentifier(workoutBuilder)
         Task { @MainActor in
+            // The last match's builder, still collecting as it saves, must
+            // not put its heart rate on this match's screen.
+            guard self.builder.map(ObjectIdentifier.init) == id else { return }
             if let heartRate { self.heartRate = heartRate }
             if let calories { self.activeCalories = calories }
         }

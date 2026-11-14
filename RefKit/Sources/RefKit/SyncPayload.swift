@@ -21,12 +21,19 @@ public enum SyncPayload {
         /// When the phone made this list — what the watch shows as "updated",
         /// so a stale list reads as stale. Optional: older phones sent none.
         public var sentAt: Date?
+        /// Every match the phone has that is not finished — the ones it is
+        /// still waiting to hear the result of, retired fixtures included.
+        /// A watch holding one of them finished sends it again (`toResend`).
+        /// Optional: older phones sent none.
+        public var awaitingResults: [UUID]?
 
-        public init(setups: [MatchSetup], defaults: MatchDefaults = .standard, sentAt: Date? = Date()) {
+        public init(setups: [MatchSetup], defaults: MatchDefaults = .standard, sentAt: Date? = Date(),
+                    awaitingResults: [UUID]? = nil) {
             self.version = SyncPayload.version
             self.setups = setups
             self.defaults = defaults
             self.sentAt = sentAt
+            self.awaitingResults = awaitingResults
         }
     }
 

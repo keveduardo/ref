@@ -38,12 +38,17 @@ import WatchConnectivity
     /// Told of every assignment from the phone — the session takes the
     /// phone's edits to the match it is running from it.
     @ObservationIgnored var onAssignment: (@MainActor ([MatchSetup]) -> Void)?
+    /// The matches the phone is still waiting to hear the result of.
+    private(set) var awaitingResults: Set<UUID> = []
+    /// Told whenever that list arrives, so finished matches it names are sent again.
+    @ObservationIgnored var onAwaiting: (@MainActor (Set<UUID>) -> Void)?
 
     override init() {
         super.init()
         if let saved = Self.loadAssignment() {
             assignments = saved.setups
             defaults = saved.defaults
+            awaitingResults = Set(saved.awaitingResults ?? [])
         }
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
@@ -176,6 +181,8 @@ import WatchConnectivity
         lastUpdated = assignment.sentAt ?? Date()
         Self.saveAssignment(assignment)
         onAssignment?(assignment.setups)
+        awaitingResults = Set(assignment.awaitingResults ?? [])
+        onAwaiting?(awaitingResults)
     }
 
     // MARK: - Where the assignment lives on disk

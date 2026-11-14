@@ -47,3 +47,33 @@ public struct WatchHandoff: Equatable, Sendable {
         madeOnWatch.remove(id)
     }
 }
+
+/// The watch's side of "did the phone get it?" (2026-11-14). Nothing on the
+/// watch can see whether a finished match reached the phone — so the phone
+/// says which matches it is still waiting on, and the watch sends again any
+/// of those its shelf holds finished. A match deleted on the phone is not on
+/// that list, so it is never brought back; one the phone has is not either.
+public enum WatchResend {
+    public static func toResend(shelf: [Match], awaiting: Set<UUID>, inHand: UUID?,
+                                at now: Date = Date()) -> [Match] {
+        shelf.filter { match in
+            awaiting.contains(match.id) && match.id != inHand
+                && match.clock.phase(at: now) == .fullTime
+        }
+    }
+}
+
+extension MatchStore {
+    /// Saves a record onto the shelf, keeping any event the shelf's copy
+    /// already has — a late goal saved there while this copy was on its way
+    /// is not overwritten by it.
+    public func saveUnion(_ match: Match) throws {
+        var merged = match
+        if let shelved = try? load(id: match.id) {
+            merged.events.append(contentsOf: shelved.events.recorded)
+            merged.metrics = match.metrics ?? shelved.metrics
+            merged.pitch = match.pitch ?? shelved.pitch
+        }
+        try save(merged)
+    }
+}

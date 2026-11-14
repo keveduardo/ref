@@ -41,6 +41,9 @@ import RefKit
         // The phone's edits to the match in hand — names and colours any
         // time, the clock only before kick-off.
         link.onAssignment = { [weak self] setups in self?.applyPhoneEdits(setups) }
+        // A finished match the phone never got — sent again (2026-11-14).
+        link.onAwaiting = { [weak self] ids in self?.resendAwaited(ids) }
+        resendAwaited(link.awaitingResults)
         link.reportCurrent(match?.isFinished == false ? match?.id : nil)
         guard recovers, let match else { return }
         switch match.clock.phase(at: Date()) {
@@ -141,6 +144,21 @@ import RefKit
         link.sendEdited(current.setup)
     }
 
+    /// Sent again this launch already — once is enough; the next launch
+    /// tries again if the phone still says it is waiting.
+    private var resent: Set<UUID> = []
+
+    /// The phone is still waiting on these: any the shelf holds finished
+    /// never got across, and go again (RefKit's `WatchResend`).
+    private func resendAwaited(_ awaiting: Set<UUID>) {
+        let shelf = (try? store.all()) ?? []
+        for finished in WatchResend.toResend(shelf: shelf, awaiting: awaiting, inHand: match?.id)
+        where !resent.contains(finished.id) {
+            resent.insert(finished.id)
+            link.send(finished)
+        }
+    }
+
     private func applyPhoneEdits(_ setups: [MatchSetup]) {
         guard var current = match, let edited = setups.first(where: { $0.id == current.id }) else { return }
         let kickedOff = current.clock.phase(at: Date()) != .notStarted
@@ -165,9 +183,12 @@ import RefKit
         ringTask = nil
         ringing = nil
         // Put back before kick-off (Choose another match): the phone should
-        // stop listing it as on the watch. After full time it is a record.
+        // stop listing it as on the watch. After full time it is a record —
+        // made sure of here, before the in-progress file goes.
         if let current = match, current.clock.phase(at: Date()) == .notStarted {
             link.sendCancelled(current.id)
+        } else if let current = match, current.isFinished {
+            try? store.saveUnion(current)
         }
         match = nil
         try? store.clearCurrent()
@@ -204,25 +225,40 @@ import RefKit
 
     func fullTime() {
         append(.fullTime)
-        Task { await finishMatch() }
+        // The record onto the shelf and on its way to the phone now, in this
+        // call — before anything waits on Health, and before "Done" can
+        // clear the in-progress file (the 6 PM game, 2026-11-13).
+        if let finished = match {
+            playedIDs.insert(finished.id)
+            try? store.saveUnion(finished)
+            link.send(finished)
+        }
+        Task { await finishMatch(shelved: true) }
     }
 
     /// Full time, all the way through: the workout is saved to Health, the
     /// distance is summed, both are frozen into the record, and the record
     /// goes to the phone's shelf — here, and over the link when it can.
-    private func finishMatch() async {
+    /// `shelved` is true from `fullTime()`, which has already saved and sent
+    /// the record; the crash-recovery path in `init` has not.
+    private func finishMatch(shelved: Bool = false) async {
         guard var current = match else { return }
         playedIDs.insert(current.id)
-        // ! The record first, before anything waits on Health: saved to the
-        // shelf and queued for the phone the moment full time is blown. It
-        // used to wait for the workout to save — and "Done", then the next
-        // game's kick-off, could leave it only in memory. Kevin's 6 PM game
-        // on 2026-11-13 was lost that way, the 7 PM one right behind it.
-        // The phone merges the second send (with the numbers) into this one.
-        try? store.save(current)
-        link.send(current)
+        // ! The record before anything waits on Health. It used to wait for
+        // the workout to save, and "Done" then the next game's kick-off could
+        // leave it only in memory — most likely how the 6 PM game on
+        // 2026-11-13 was lost (Fable review: probable, not proven). The phone
+        // merges the second send, with the numbers, into this one.
+        if !shelved {
+            try? store.saveUnion(current)
+            link.send(current)
+        }
         let gps = location.stop()
         let route = SyncPayload.Route.thinned(GeoDistance.filtered(location.points))
+        // The route to the phone before the wait on Health, like the record.
+        if !route.isEmpty {
+            link.send(SyncPayload.Route(matchID: current.id, points: route))
+        }
         // The route goes into the Health workout too, so Fitness shows the map.
         var metrics = await workout.finish(route: route) ?? MatchMetrics()
         // HealthKit's distance (GPS plus stride calibration) when it has one;
@@ -242,7 +278,9 @@ import RefKit
             current.events.append(contentsOf: latest.events.recorded)
             match = current
         }
-        let saved = (try? store.save(current)) != nil
+        // Union with the shelf: a late goal saved there meanwhile stays.
+        let saved = (try? store.saveUnion(current)) != nil
+        if let shelved = try? store.load(id: current.id) { current = shelved }
         // The next match may already be under way — "Done", then another
         // match, while the workout was saving. Its file and its report to
         // the phone are left alone.
@@ -250,9 +288,6 @@ import RefKit
         if saved && !nextStarted { try? store.clearCurrent() }
         link.send(current)
         if !nextStarted { link.reportCurrent(nil) }
-        if !route.isEmpty {
-            link.send(SyncPayload.Route(matchID: current.id, points: route))
-        }
     }
 
     // MARK: - The field

@@ -81,7 +81,10 @@ struct RefScreen: View {
                                                     halfTimeMinutes: halfTimeMinutes,
                                                     addedTimeButton: addedTimeButton,
                                                     quarterBreak: quarterBreak
-                                                        ? QuarterBreak(breakMinutes: quarterBreakMinutes) : nil))
+                                                        ? QuarterBreak(breakMinutes: quarterBreakMinutes) : nil),
+                            // Every match still without a result — a finished one the
+                            // watch holds but never got across is sent again.
+                            awaitingResults: store.all.filter { !$0.isFinished }.map(\.id))
     }
 }
 

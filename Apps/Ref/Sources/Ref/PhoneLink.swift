@@ -68,9 +68,10 @@ import WatchConnectivity
     /// an instant update; and the watch asks for the latest whenever its app
     /// opens (`didReceiveMessage` below answers from `latest`). The outcome is
     /// recorded, not swallowed, and shown in Settings › Watch.
-    func sendAssignment(_ setups: [MatchSetup], defaults: MatchDefaults) {
-        guard let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups,
-                                                                        defaults: defaults)) else { return }
+    func sendAssignment(_ setups: [MatchSetup], defaults: MatchDefaults, awaitingResults: [UUID] = []) {
+        guard let data = try? SyncPayload.encode(SyncPayload.Assignment(setups: setups, defaults: defaults,
+                                                                        awaitingResults: awaitingResults))
+        else { return }
         Self.latest.set(data)
         deliver(data, count: setups.count)
     }
