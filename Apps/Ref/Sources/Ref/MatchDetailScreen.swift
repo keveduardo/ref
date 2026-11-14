@@ -181,8 +181,10 @@ struct MatchDetailScreen: View {
     @ViewBuilder
     private var movementSection: some View {
         if let route = store.route(for: match.id), !route.isEmpty,
-           let frame = PitchFrame.resolve(marked: match.pitch, route: route) {
+           let frame = PitchFrame.resolve(marked: match.pitch, route: route,
+                                          role: match.setup.myRole, size: match.setup.pitchSize) {
             let size = match.setup.pitchSize
+            let assistant = match.setup.myRole?.isAssistant == true
             let report = MovementReport.make(points: route, frame: frame, size: size, clock: match.clock)
             Section {
                 PitchHeatmap(report: report, size: size)
@@ -195,13 +197,20 @@ struct MatchDetailScreen: View {
                 LabeledContent("Sprints (\(unit.sprintThreshold)+)", value: "\(report.sprints)")
                 LabeledContent("Thirds", value: report.thirds
                     .map { "\(Int(($0 * 100).rounded()))%" }.joined(separator: " · "))
-                LabeledContent("On the diagonal", value: "\(Int((report.onDiagonal * 100).rounded()))%")
+                // An assistant's match is the touchline, not the diagonal.
+                if assistant {
+                    LabeledContent("On the touchline", value: "\(Int((report.onTouchline * 100).rounded()))%")
+                } else {
+                    LabeledContent("On the diagonal", value: "\(Int((report.onDiagonal * 100).rounded()))%")
+                }
             } header: {
                 Text("Movement")
             } footer: {
                 Text(frame.marked
                      ? "Field marked on the watch; the goal you faced is on the right. Thirds read left to right."
-                     : "Field worked out from your running. Tap Mark field on the watch before kick-off for an exact map.")
+                     : assistant
+                        ? "Field worked out from your running as an assistant: your touchline along the bottom, your half on the right. Tap Mark field on the watch at the centre spot for an exact map."
+                        : "Field worked out from your running. Tap Mark field on the watch before kick-off for an exact map.")
             }
         }
     }

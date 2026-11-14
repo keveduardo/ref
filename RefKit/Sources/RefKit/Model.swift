@@ -103,6 +103,9 @@ public enum RefereeRole: String, Codable, Sendable, Equatable, CaseIterable {
         case .fourth: "Fourth official"
         }
     }
+
+    /// AR, AR1 or AR2: on a touchline, not the diagonal.
+    public var isAssistant: Bool { self == .ar || self == .ar1 || self == .ar2 }
 }
 
 /// A match as the phone sets it up and sends to the watch.

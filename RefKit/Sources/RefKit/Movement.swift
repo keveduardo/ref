@@ -103,12 +103,43 @@ public struct PitchFrame: Codable, Sendable, Equatable {
 }
 
 extension PitchFrame {
+    /// The frame worked out from the route, for the referee's position
+    /// (Kevin, 2026-11-13: "understand the expected movement of an AR versus
+    /// CR"). A centre referee works the diagonal, so their movement is
+    /// centred on the centre spot. An assistant patrols one touchline, from
+    /// about the halfway line to the goal line: the long axis of their route
+    /// is still the field's, but the field lies beside it — so the run is
+    /// put on a touchline, in one half (both, when they changed ends). Which
+    /// touchline and which half cannot be told from the route alone; the
+    /// picture is the same either way up.
+    public static func inferred(from points: [RoutePoint], role: RefereeRole?,
+                                size: PitchSize) -> PitchFrame? {
+        guard let axis = inferred(from: points) else { return nil }
+        guard role?.isAssistant == true else { return axis }
+        let projected = points.map { axis.project($0) }
+        let xs = projected.map(\.x).sorted(), ys = projected.map(\.y).sorted()
+        // The ends of the run, less the odd stray fix.
+        let lo = xs[Int(Double(xs.count - 1) * 0.03)]
+        let hi = xs[Int(Double(xs.count - 1) * 0.97)]
+        let middle = (lo + hi) / 2
+        // Most of a length covered: both halves (ends changed at half time).
+        let alongShift = hi - lo > size.length * 0.6 ? middle : middle - size.length / 4
+        // The line itself a metre inside the touchline, where it is drawn.
+        let acrossShift = ys[ys.count / 2] + size.width / 2 - 1
+        let centre = axis.point(x: alongShift, y: acrossShift, at: Date())
+        return PitchFrame(latitude: centre.latitude, longitude: centre.longitude,
+                          bearing: axis.bearing, marked: false)
+    }
+
     /// The frame to draw a match in: the one the referee marked, when they
     /// did; their marked centre with the route's direction, when the watch
-    /// had no compass (`marked` false); otherwise the route's own.
-    public static func resolve(marked: PitchFrame?, route: [RoutePoint]) -> PitchFrame? {
+    /// had no compass (`marked` false); otherwise the route's own, placed
+    /// for the referee's position.
+    public static func resolve(marked: PitchFrame?, route: [RoutePoint],
+                               role: RefereeRole? = nil, size: PitchSize = .adult) -> PitchFrame? {
         if let marked, marked.marked { return marked }
-        guard let inferred = inferred(from: GeoDistance.filtered(route)) else { return marked }
+        guard let inferred = inferred(from: GeoDistance.filtered(route), role: role, size: size)
+        else { return marked }
         guard let centre = marked else { return inferred }
         return PitchFrame(latitude: centre.latitude, longitude: centre.longitude,
                           bearing: inferred.bearing, marked: false)
@@ -137,6 +168,9 @@ public struct MovementReport: Codable, Sendable, Equatable {
     /// Share of the time within a band around the nearer of the two
     /// diagonals — how closely the referee kept a diagonal system.
     public var onDiagonal: Double
+    /// Share of the time within 5 m of either touchline, inside or out —
+    /// how an assistant referee's match reads, where the diagonal does not.
+    public var onTouchline: Double = 0
     /// Share of the time more than 5 m outside the field — a sign the frame
     /// is off, or a long walk to a stoppage.
     public var outside: Double
@@ -152,7 +186,7 @@ public struct MovementReport: Codable, Sendable, Equatable {
         var heat = [Double](repeating: 0, count: columns * rows)
         var distance = [Double](repeating: 0, count: max(1, clock.config.halves))
         var thirds = [0.0, 0.0, 0.0]
-        var diagonalTime = 0.0, outsideTime = 0.0, total = 0.0
+        var diagonalTime = 0.0, touchlineTime = 0.0, outsideTime = 0.0, total = 0.0
         var speeds: [(at: Date, speed: Double)] = []
 
         let route = GeoDistance.filtered(points).sorted { $0.at < $1.at }
@@ -185,6 +219,7 @@ public struct MovementReport: Codable, Sendable, Equatable {
             let toFirst = abs(p.x * uy - p.y * ux)
             let toSecond = abs(p.x * uy + p.y * ux)
             if min(toFirst, toSecond) <= band { diagonalTime += dt }
+            if abs(abs(p.y) - halfWidth) <= 5 { touchlineTime += dt }
         }
 
         // Speed smoothed over three readings, so one jittery fix is not a sprint.
@@ -215,6 +250,7 @@ public struct MovementReport: Codable, Sendable, Equatable {
                               sprints: sprints,
                               thirds: thirds.map(share),
                               onDiagonal: share(diagonalTime),
+                              onTouchline: share(touchlineTime),
                               outside: share(outsideTime))
     }
 }
