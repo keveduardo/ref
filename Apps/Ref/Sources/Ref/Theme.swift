@@ -1,19 +1,26 @@
 import RefKit
 import SwiftUI
 
-/// RefTime's look (Kevin's mock-ups, 2026-10-04): deep navy, gold accents,
-/// cards with a fine gold edge, uppercase section titles, a crest over each
-/// screen. Always dark — set once at the root.
+/// RefTime's look. Navy and gold from Kevin's first mock-ups (2026-10-04);
+/// since 2026-11-14 his second: dark slate, a cyan edge that glows, lime for
+/// the score and the assistant's badge. Always dark — set once at the root.
 enum Theme {
-    static let navy = Color(red: 0.055, green: 0.094, blue: 0.157)
-    static let card = Color(red: 0.086, green: 0.137, blue: 0.220)
-    static let gold = Color(red: 0.851, green: 0.706, blue: 0.443)
-    static let goldEdge = Color(red: 0.851, green: 0.706, blue: 0.443).opacity(0.55)
+    /// Behind every screen.
+    static let background = Color(red: 0.118, green: 0.161, blue: 0.188)
+    /// A card's fill, a step lighter than the background.
+    static let card = Color(red: 0.145, green: 0.200, blue: 0.235)
+    /// One game's own box inside a card.
+    static let inset = Color(red: 0.165, green: 0.227, blue: 0.267)
+    /// What is selected, titles' symbols, "vs", HOME/AWAY.
+    static let accent = Color(red: 0.239, green: 0.698, blue: 0.961)
+    /// The score, and the assistant referee's badge.
+    static let lime = Color(red: 0.655, green: 0.933, blue: 0.180)
+    static let edge = accent.opacity(0.6)
     static let ink = Color.white
     static let muted = Color.white.opacity(0.62)
 }
 
-/// A card: navy-blue fill, rounded, a hairline gold edge.
+/// A card: slate fill, rounded, a fine cyan edge with a soft glow.
 struct CardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -21,33 +28,54 @@ struct CardStyle: ViewModifier {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(Theme.goldEdge, lineWidth: 1))
+                .strokeBorder(Theme.edge, lineWidth: 1))
+            .shadow(color: Theme.accent.opacity(0.25), radius: 8)
+    }
+}
+
+/// One game's own box inside a card (the 2026-11-14 mock-up): a lighter
+/// fill and a cyan hairline.
+struct InsetBox: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 8).padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .background(Theme.inset, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Theme.edge.opacity(0.7), lineWidth: 1))
     }
 }
 
 extension View {
     func card() -> some View { modifier(CardStyle()) }
+    func insetBox() -> some View { modifier(InsetBox()) }
 
-    /// The navy behind a whole screen, lists and forms included.
+    /// The slate behind a whole screen, lists and forms included.
     func themedBackground() -> some View {
         scrollContentBackground(.hidden)
-            .background(Theme.navy.ignoresSafeArea())
+            .background(Theme.background.ignoresSafeArea())
     }
 }
 
-/// The crest and title over a screen: "MATCHES", "STATISTICS".
+/// The crest over a screen, and its title when it has one ("STATISTICS").
+/// Matches has none (Kevin, 2026-11-14: the tab already says it).
 struct ScreenHeader: View {
-    let title: String
+    var title: String? = nil
 
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: "shield.lefthalf.filled")
                 .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(Theme.gold, Theme.card)
-            Text(title.uppercased())
-                .font(.system(size: 30, weight: .semibold, design: .serif))
-                .tracking(1.5)
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(LinearGradient(colors: [Theme.accent, Theme.lime],
+                                                startPoint: .topLeading, endPoint: .bottomTrailing),
+                                 Theme.card)
+            if let title {
+                Text(title.uppercased())
+                    .font(.system(size: 28, weight: .heavy, design: .rounded).italic())
+                    .tracking(1)
+                    .foregroundStyle(LinearGradient(colors: [Theme.ink, Theme.lime],
+                                                    startPoint: .leading, endPoint: .trailing))
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
@@ -58,6 +86,7 @@ struct ScreenHeader: View {
 struct SectionTitle: View {
     let symbol: String
     let title: String
+    var tint: Color = Theme.accent
 
     var body: some View {
         Label {
@@ -66,12 +95,12 @@ struct SectionTitle: View {
                 .tracking(0.5)
                 .foregroundStyle(Theme.ink)
         } icon: {
-            Image(systemName: symbol).foregroundStyle(Theme.gold)
+            Image(systemName: symbol).foregroundStyle(tint)
         }
     }
 }
 
-/// A team's shield in its colour, edged in gold.
+/// A team's shield in its colour, lit from above, edged a shade lighter.
 struct Crest: View {
     let color: TeamColor
     var size: CGFloat = 30
@@ -80,17 +109,17 @@ struct Crest: View {
         ZStack {
             Image(systemName: "shield.fill")
                 .resizable().scaledToFit()
-                .foregroundStyle(color.crestFill)
+                .foregroundStyle(color.crestFill.gradient)
             Image(systemName: "shield")
                 .resizable().scaledToFit()
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(Color.white.opacity(0.35))
         }
         .frame(width: size, height: size)
     }
 }
 
 extension TeamColor {
-    /// Fills on navy: black is lifted to charcoal so it still reads.
+    /// Fills on slate: black is lifted to charcoal so it still reads.
     var crestFill: Color {
         switch self {
         case .black: Color(white: 0.16)
@@ -117,17 +146,13 @@ struct RowCard: View {
             let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
             ZStack {
                 shape.fill(Theme.card)
-                shape.strokeBorder(Theme.goldEdge, lineWidth: 1)
+                shape.strokeBorder(Theme.edge, lineWidth: 1)
+                    .shadow(color: Theme.accent.opacity(0.35), radius: 4)
             }
             .frame(width: geometry.size.width, height: geometry.size.height + stretchTop + stretchBottom)
             .offset(y: -stretchTop)
         }
         .clipped()
-        .overlay(alignment: .top) {
-            if position == .middle || position == .last {
-                Rectangle().fill(Theme.goldEdge.opacity(0.6)).frame(height: 0.5).padding(.horizontal, 16)
-            }
-        }
         .padding(.horizontal, 16)
     }
 

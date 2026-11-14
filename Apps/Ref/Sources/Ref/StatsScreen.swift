@@ -36,11 +36,11 @@ struct StatsScreen: View {
                             CardStat(color: .red, title: "Red Cards",
                                      value: stats.redCards, caption: "Sendings-off")
                         }
-                        Divider().overlay(Theme.goldEdge)
+                        Divider().overlay(Theme.edge)
                         HStack {
                             Image(systemName: "rectangle.on.rectangle.angled")
                                 .font(.title2)
-                                .foregroundStyle(Theme.gold)
+                                .foregroundStyle(Theme.accent)
                             Text("Cards per Match")
                                 .font(.headline)
                                 .foregroundStyle(Theme.ink)
@@ -51,7 +51,7 @@ struct StatsScreen: View {
                                     .foregroundStyle(Theme.ink)
                                 // Full at two cards a match — busy for youth soccer.
                                 ProgressView(value: min(stats.cardsPerMatch / 2, 1))
-                                    .tint(Theme.gold)
+                                    .tint(Theme.accent)
                                     .frame(width: 90)
                             }
                         }
@@ -114,13 +114,13 @@ private struct BigStat: View {
         VStack(spacing: 6) {
             Image(systemName: symbol)
                 .font(.title)
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(Theme.accent)
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.ink)
             Text(value)
                 .font(.system(size: 40, weight: .bold, design: .serif))
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(Theme.accent)
                 .lineLimit(1).minimumScaleFactor(0.5)
             Text(caption)
                 .font(.caption)

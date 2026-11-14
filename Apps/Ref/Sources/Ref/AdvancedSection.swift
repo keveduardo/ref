@@ -25,7 +25,7 @@ struct AdvancedToggle: View {
                     Spacer()
                     Image(systemName: "chevron.down")
                         .rotationEffect(.degrees(isOpen ? 180 : 0))
-                        .foregroundStyle(Theme.gold)
+                        .foregroundStyle(Theme.accent)
                 }
                 .contentShape(Rectangle())
             }

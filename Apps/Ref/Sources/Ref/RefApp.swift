@@ -64,7 +64,7 @@ struct RenderDemo: View {
     /// pages shown on their own would otherwise render light.
     var body: some View {
         content
-            .tint(Theme.gold)
+            .tint(Theme.accent)
             .preferredColorScheme(.dark)
     }
 

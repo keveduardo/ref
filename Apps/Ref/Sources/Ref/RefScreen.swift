@@ -48,9 +48,9 @@ struct RefScreen: View {
         }
         // The look (Theme.swift): always dark, gold for what is selected,
         // a navy tab bar.
-        .tint(Theme.gold)
+        .tint(Theme.accent)
         .preferredColorScheme(.dark)
-        .toolbarBackground(Theme.navy, for: .tabBar)
+        .toolbarBackground(Theme.background, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         // Activation completes after launch, so the first push goes then;
         // after that, whenever the matches or the defaults change.
@@ -149,7 +149,7 @@ struct MatchesScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                ScreenHeader(title: "Matches")
+                ScreenHeader()
                     .bareRow()
                 if store.upcoming.isEmpty && store.played.isEmpty && store.onWatch.isEmpty && store.notRefereed.isEmpty {
                     ContentUnavailableView(
@@ -164,7 +164,7 @@ struct MatchesScreen: View {
                 matchCard(symbol: "megaphone.fill", title: "Upcoming fixtures", matches: store.upcoming) {
                     FixtureRow(match: $0)
                 }
-                matchCard(symbol: "trophy.fill", title: "Recent results", matches: store.played) {
+                matchCard(symbol: "trophy.fill", title: "Recent results", matches: store.played, tint: Theme.lime) {
                     ResultRow(match: $0)
                 }
                 matchCard(symbol: "calendar.badge.minus", title: "Not refereed", matches: store.notRefereed,
@@ -208,12 +208,12 @@ extension MatchesScreen {
     /// match a row after it — real list rows, so swipe-to-delete still works.
     @ViewBuilder
     fileprivate func matchCard<Row: View>(symbol: String, title: String, matches: [Match],
-                                          note: String? = nil,
+                                          note: String? = nil, tint: Color = Theme.accent,
                                           @ViewBuilder row: @escaping (Match) -> Row) -> some View {
         if !matches.isEmpty {
             let count = matches.count + 1
             Color.clear.frame(height: 6).bareRow()
-            SectionTitle(symbol: symbol, title: title)
+            SectionTitle(symbol: symbol, title: title, tint: tint)
                 .cardRow(RowCard.position(0, of: count))
             ForEach(Array(matches.enumerated()), id: \.element.id) { index, match in
                 NavigationLink(value: match.id) { row(match) }
@@ -262,7 +262,7 @@ struct FixtureRow: View {
             HStack(alignment: .top, spacing: 8) {
                 Crest(color: match.setup.home.color)
                 side(match.setup.home.name, "Home", alignment: .trailing)
-                Text("vs").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.gold)
+                Text("vs").font(.subheadline.weight(.heavy)).foregroundStyle(Theme.accent)
                 side(match.setup.away.name, "Away", alignment: .leading)
                 Crest(color: match.setup.away.color)
             }
@@ -285,14 +285,14 @@ struct FixtureRow: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 4)
+        .insetBox()
     }
 
     /// A team's name with "HOME" or "AWAY" beneath it.
     private func side(_ name: String, _ label: String, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 2) {
             Text(name)
-                .font(.headline)
+                .font(.subheadline.weight(.bold))
                 .lineLimit(1).minimumScaleFactor(0.7)
             MatchCardText.sideLabel(label)
         }
@@ -310,14 +310,15 @@ enum MatchCardText {
         return "\(kickOff.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year())) · \(kickOff.formatted(date: .omitted, time: .shortened))"
     }
 
-    /// The referee's own slot, "CR" or "AR", in gold — nothing when unknown.
+    /// The referee's own slot — lime for an assistant, cyan for the centre
+    /// (the 2026-11-14 mock-up); nothing when unknown.
     @ViewBuilder static func roleBadge(_ role: RefereeRole?) -> some View {
         if let role {
             Text("You: \(role.rawValue)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Theme.navy)
+                .foregroundStyle(Theme.background)
                 .padding(.horizontal, 8).padding(.vertical, 2)
-                .background(Theme.gold, in: Capsule())
+                .background(role.isAssistant ? Theme.lime : Theme.accent, in: Capsule())
                 .accessibilityLabel("You are \(role.title.lowercased())")
         }
     }
@@ -326,11 +327,11 @@ enum MatchCardText {
         Text(text.uppercased())
             .font(.caption2.weight(.semibold))
             .tracking(0.8)
-            .foregroundStyle(Theme.gold.opacity(0.8))
+            .foregroundStyle(Theme.accent.opacity(0.85))
     }
 }
 
-/// A played match: names either side of a big gold score, the competition
+/// A played match: names either side of a big lime score, the competition
 /// and date under it, and each side's scorers beneath its name.
 struct ResultRow: View {
     let match: Match
@@ -346,9 +347,10 @@ struct ResultRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 Text(scoreText)
-                    .font(.system(size: 34, weight: .bold, design: .serif))
+                    .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.lime)
+                    .shadow(color: Theme.lime.opacity(0.35), radius: 6)
                     .fixedSize()
                 VStack(alignment: .leading, spacing: 2) {
                     Text(match.setup.away.name)
@@ -381,7 +383,7 @@ struct ResultRow: View {
                 .foregroundStyle(Theme.muted)
             }
         }
-        .padding(.vertical, 4)
+        .insetBox()
     }
 
     /// The score in every division, 8U too — as the watch shows it.
