@@ -101,6 +101,13 @@ import RefKit
     /// HealthKit has no distance.
     func finish(route: [RoutePoint] = []) async -> MatchMetrics? {
         guard let session, let builder else { return nil }
+        // Let go of this workout now, not after the save: the next game may
+        // kick off while it is still saving, and its new session must not be
+        // cleared when this one finishes (back-to-back games, 2026-11-13).
+        self.session = nil
+        self.builder = nil
+        heartRate = nil
+        activeCalories = nil
         session.end()
         isRunning = false
         let end = Date()
@@ -109,18 +116,21 @@ import RefKit
         // `@Sendable` and the builder is not. It is used from this actor only,
         // and only to finish a workout that has already been ended.
         nonisolated(unsafe) let finisher = builder
+        // Never more than 30 s: a save that does not answer costs the
+        // report its heart rate, never the match.
+        let once = ResumeOnce<HKWorkout?>()
         let finished: HKWorkout? = await withCheckedContinuation { continuation in
+            once.set(continuation)
             finisher.endCollection(withEnd: end) { _, _ in
                 finisher.finishWorkout { workout, _ in
-                    continuation.resume(returning: workout)
+                    once.resume(workout)
                 }
             }
+            Task {
+                try? await Task.sleep(for: .seconds(30))
+                once.resume(nil)
+            }
         }
-
-        self.session = nil
-        self.builder = nil
-        heartRate = nil
-        activeCalories = nil
 
         guard let workout = finished else { return nil }
         await saveRoute(route, to: workout)
@@ -195,4 +205,26 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
     }
 
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+}
+
+/// A continuation resumed by whichever comes first — the SDK's answer or a
+/// timeout — and only once.
+final class ResumeOnce<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T, Never>?
+    private var done = false
+
+    func set(_ continuation: CheckedContinuation<T, Never>) {
+        lock.withLock { self.continuation = continuation }
+    }
+
+    func resume(_ value: sending T) {
+        let pending: CheckedContinuation<T, Never>? = lock.withLock {
+            guard !done else { return nil }
+            done = true
+            defer { continuation = nil }
+            return continuation
+        }
+        pending?.resume(returning: value)
+    }
 }

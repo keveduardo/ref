@@ -213,6 +213,14 @@ import RefKit
     private func finishMatch() async {
         guard var current = match else { return }
         playedIDs.insert(current.id)
+        // ! The record first, before anything waits on Health: saved to the
+        // shelf and queued for the phone the moment full time is blown. It
+        // used to wait for the workout to save — and "Done", then the next
+        // game's kick-off, could leave it only in memory. Kevin's 6 PM game
+        // on 2026-11-13 was lost that way, the 7 PM one right behind it.
+        // The phone merges the second send (with the numbers) into this one.
+        try? store.save(current)
+        link.send(current)
         let gps = location.stop()
         let route = SyncPayload.Route.thinned(GeoDistance.filtered(location.points))
         // The route goes into the Health workout too, so Fitness shows the map.
