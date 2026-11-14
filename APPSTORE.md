@@ -1,5 +1,9 @@
 # RefTime — App Store Connect listing
 
+**Submitted for review 2026-11-13: version 1.0, build 156** — public, free,
+175 countries, released automatically on approval. Regulated medical device:
+declared not one. EU trader status (DSA) not set up — see HANDOFF.
+
 Drafted 2026-10-04, in the shape of `Apps/Swim/APPSTORE.md` in brisaloca-ios.
 **The app record exists** (created 2026-10-04 as "Brisaloca RefTime"), but
 none of this listing text has been written into it yet, and nothing has been
