@@ -82,7 +82,7 @@ promises it.
       gh run download <id> -R keveduardo/ref -n ref-renders -D .renders
       cp .renders/*.png renders/ && git add renders && git commit && git push
 
-  Pages screenshotted: watch `start game live home record number halftime summary`, phone
+  Pages screenshotted: watch `start game ready live home record number halftime summary`, phone
   `matches setup teams detail stats settings` — the lists are in `ref.yml` and
   must match `RenderDemo.Page` in each app.
 - **Weekly, unattended**: the `due` job asks App Store Connect whether the live

@@ -51,11 +51,33 @@ import RefKit
     /// that first — at most the 35 s `finish` allows — and starts from the
     /// real kick-off time.
     func start(at date: Date) {
+        starts += 1
         guard let pending = finishing else { begin(at: date); return }
+        let mine = starts
         Task {
             _ = await pending.value
+            // A kick-off taken back while it waited begins nothing.
+            guard self.starts == mine else { return }
             begin(at: date)
         }
+    }
+
+    /// Bumped by every start and discard, so a delayed start can tell it was
+    /// taken back.
+    private var starts = 0
+
+    /// A kick-off taken back (2026-11-14: a game started by mistake on the
+    /// afternoon of the match). The session ends and nothing goes to Health.
+    func discard() {
+        starts += 1
+        guard let current = session, let currentBuilder = builder else { return }
+        session = nil
+        builder = nil
+        heartRate = nil
+        activeCalories = nil
+        isRunning = false
+        current.end()
+        currentBuilder.discardWorkout()
     }
 
     private func begin(at date: Date) {

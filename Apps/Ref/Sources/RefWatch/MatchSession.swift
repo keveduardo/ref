@@ -214,6 +214,26 @@ import RefKit
 
     func endHalf() { append(.halfEnd(half: halfAtNow)) }
 
+    /// Whether the kick-off is all that has happened — then it can be taken
+    /// back, and the match goes back to waiting for kick-off. Once anything
+    /// else is recorded it is a match, and ends with End match.
+    var canUndoKickOff: Bool {
+        guard let events = match?.events.events, events.count == 1,
+              case .kickOff(half: 1) = events[0].kind else { return false }
+        return true
+    }
+
+    /// Kicked off by mistake (Kevin, 2026-11-14: the evening's game, tapped
+    /// and kicked off in the afternoon, with no way out but End match —
+    /// which would have recorded it as played). Back to "Ready to kick off",
+    /// where Choose another match is; the workout is thrown away.
+    func undoKickOff() {
+        guard canUndoKickOff, let kick = match?.events.events.first else { return }
+        append(.voided(kick.id))
+        workout.discard()
+        _ = location.stop()
+    }
+
     /// Stop the match clock — an injury, a stoppage the referee times — and
     /// start it again from where it stopped (Kevin, 2026-11-06: "there needs
     /// to be an option to pause the clock"). Paused time is not played time,
@@ -529,6 +549,8 @@ extension MatchSession {
 
         let events: [MatchEvent]
         switch page {
+        case "ready":
+            events = []
         case "halftime":
             events = [
                 event(48 * 60, .kickOff(half: 1)),

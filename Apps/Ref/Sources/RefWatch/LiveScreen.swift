@@ -25,6 +25,7 @@ struct LiveScreen: View {
     @State private var markingField = false
     @State private var confirmingChange = false
     @State private var choosingColors = false
+    @State private var confirmingUndoKickOff = false
     @Environment(\.isLuminanceReduced) private var dimmed
     /// Until when the buttons show under the clock. ! The face changes only
     /// when touched (Kevin, 2026-11-06: "I'd rather have the screen only
@@ -65,6 +66,12 @@ struct LiveScreen: View {
         }
         .confirmationDialog("Choose another match?", isPresented: $confirmingChange) {
             Button("Back to the list") { session.discard() }
+        }
+        .confirmationDialog("Undo the kick-off?", isPresented: $confirmingUndoKickOff) {
+            Button("Undo kick-off", role: .destructive) {
+                Haptics.play(.stop)
+                session.undoKickOff()
+            }
         }
     }
 
@@ -138,6 +145,18 @@ struct LiveScreen: View {
     }
 
     // MARK: - Pieces
+
+    /// Only while the kick-off is the one thing recorded: a match started by
+    /// mistake goes back to waiting, not into the results.
+    @ViewBuilder
+    private var undoKickOffButton: some View {
+        if session.canUndoKickOff {
+            Button("Undo kick-off") { confirmingUndoKickOff = true }
+                .buttonStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+    }
 
     private var scoreRow: some View {
         HStack(spacing: 6) {
@@ -287,9 +306,11 @@ struct LiveScreen: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
+            undoKickOffButton
         case .paused:
             // Paused is a state to act on, so its buttons stay up untouched.
             let lastHalf = clock.currentHalf(at: now) >= clock.config.halves
+            undoKickOffButton
             Button {
                 Haptics.play(.start)
                 session.resumeClock()
