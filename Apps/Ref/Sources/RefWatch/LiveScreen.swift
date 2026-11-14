@@ -119,6 +119,11 @@ struct LiveScreen: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Before kick-off and while paused the buttons are the point,
+            // and there can be more of them than a small watch shows — so
+            // the face scrolls then (2026-11-14: Choose another match sat
+            // below the edge, and Kevin was stuck in a match).
+            .modifier(ScrollsWhen(on: phase == .notStarted || { if case .paused = phase { true } else { false } }()))
             .contentShape(Rectangle())
             // Buttons take their own taps first; a tap anywhere else shows
             // them, or keeps them a little longer.
@@ -366,6 +371,19 @@ enum Haptics {
         for (index, type) in pattern.enumerated() {
             if index > 0 { try? await Task.sleep(for: .milliseconds(450)) }
             play(type)
+        }
+    }
+}
+
+/// Wraps the face in a scroll view only when its buttons may not fit.
+private struct ScrollsWhen: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        if on {
+            ScrollView { content }
+        } else {
+            content
         }
     }
 }
