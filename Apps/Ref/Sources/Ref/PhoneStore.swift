@@ -197,6 +197,14 @@ enum RouteFiles {
                     changed.ar2 = setup.ar2
                 }
                 changed.myRole = setup.myRole ?? changed.myRole
+                // The venue rides in the competition line ("Girls 12U — Alta
+                // Vista · AVP"). Followed while that line is still the site's
+                // own shape — one the referee rewrote is left alone.
+                if let site = setup.competition, let division = site.components(separatedBy: " — ").first,
+                   changed.competition == nil || changed.competition == division
+                    || changed.competition?.hasPrefix(division + " — ") == true {
+                    changed.competition = site
+                }
                 guard changed != existing.setup else { continue }
                 existing.setup = changed
                 try? matches.save(existing)

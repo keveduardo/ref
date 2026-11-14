@@ -48,15 +48,35 @@ public struct MatchStore: Sendable {
         try write(match, to: matchesDirectory.appendingPathComponent("\(match.id.uuidString).json"))
     }
 
-    /// Newest first by `createdAt`.
+    /// Newest first by `createdAt`. A file this build cannot read (one
+    /// written by a newer build, say) is moved aside into `unreadable/`
+    /// rather than hiding every other match — and so that a save with the
+    /// same id cannot overwrite it (audit, 2026-11-13).
     public func all() throws -> [Match] {
         guard FileManager.default.fileExists(atPath: matchesDirectory.path) else { return [] }
         let files = try FileManager.default.contentsOfDirectory(
             at: matchesDirectory, includingPropertiesForKeys: nil)
-        return try files
+        return files
             .filter { $0.pathExtension == "json" }
-            .map { try read($0) }
+            .compactMap { url in
+                if let match = try? read(url) { return match }
+                setAside(url)
+                return nil
+            }
             .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Where unreadable match files are kept, untouched.
+    public var unreadableDirectory: URL {
+        matchesDirectory.appendingPathComponent("unreadable", isDirectory: true)
+    }
+
+    private func setAside(_ url: URL) {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: unreadableDirectory, withIntermediateDirectories: true)
+        let target = unreadableDirectory.appendingPathComponent(
+            "\(url.deletingPathExtension().lastPathComponent)-\(Int(Date().timeIntervalSince1970)).json")
+        try? fm.moveItem(at: url, to: target)
     }
 
     public func load(id: UUID) throws -> Match {

@@ -23,9 +23,10 @@ public struct TeamLibrary: Sendable {
         return squads.sorted { $0.team.name.localizedCaseInsensitiveCompare($1.team.name) == .orderedAscending }
     }
 
-    /// Insert or replace, by team id.
+    /// Insert or replace, by team id. When the file is there but cannot be
+    /// read, this throws rather than replace every team with one.
     public func save(_ squad: Squad) throws {
-        var squads = (try? all()) ?? []
+        var squads = try all()
         if let index = squads.firstIndex(where: { $0.team.id == squad.team.id }) {
             squads[index] = squad
         } else {
@@ -35,7 +36,7 @@ public struct TeamLibrary: Sendable {
     }
 
     public func delete(teamID: UUID) throws {
-        var squads = (try? all()) ?? []
+        var squads = try all()
         squads.removeAll { $0.team.id == teamID }
         try write(squads)
     }

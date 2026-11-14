@@ -106,7 +106,8 @@ struct MatchSetupScreen: View {
                 Section {
                     MyRolePicker(role: $myRole)
                 }
-                BeachCupSection(round: $beachCup, age: age) { halfMinutes = $0 }
+                BeachCupSection(round: $beachCup, age: age,
+                                normalHalfMinutes: MatchFormat.preset(id: formatID)?.halfMinutes) { halfMinutes = $0 }
                 AdvancedToggle(isOpen: $showingAdvanced, summary: AdvancedToggle.summary(
                     halfMinutes: halfMinutes, halfTimeMinutes: halfTimeMinutes, countsDown: countsDown,
                     quarterBreak: quarterBreak, referees: [cr, ar1, ar2]))

@@ -50,6 +50,7 @@ import WatchConnectivity
         self.onRoute = onRoute
         self.onStarted = onStarted
         super.init()
+        Task { @MainActor in self.retryUndelivered() }
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
@@ -111,12 +112,39 @@ import WatchConnectivity
     // MARK: - Receiving
 
     private func ingest(matchData: Data?) {
-        guard let matchData,
-              let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self,
+        guard let matchData else { return }
+        guard let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self,
                                                     from: matchData) else {
+            // A finished match this build cannot read — a newer watch app,
+            // say. The transfer is spent, so it is kept here, and read again
+            // at every launch until a build that understands it arrives.
+            keepUndelivered(matchData)
             return
         }
         onFinished?(payload.match)
+    }
+
+    private static var undeliveredDirectory: URL {
+        PhoneStore.directory.appendingPathComponent("undelivered", isDirectory: true)
+    }
+
+    private func keepUndelivered(_ data: Data) {
+        let dir = Self.undeliveredDirectory
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? data.write(to: dir.appendingPathComponent("\(UUID().uuidString).json"), options: .atomic)
+    }
+
+    private func retryUndelivered() {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(at: Self.undeliveredDirectory,
+                                                      includingPropertiesForKeys: nil) else { return }
+        for url in files where url.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: url),
+                  let payload = try? SyncPayload.decode(SyncPayload.FinishedMatch.self, from: data)
+            else { continue }
+            onFinished?(payload.match)
+            try? fm.removeItem(at: url)
+        }
     }
 }
 

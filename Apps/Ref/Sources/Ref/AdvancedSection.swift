@@ -70,6 +70,8 @@ struct BeachCupSection: View {
     @Binding var round: BeachCupRound?
     /// The division's age — 10, 12, 14 are on the sheet.
     let age: Int?
+    /// The division's own half length, put back when the toggle goes off.
+    var normalHalfMinutes: Int? = nil
     /// Sets the match's half length.
     let setHalfMinutes: (Int) -> Void
 
@@ -79,6 +81,7 @@ struct BeachCupSection: View {
                 get: { round != nil },
                 set: { on in
                     round = on ? (round ?? .pool) : nil
+                    if !on, let normalHalfMinutes { setHalfMinutes(normalHalfMinutes) }
                     apply()
                 }))
             if round != nil {

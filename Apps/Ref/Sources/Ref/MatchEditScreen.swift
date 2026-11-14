@@ -55,7 +55,8 @@ struct MatchEditScreen: View {
                 Section {
                     MyRolePicker(role: $setup.myRole)
                 }
-                BeachCupSection(round: $setup.beachCup, age: setup.format?.age) {
+                BeachCupSection(round: $setup.beachCup, age: setup.format?.age,
+                                normalHalfMinutes: setup.format?.halfMinutes) {
                     setup.clock.halfLength = TimeInterval($0 * 60)
                 }
                 AdvancedToggle(isOpen: $showingAdvanced, summary: AdvancedToggle.summary(
