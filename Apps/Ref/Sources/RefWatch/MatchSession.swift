@@ -217,10 +217,20 @@ import RefKit
     /// Whether the kick-off is all that has happened — then it can be taken
     /// back, and the match goes back to waiting for kick-off. Once anything
     /// else is recorded it is a match, and ends with End match.
+    ///
+    /// Pauses, resumes and the clock's own marks do not count (Kevin,
+    /// 2026-11-14: his mistaken match was paused, and build 169 hid the
+    /// button for that). A goal, a card, a note or a half end do.
     var canUndoKickOff: Bool {
-        guard let events = match?.events.events, events.count == 1,
+        guard let events = match?.events.events, !events.isEmpty,
               case .kickOff(half: 1) = events[0].kind else { return false }
-        return true
+        return events.dropFirst().allSatisfy { event in
+            switch event.kind {
+            case .clockPaused, .clockResumed, .addedTime(half: 1, _),
+                 .quarterBreak(half: 1), .quarterBreakEnd(half: 1): true
+            default: false
+            }
+        }
     }
 
     /// Kicked off by mistake (Kevin, 2026-11-14: the evening's game, tapped
@@ -228,8 +238,9 @@ import RefKit
     /// which would have recorded it as played). Back to "Ready to kick off",
     /// where Choose another match is; the workout is thrown away.
     func undoKickOff() {
-        guard canUndoKickOff, let kick = match?.events.events.first else { return }
-        append(.voided(kick.id))
+        guard canUndoKickOff, let events = match?.events.events else { return }
+        // Newest first, so the clock never sees a pause without its kick-off.
+        for event in events.reversed() { append(.voided(event.id)) }
         workout.discard()
         _ = location.stop()
     }
