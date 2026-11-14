@@ -246,7 +246,12 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/Ref.xcarchive" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            "${auth[@]}" 2>&1 | tail -40
+            "${auth[@]}" > "$RUNNER_TEMP/archive.log" 2>&1 \
+            || { grep -E "error:" "$RUNNER_TEMP/archive.log" | sort -u | head -40
+                 tail -20 "$RUNNER_TEMP/archive.log"; exit 1; }
+          # ! The compile errors themselves, not just the tail (build 160
+          # failed with the errors cut off above a `| tail -40`).
+          tail -10 "$RUNNER_TEMP/archive.log"
 
           # ! The one failure that would otherwise ship silently: an archive
           # with no watch app in it is a plain iOS upload, and Apple would take

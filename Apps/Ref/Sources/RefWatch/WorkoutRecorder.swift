@@ -116,7 +116,7 @@ import RefKit
     /// walking/running distance. The session falls back to the GPS sum when
     /// HealthKit has no distance.
     func finish(route: [RoutePoint] = []) async -> MatchMetrics? {
-        guard let session, let builder else { return nil }
+        guard let current = self.session, let currentBuilder = self.builder else { return nil }
         // No longer this recorder's current workout: callbacks from it are
         // ignored from here on, and the next kick-off may begin — after
         // `finishing`. The locals keep both alive until the save answers.
@@ -127,8 +127,8 @@ import RefKit
         isRunning = false
         let end = Date()
         // ! Not Sendable; only ever touched on this actor, inside the task.
-        nonisolated(unsafe) let session = session
-        nonisolated(unsafe) let builder = builder
+        nonisolated(unsafe) let session = current
+        nonisolated(unsafe) let builder = currentBuilder
 
         let work = Task { @MainActor () -> HKWorkout? in
             // Apple's documented order: stop, wait for `.stopped`, end the
@@ -230,7 +230,7 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
             if stopped { self.stopWaiters[id]?.resume(()) }
             // Only the current session speaks for `isRunning`: a late word
             // from the last match's must not show "Workout off" in this one.
-            guard self.session.map(ObjectIdentifier.init) == id else { return }
+            guard self.session.map { ObjectIdentifier($0) } == id else { return }
             self.isRunning = running
         }
     }
@@ -240,7 +240,7 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
         let id = ObjectIdentifier(workoutSession)
         Task { @MainActor in
             self.stopWaiters[id]?.resume(())
-            guard self.session.map(ObjectIdentifier.init) == id else { return }
+            guard self.session.map { ObjectIdentifier($0) } == id else { return }
             self.isRunning = false
         }
     }
@@ -259,7 +259,7 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
         Task { @MainActor in
             // The last match's builder, still collecting as it saves, must
             // not put its heart rate on this match's screen.
-            guard self.builder.map(ObjectIdentifier.init) == id else { return }
+            guard self.builder.map { ObjectIdentifier($0) } == id else { return }
             if let heartRate { self.heartRate = heartRate }
             if let calories { self.activeCalories = calories }
         }
