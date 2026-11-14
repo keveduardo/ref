@@ -60,7 +60,15 @@ struct RenderDemo: View {
 
     let page: Page
 
+    /// Dark and gold like the real app — RefScreen sets that, and the
+    /// pages shown on their own would otherwise render light.
     var body: some View {
+        content
+            .tint(Theme.gold)
+            .preferredColorScheme(.dark)
+    }
+
+    @ViewBuilder private var content: some View {
         switch page {
         case .matches:
             RefScreen(store: .demo(), link: PhoneLink(), account: AccountStore(), schedule: ScheduleSync())

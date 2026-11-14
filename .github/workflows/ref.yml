@@ -322,7 +322,8 @@ jobs:
           iphone=$(xcrun simctl list devices available --json | python3 -c '
           import json,sys
           devs=[d for rt,ds in json.load(sys.stdin)["devices"].items() if "iOS" in rt for d in ds]
-          devs.sort(key=lambda d: ("iPhone" not in d["name"], "Pro" not in d["name"], d["name"]))
+          # Pro Max first: its 6.9" screenshots are the size the App Store asks for.
+          devs.sort(key=lambda d: ("iPhone" not in d["name"], "Pro Max" not in d["name"], "Pro" not in d["name"], d["name"]))
           print(devs[0]["udid"]); print(devs[0]["name"], file=sys.stderr)')
           watch=$(xcrun simctl list devices available --json | python3 -c '
           import json,sys
