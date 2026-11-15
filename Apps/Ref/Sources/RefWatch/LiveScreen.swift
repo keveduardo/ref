@@ -214,6 +214,8 @@ struct LiveScreen: View {
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(.center)
             }
+            // Wrong length on the phone's setup — fixed here (2026-11-14).
+            HalfLengthButton(session: session)
             Button("Kick off") {
                 Haptics.play(.start)
                 session.kickOff()

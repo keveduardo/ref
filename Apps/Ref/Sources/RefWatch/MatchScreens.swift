@@ -37,6 +37,8 @@ struct HalfTimeScreen: View {
                     // A goal on the whistle, missed while the alarm rang.
                     Button("Add goal to \(halfName)") { addingGoal = true }
                         .font(.footnote)
+                    // The second half's length, should the first have been wrong.
+                    HalfLengthButton(session: session)
                     // The flag on the live face has no confirmation — one tap
                     // must end a half — so a mis-tap is undone here instead.
                     if let half = session.resumableHalf {

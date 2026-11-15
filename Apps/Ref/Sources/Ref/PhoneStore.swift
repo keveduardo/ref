@@ -301,7 +301,7 @@ enum RouteFiles {
 
     /// Team colours chosen on the watch, mid-match too: taken into the
     /// phone's copy, which then goes back to the watch as usual. Only the
-    /// colours — names and the rest are edited here.
+    /// colours and the half length — names and the rest are edited here.
     func colorsChangedOnWatch(_ setup: MatchSetup) {
         guard var match = all.first(where: { $0.id == setup.id }) else {
             addStartedOnWatch(setup)
@@ -310,6 +310,8 @@ enum RouteFiles {
         var changed = match.setup
         changed.setColor(setup.home.color, for: .home)
         changed.setColor(setup.away.color, for: .away)
+        // …and the half length, changed on the watch (2026-11-14).
+        changed.clock.halfLength = setup.clock.halfLength
         guard changed != match.setup else { return }
         match.setup = changed
         save(match)

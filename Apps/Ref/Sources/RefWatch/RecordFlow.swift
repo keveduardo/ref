@@ -148,6 +148,11 @@ struct RecordFlow: View {
                     }
                 }
             }
+            // Mid-match: the half length, if the setup had it wrong.
+            if !lateGoal, session.match?.isFinished == false {
+                HalfLengthButton(session: session)
+                    .padding(.top, 4)
+            }
             if side == nil {
                 Button("Cancel") { dismiss() }
                     .font(.footnote)

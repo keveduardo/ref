@@ -340,6 +340,40 @@ extension MatchSetup {
 }
 
 extension MatchSetup {
+    /// The half lengths the watch's picker offers, in minutes.
+    public static let watchHalfMinutes = 5...45
+
+    /// One half, in whole minutes.
+    public var halfMinutes: Int { Int((clock.halfLength / 60).rounded()) }
+
+    /// The half length, changed on the watch — before kick-off or mid-match
+    /// (Kevin, 2026-11-14: a beach-cup match set up as 2 × 30 that was
+    /// 2 × 25, and no way to fix it on the wrist). The clock counts up from
+    /// the anchors, so the time already played stands; only the end-of-half
+    /// alert, the quarter mark and the minutes of a later half move with it.
+    public mutating func setHalfMinutes(_ minutes: Int) {
+        let clamped = min(max(minutes, Self.watchHalfMinutes.lowerBound), Self.watchHalfMinutes.upperBound)
+        clock.halfLength = TimeInterval(clamped * 60)
+    }
+
+    /// The phone's edits, with colours *and* a half length just set on the
+    /// watch held, the same way: until the phone's copy has the watch's
+    /// length, a list it sent in between does not undo it.
+    public func applyingEdits(_ edited: MatchSetup, kickedOff: Bool,
+                              holding held: inout [TeamSide: TeamColor],
+                              holdingHalf heldHalf: inout TimeInterval?) -> MatchSetup {
+        var merged = applyingEdits(edited, kickedOff: kickedOff, holding: &held)
+        guard edited.id == id, let length = heldHalf else { return merged }
+        if edited.clock.halfLength == length {
+            heldHalf = nil
+        } else {
+            merged.clock.halfLength = length
+        }
+        return merged
+    }
+}
+
+extension MatchSetup {
     public mutating func setColor(_ color: TeamColor, for side: TeamSide) {
         if side == .home { home.color = color } else { away.color = color }
     }

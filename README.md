@@ -31,7 +31,7 @@ tools/make-icon.py   draws the app icon into both asset catalogs
   companion watch app different from Rowing's and Swim's watch-only ones —
   the watch app inside `Ref.app/Watch/`, `WKCompanionAppBundleIdentifier`
   pointing home, no `WKWatchOnly`, matching `CFBundleVersion`s.
-- **The engine is real and tested** — 160 tests, run on this box on every
+- **The engine is real and tested** — 163 tests, run on this box on every
   push and by the `kit` job:
 
       swift test --package-path RefKit

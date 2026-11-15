@@ -151,6 +151,25 @@ import RefKit
         link.sendEdited(current.setup)
     }
 
+    /// A half length set here that the phone's copy does not have yet —
+    /// held like the colours above.
+    private var heldHalf: TimeInterval?
+
+    /// The half length, changed on the watch — before kick-off, at half
+    /// time or mid-half (Kevin, 2026-11-14: a beach-cup match set up as
+    /// 2 × 30 that was 2 × 25). The time played stands; the end-of-half
+    /// alarm moves. Sent to the phone, so the report has the right length.
+    func setHalfMinutes(_ minutes: Int) {
+        guard var current = match, current.setup.halfMinutes != minutes else { return }
+        current.setup.setHalfMinutes(minutes)
+        heldHalf = current.setup.clock.halfLength
+        match = current
+        // A ringing end-of-half alarm that no longer applies stops.
+        if case .halfLength = ringing?.kind { stopAlarm() }
+        persist()
+        link.sendEdited(current.setup)
+    }
+
     /// Sent again this launch already — once is enough; the next launch
     /// tries again if the phone still says it is waiting.
     private var resent: Set<UUID> = []
@@ -169,7 +188,8 @@ import RefKit
     private func applyPhoneEdits(_ setups: [MatchSetup]) {
         guard var current = match, let edited = setups.first(where: { $0.id == current.id }) else { return }
         let kickedOff = current.clock.phase(at: Date()) != .notStarted
-        let merged = current.setup.applyingEdits(edited, kickedOff: kickedOff, holding: &heldColors)
+        let merged = current.setup.applyingEdits(edited, kickedOff: kickedOff, holding: &heldColors,
+                                                 holdingHalf: &heldHalf)
         guard merged != current.setup else { return }
         current.setup = merged
         match = current
