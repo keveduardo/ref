@@ -241,17 +241,31 @@ struct QuarterBreakTests {
         return s
     }
 
-    @Test func theMarkIsMidwayUnlessAMinuteIsChosen() {
-        #expect(QuarterBreak().mark(halfLength: TimeInterval(25 * 60)) == TimeInterval(12 * 60))
-        #expect(QuarterBreak().mark(halfLength: TimeInterval(30 * 60)) == TimeInterval(15 * 60))
+    @Test func theMarkSplitsThePlayEvenlyUnlessAMinuteIsChosen() {
+        // 20 minutes, a 1-minute break: 9:30 of play either side.
+        #expect(QuarterBreak(breakMinutes: 1).mark(halfLength: TimeInterval(20 * 60)) == TimeInterval(9 * 60 + 30))
+        #expect(QuarterBreak(breakMinutes: 2).mark(halfLength: TimeInterval(25 * 60)) == TimeInterval(11 * 60 + 30))
+        #expect(QuarterBreak(breakMinutes: 2).mark(halfLength: TimeInterval(30 * 60)) == TimeInterval(14 * 60))
         #expect(QuarterBreak(atMinute: 10).mark(halfLength: TimeInterval(25 * 60)) == TimeInterval(10 * 60))
+    }
+
+    @Test func theBreakCanBeStartedUpToTwoMinutesEarly() {
+        let q = QuarterBreak(breakMinutes: 1)
+        let half = TimeInterval(20 * 60), late = TimeInterval(5 * 60)
+        // The mark is 9:30 played; 11:00 left on a countdown is 9:00 played.
+        #expect(!q.canStart(atElapsed: TimeInterval(7 * 60 + 29), halfLength: half, lateBy: late))
+        #expect(q.canStart(atElapsed: TimeInterval(7 * 60 + 30), halfLength: half, lateBy: late))
+        #expect(q.canStart(atElapsed: TimeInterval(9 * 60), halfLength: half, lateBy: late))
+        #expect(q.canStart(atElapsed: TimeInterval(14 * 60 + 29), halfLength: half, lateBy: late))
+        #expect(!q.canStart(atElapsed: TimeInterval(14 * 60 + 30), halfLength: half, lateBy: late))
     }
 
     @Test func aBuzzAtTheMarkThenAtTheEndOfTheBreakWithTheClockRunning() {
         var m = Match(setup: Self.setup, events: EventLog(events: [Fixture.event(0, .kickOff(half: 1))]))
         let first = m.upcomingAlerts(after: Fixture.at(60))
         #expect(first.first?.kind == .quarterMark(half: 1))
-        #expect(first.first?.at == Fixture.at(12 * 60))
+        // 25 minutes, a 2-minute break: 11:30 of play either side.
+        #expect(first.first?.at == Fixture.at(11 * 60 + 30))
 
         // The break taken at 12:10: a buzz two minutes later, and no more
         // quarter-mark buzzes this half.
@@ -266,6 +280,15 @@ struct QuarterBreakTests {
         #expect(m.clock.text(at: Fixture.at(15 * 60)) == "15:00")
         // And it is on the report at its minute.
         #expect(m.report.timeline.contains { $0.text == "Quarter break" && $0.minute == 13 })
+    }
+
+    @Test func aBreakStartedEarlyRunsFromTheTapAndCallsOffTheMark() {
+        var m = Match(setup: Self.setup, events: EventLog(events: [Fixture.event(0, .kickOff(half: 1))]))
+        m.events.append(Fixture.event(10 * 60, .quarterBreak(half: 1)))
+        let alerts = m.upcomingAlerts(after: Fixture.at(10 * 60 + 5))
+        #expect(alerts.first?.kind == .quarterBreakOver(half: 1))
+        #expect(alerts.first?.at == Fixture.at(12 * 60))
+        #expect(!alerts.contains { $0.kind == .quarterMark(half: 1) })
     }
 
     @Test func theSecondHalfHasItsOwnQuarter() {

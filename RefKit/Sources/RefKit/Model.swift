@@ -282,8 +282,8 @@ extension MatchSetup {
 /// The match clock keeps running through it — the half is a running clock
 /// (Kevin, 2026-10-04); the break has its own timer and buzz.
 public struct QuarterBreak: Codable, Sendable, Equatable {
-    /// Minutes into each half when the break is due; nil means midway, so it
-    /// follows the half length when that changes.
+    /// Minutes into each half when the break is due; nil means the default,
+    /// which follows the half length (and the break's) when they change.
     public var atMinute: Int?
     /// How long the break runs before the watch buzzes.
     public var breakMinutes: Int
@@ -294,9 +294,29 @@ public struct QuarterBreak: Codable, Sendable, Equatable {
     }
 
     /// Seconds into a half when the break is due.
+    ///
+    /// ! By default the break splits the half's *play* evenly (Kevin,
+    /// 2026-11-15). The match clock runs through the break, so a 20-minute
+    /// half with a 1-minute break is 19 minutes of play: 9:30, the break, then
+    /// 9:30 — the mark is 9:30 played, 10:30 on a clock counting down. It
+    /// used to be the half's midway minute, which left the second stretch
+    /// short by the length of the break.
     public func mark(halfLength: TimeInterval) -> TimeInterval {
         if let atMinute { return TimeInterval(atMinute * 60) }
-        return (halfLength / 2 / 60).rounded(.down) * 60
+        return max(0, (halfLength - TimeInterval(breakMinutes * 60)) / 2)
+    }
+
+    /// How early the break can be started by hand: a stoppage a little
+    /// before the mark is as good a moment (Kevin, 2026-11-15: "two minutes
+    /// early is actually perfect"). The break's timer starts at the tap.
+    public static let earlyStart: TimeInterval = 2 * 60
+
+    /// Whether the referee can start the break `elapsed` seconds into the
+    /// half: from two minutes before the mark until `lateBy` after it.
+    public func canStart(atElapsed elapsed: TimeInterval, halfLength: TimeInterval,
+                         lateBy: TimeInterval) -> Bool {
+        let mark = mark(halfLength: halfLength)
+        return elapsed >= mark - Self.earlyStart && elapsed < min(mark + lateBy, halfLength)
     }
 }
 

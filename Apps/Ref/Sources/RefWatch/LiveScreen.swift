@@ -235,11 +235,10 @@ struct LiveScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         case .running(let half):
-            // The quarter break: its button from the mark until it is taken,
+            // The quarter break: its button from just before the mark until it is taken,
             // then its own timer while it runs. The match clock never stops.
             if let quarter = session.match?.setup.quarterBreak, let match = session.match {
                 let elapsed = clock.elapsed(inHalf: half, at: now)
-                let mark = quarter.mark(halfLength: clock.config.halfLength)
                 if let taken = match.events.quarterBreak(inHalf: half) {
                     // Its timer is under the clock (breakCountdown); End
                     // finishes it early. Gone at zero — the alarm takes over
@@ -254,7 +253,10 @@ struct LiveScreen: View {
                         .buttonStyle(.bordered)
                         .tint(.orange)
                     }
-                } else if elapsed >= mark, elapsed < min(mark + Self.quarterButtonFor, clock.config.halfLength) {
+                } else if quarter.canStart(atElapsed: elapsed, halfLength: clock.config.halfLength,
+                                           lateBy: Self.quarterButtonFor) {
+                    // From two minutes before the mark: the break's timer
+                    // starts at the tap, and the mark's alarm is called off.
                     Button("Quarter break") {
                         Haptics.play(.stop)
                         session.startQuarterBreak()

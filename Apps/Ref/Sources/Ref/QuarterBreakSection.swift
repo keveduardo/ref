@@ -2,7 +2,7 @@ import RefKit
 import SwiftUI
 
 /// The quarter-break settings, shared by New Match and Edit: a switch, when
-/// in each half it falls (midway unless a minute is picked), and how long it
+/// in each half it falls (by default where it splits the play evenly, unless a minute is picked), and how long it
 /// lasts. The match clock runs through it; the watch buzzes at both ends.
 struct QuarterBreakSection: View {
     @Binding var quarterBreak: QuarterBreak?
@@ -17,7 +17,9 @@ struct QuarterBreakSection: View {
                 Picker("Quarter at", selection: Binding(
                     get: { current.atMinute ?? 0 },
                     set: { quarterBreak?.atMinute = $0 == 0 ? nil : $0 })) {
-                    Text("Midway (\(halfMinutes / 2) min)").tag(0)
+                    // Even play either side of the break: 20 min, 1-min
+                    // break → 9:30 (Kevin, 2026-11-15).
+                    Text("Even split (\(ClockFormat.mmss(QuarterBreak(breakMinutes: current.breakMinutes).mark(halfLength: TimeInterval(halfMinutes * 60)))))").tag(0)
                     ForEach(Array(stride(from: 5, to: max(6, halfMinutes), by: 1)), id: \.self) {
                         Text("\($0) min").tag($0)
                     }
@@ -32,7 +34,7 @@ struct QuarterBreakSection: View {
             Text("Quarter breaks")
         } footer: {
             if quarterBreak != nil {
-                Text("The watch buzzes at the quarter mark of each half. Tap Quarter break to start the break timer; the match clock keeps running, and the watch buzzes when the break is up.")
+                Text("The watch buzzes at the quarter mark of each half. Tap Quarter break to start the break timer — up to two minutes early if a stoppage comes first; the match clock keeps running, and the watch buzzes when the break is up.")
             }
         }
     }
