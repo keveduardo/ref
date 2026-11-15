@@ -1,6 +1,6 @@
 # RefTime — App Store Connect listing
 
-**Submitted for review 2026-11-13: version 1.0, build 156** — public, free,
+**Submitted for review 2026-11-13: version 1.0, build 156; App Review asked for information (Guideline 2.1) on 2026-11-14 and it was resubmitted the same day with build 177**, the review notes answering their six points and one screen recording attached — public, free,
 released automatically on approval. **United States only** since 2026-11-14
 (174 territories switched off through the API; it was all 175 at submission). Regulated medical device:
 declared not one. EU trader status (DSA) deliberately not set up (Kevin, 2026-11-13: "US only

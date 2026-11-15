@@ -14,14 +14,14 @@ decisions behind it — including the phase table this file mirrors).
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |
 | Signed / uploaded | TestFlight gets every `ship` run (group "Household"); the build number is the run number. Kevin has refereed real matches with it since November 2026. |
-| App Store | **1.0 (build 156) submitted 2026-11-13, waiting for review**, release automatic on approval. US only (set 2026-11-14 — no EU trader status, by choice). The next update is 1.0.1: bump `MARKETING_VERSION` once 1.0 is approved, then attach a newer build. `APPSTORE.md` has the listing and the answers given. |
+| App Store | **1.0 (build 177) resubmitted 2026-11-14, waiting for review** (2026-11-14 App Review asked for information under 2.1: a screen recording plus purpose, setup, services, regions and regulation notes — answered in the review notes, recording attached), release automatic on approval. US only (set 2026-11-14 — no EU trader status, by choice). The next update is 1.0.1: bump `MARKETING_VERSION` once 1.0 is approved, then attach a newer build. `APPSTORE.md` has the listing and the answers given. |
 
 ## The next action, exactly
 
 **Kevin:** install the newest TestFlight build on phone and watch. Open both
 apps after a match: a finished match the phone never got is sent again by
-the watch. **Claude:** when 1.0 is approved, bump to 1.0.1 and submit the
-newest build.
+the watch. **Claude:** when 1.0 is approved, bump to 1.0.1 for the next change.
+App Review allows ONE attachment on the review details — join videos first.
 
 **Shipping a new build** after a code change, from this box:
 
