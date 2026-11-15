@@ -22,7 +22,7 @@ settings:
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: 6DNDT6WKF8
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "1.0"
+    MARKETING_VERSION: "1.0.1"
     # The workflow passes the run number, so every upload is a new build — and
     # both bundles inherit it from here, which is what keeps their
     # CFBundleVersions identical (ITMS refuses an upload where a watch app and
