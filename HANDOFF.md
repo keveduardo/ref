@@ -14,7 +14,7 @@ decisions behind it — including the phase table this file mirrors).
 | The apps | The watch UI and the phone app compile in CI on every push; the `build` job also asserts the companion shape (watch app inside `Ref.app/Watch/`, the WK pairing, equal `CFBundleVersion`s). |
 | The screens | `renders/` — the `render` job's screenshots as a README GitHub renders on a phone. Snapshots, replaced in place. |
 | Signed / uploaded | TestFlight gets every `ship` run (group "Household"); the build number is the run number. Kevin has refereed real matches with it since November 2026. |
-| App Store | **1.0 (build 177) approved and live 2026-11-15** (US only). TestFlight builds are now 1.0.1; submit 1.0.1 when Kevin asks. US only (set 2026-11-14 — no EU trader status, by choice). `APPSTORE.md` has the listing and the answers given. |
+| App Store | **1.0 (build 177) approved and live 2026-11-15** (US only). **1.0.1 (build 181) submitted 2026-11-18**, release automatic on approval — the even-split quarter break and its two-minute early start. US only (set 2026-11-14 — no EU trader status, by choice). `APPSTORE.md` has the listing and the answers given. |
 
 ## The next action, exactly
 
